@@ -124,6 +124,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         com.mytv.launcher.ratings.Ratings.init(app)
+        com.mytv.launcher.ratings.DeepLinks.init(app)
     }
     private val taste = com.mytv.launcher.ang.TasteStore(app)
     private val angTaste = com.mytv.launcher.ang.TasteRepository(
@@ -620,14 +621,37 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Opens the show's streaming app if it's installed, else asks Google TV where it plays. */
+    /**
+     * Opens a title as directly as possible: its page inside the streaming app
+     * (via [com.mytv.launcher.ratings.DeepLinks]); else Google TV's page for it,
+     * which has a Watch button; else just the app.
+     */
     fun openAngShow(item: AngItem) {
         val apps = _allApps.value
-        val app = WhereToWatch.servicesFor(item.service).firstNotNullOfOrNull { service ->
-            apps.firstOrNull { service.matches(it.packageName, it.label) }
+        // The app that will open it (e.g. Bravo shows open in Peacock, Paramount+ in Prime Video).
+        val match = WhereToWatch.servicesFor(item.service).firstNotNullOfOrNull { service ->
+            apps.firstOrNull { service.matches(it.packageName, it.label) }?.let { service to it }
         }
+        val app = match?.second
+        if (opening) return // already on its way (the first lookup can take a second)
+        opening = true
+        viewModelScope.launch {
+            try { openTitleNow(item, match, app) } finally { opening = false }
+        }
+    }
+
+    @Volatile private var opening = false
+
+    private suspend fun openTitleNow(
+        item: AngItem,
+        match: Pair<com.mytv.launcher.sports.Service, com.mytv.launcher.apps.TvApp>?,
+        app: com.mytv.launcher.apps.TvApp?,
+    ) {
+        val direct = match?.let { (service, a) -> com.mytv.launcher.ratings.DeepLinks.intentFor(context, item, service, a.packageName) }
+        if (direct != null && runCatching { context.startActivity(direct) }.isSuccess) return
+        if (Search.open(context, item.title)) return
         if (app != null && installed.launch(app.packageName)) return
-        if (!Search.open(context, item.title)) toast("Couldn't find where ${item.title} is playing")
+        toast("Couldn't find where ${item.title} is playing")
     }
 
     // ---- Continue watching ----
@@ -667,6 +691,14 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun playWatchItem(item: WatchItem) {
+        // "Watching now" cards: open the title itself (its page in the app).
+        if (item.key.startsWith(MANUAL_PREFIX)) {
+            val key = item.key.removePrefix(MANUAL_PREFIX)
+            (_my.value.guide.watching + _ang.value.watchingNow).firstOrNull { it.key == key }?.let {
+                openAngShow(it)
+                return
+            }
+        }
         if (watchNext.open(item)) return
         if (item.packageName != null && installed.launch(item.packageName)) return
         if (!Search.open(context, item.searchQuery)) toast("Couldn't open ${item.title}")
