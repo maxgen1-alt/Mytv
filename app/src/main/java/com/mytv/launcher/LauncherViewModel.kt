@@ -255,6 +255,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         checkForUpdates()
         refreshTopTen()
         refreshMine()
+        syncRatings()
         // Warm Ang's TV in the background so it opens instantly (everything is cached).
         if (angJob?.isActive != true) angJob = viewModelScope.launch {
             _allApps.first { it.isNotEmpty() } // need the installed apps to know which services to search
@@ -479,9 +480,19 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Pulls ratings made on your other TVs (and uploads ours), then refreshes what changed. */
+    private fun syncRatings() {
+        if (!com.mytv.launcher.sync.CloudSync.isConfigured) return
+        viewModelScope.launch {
+            if (com.mytv.launcher.sync.CloudSync.sync(myStore, "me")) refreshMine()
+            if (com.mytv.launcher.sync.CloudSync.sync(taste, "ang") && _screen.value == Screen.Ang) publishAng()
+        }
+    }
+
     /** Hold select on a Popular / Shows for you / Watchlist title. */
     fun myRate(item: AngItem, rating: com.mytv.launcher.ang.Rating?) {
         myStore.set(item, rating)
+        viewModelScope.launch { com.mytv.launcher.sync.CloudSync.push(myStore, "me") }
         toast(rating?.let { "${item.title}: ${it.label.lowercase()}" } ?: "${item.title}: cleared")
         refreshMine()
     }
@@ -608,6 +619,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     /** Hold select → Like / Already watched / Dislike / Won't watch (null clears it). */
     fun angRate(item: AngItem, rating: com.mytv.launcher.ang.Rating?) {
         taste.set(item, rating)
+        viewModelScope.launch { com.mytv.launcher.sync.CloudSync.push(taste, "ang") }
         toast(rating?.let { "${item.title}: ${it.label.lowercase()}" } ?: "${item.title}: cleared")
         rateJob?.cancel()
         rateJob = viewModelScope.launch {

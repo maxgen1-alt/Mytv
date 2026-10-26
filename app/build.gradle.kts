@@ -34,6 +34,10 @@ android {
         buildConfigField("String", "TMDB_API_KEY", "\"${secret("TMDB_API_KEY")}\"")
         // Free key from omdbapi.com, for IMDb ratings (falls back to TMDB's score without it).
         buildConfigField("String", "OMDB_API_KEY", "\"${secret("OMDB_API_KEY")}\"")
+        // Your own Supabase project, to keep ratings in sync between TVs (optional).
+        buildConfigField("String", "SUPABASE_URL", "\"${secret("SUPABASE_URL")}\"")
+        buildConfigField("String", "SUPABASE_KEY", "\"${secret("SUPABASE_KEY")}\"")
+        buildConfigField("String", "SYNC_HOUSEHOLD", "\"${secret("SYNC_HOUSEHOLD")}\"")
         // Where the auto-updater looks for new releases.
         val repo = System.getenv("GITHUB_REPOSITORY") ?: "maxgen1-alt/Mytv"
         buildConfigField("String", "UPDATE_REPO", "\"$repo\"")

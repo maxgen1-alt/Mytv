@@ -11,6 +11,8 @@ import java.time.LocalDate
  */
 class TasteStore(context: Context, name: String = "taste") {
     private val prefs = context.getSharedPreferences(name, Context.MODE_PRIVATE)
+    // For syncing between TVs: when each rating was last changed (incl. cleared ones), and what hasn't been uploaded yet.
+    private val sync = context.getSharedPreferences("${name}_sync", Context.MODE_PRIVATE)
     private val legacy = context.getSharedPreferences(if (name == "taste") "ang" else "unused_legacy", Context.MODE_PRIVATE)
 
     fun all(): List<Rated> {
@@ -35,10 +37,51 @@ class TasteStore(context: Context, name: String = "taste") {
         legacy.edit().remove("watched:${item.key}").apply()
         if (rating == null) {
             prefs.edit().remove(item.key).apply()
-            return
+        } else {
+            val r = Rated(item.key, item.title, rating, today, item.tmdbId, item.isMovie, item.imageUrl, item.service)
+            prefs.edit().putString(item.key, encode(r).toString()).apply()
         }
-        val r = Rated(item.key, item.title, rating, today, item.tmdbId, item.isMovie, item.imageUrl, item.service)
-        prefs.edit().putString(item.key, encode(r).toString()).apply()
+        sync.edit().putLong("at:${item.key}", System.currentTimeMillis()).putBoolean("dirty:${item.key}", true).apply()
+    }
+
+    // ---- Sync support ----
+
+    /** A rating as stored (JSON), or null if cleared, plus when it changed. */
+    data class Change(val key: String, val json: String?, val at: Long)
+
+    /**
+     * First sync on this TV: queue everything already rated here for upload,
+     * timestamped with the day it was rated (so newer changes elsewhere still win).
+     */
+    fun seedForSync() {
+        if (sync.getBoolean("seeded", false)) return
+        val e = sync.edit()
+        prefs.all.forEach { (key, v) ->
+            if (v !is String || sync.contains("at:$key")) return@forEach
+            val day = runCatching { JSONObject(v).getLong("date") }.getOrDefault(0L)
+            e.putLong("at:$key", day * 86_400_000L).putBoolean("dirty:$key", true)
+        }
+        e.putBoolean("seeded", true).apply()
+    }
+
+    /** Local changes not uploaded yet. */
+    fun pending(): List<Change> = sync.all.keys.filter { it.startsWith("dirty:") }.map { it.removePrefix("dirty:") }.map { key ->
+        Change(key, prefs.getString(key, null), sync.getLong("at:$key", 0))
+    }
+
+    fun markUploaded(keys: Collection<String>) {
+        val e = sync.edit()
+        keys.forEach { e.remove("dirty:$it") }
+        e.apply()
+    }
+
+    /** Applies a change from the other TV if it's newer than ours. Returns true if something changed. */
+    fun applyRemote(change: Change): Boolean {
+        if (change.at <= sync.getLong("at:${change.key}", 0)) return false
+        if (change.json == null) prefs.edit().remove(change.key).apply()
+        else prefs.edit().putString(change.key, change.json).apply()
+        sync.edit().putLong("at:${change.key}", change.at).remove("dirty:${change.key}").apply()
+        return true
     }
 
     private fun encode(r: Rated) = JSONObject()

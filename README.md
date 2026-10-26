@@ -150,6 +150,31 @@ When you stop on a show or movie in Ang's TV or the Popular row, a small **IMDb 
 
 Until the key is added, the tag shows TMDB's score instead (blue **TMDB 7.6**).
 
+## Syncing between TVs (Supabase)
+
+Ratings (yours and Ang's: watched, watching, likes, dislikes) can sync across every TV through your own free Supabase project.
+
+1. In Supabase, create a project (e.g. **mytv** in a personal organization).
+2. In its **SQL Editor**, run:
+   ```sql
+   create table public.mytv_ratings (
+     household  text not null,
+     profile    text not null,
+     key        text not null,
+     data       jsonb,
+     updated_at timestamptz not null default now(),
+     primary key (household, profile, key)
+   );
+   alter table public.mytv_ratings enable row level security;
+   create policy "own household only" on public.mytv_ratings
+     for all to anon
+     using (household = current_setting('request.headers', true)::json->>'x-household')
+     with check (household = current_setting('request.headers', true)::json->>'x-household');
+   ```
+3. Add repository secrets `SUPABASE_URL` (Project URL), `SUPABASE_KEY` (publishable / anon key) and `SYNC_HOUSEHOLD` (any long phrase you make up), then re-run **Build APK**.
+
+Each TV uploads a rating the moment it's made and pulls the others when MyTV opens. If the same title is rated on two TVs, the newest rating wins. Ratings made before sync was set up are uploaded on the first sync.
+
 ## Updates
 
 MyTV updates itself. Every push builds a new version and publishes it as this repo's `latest` release (`MyTV.apk` plus `version.json`). MyTV checks for one when you open it and every few hours after that, and downloads it in the background.
