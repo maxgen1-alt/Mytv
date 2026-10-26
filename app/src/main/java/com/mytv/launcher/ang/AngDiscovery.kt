@@ -34,6 +34,8 @@ object AngDiscovery {
     /** Movies: horror, thriller, animation, documentary, TV movie. */
     private val skipMovieGenres = setOf(27, 53, 16, 99, 10770)
     private val countries = setOf("US", "GB", "CA")
+    /** Never anyone's pick, even with open taste: kids, news, soaps, talk shows. */
+    private val noShowGenres = setOf(10762, 10763, 10766, 10767)
     const val ROMANCE_MOVIE_GENRE = 10749
 
     /** /search/keyword → the id of the keyword named exactly [name], if any. */
@@ -58,6 +60,14 @@ object AngDiscovery {
         "/discover/tv?${common(providerIds, blocked)}&with_keywords=${wanted.joinToString("|")}" +
             "&first_air_date.gte=${today.minusYears(10)}&first_air_date.lte=${today.minusYears(1)}" +
             "&vote_count.gte=50&vote_average.gte=6.5&page=$page"
+
+    /** New shows in [genres] (any of them) premiering in the next 6 months, made by [networkIds]. */
+    fun upcomingByGenrePath(today: LocalDate, networkIds: List<Int>, genres: List<Int>) =
+        "/discover/tv?with_networks=${networkIds.joinToString("|")}" +
+            (if (genres.isNotEmpty()) "&with_genres=${genres.joinToString("|")}" else "") +
+            "&without_genres=${noShowGenres.joinToString("|")}" +
+            "&with_original_language=en&include_adult=false&language=en-US&sort_by=popularity.desc" +
+            "&first_air_date.gte=${today.plusDays(1)}&first_air_date.lte=${today.plusMonths(6)}&page=1"
 
     /** New shows of her kind premiering in the next 6 months, made by [networkIds] (streaming originals). */
     fun upcomingShowsPath(today: LocalDate, networkIds: List<Int>, wanted: List<Int>, blocked: List<Int>) =
@@ -90,22 +100,26 @@ object AngDiscovery {
      * A page of TMDB results (discover / recommendations / search) → items.
      * [serviceName] labels where it streams, when known.
      */
-    fun parseResults(json: String, isMovie: Boolean, serviceName: String?, today: LocalDate): List<AngItem> =
+    fun parseResults(json: String, isMovie: Boolean, serviceName: String?, today: LocalDate, strict: Boolean = true): List<AngItem> =
         (JSONObject(json).optJSONArray("results") ?: JSONArray()).objects().mapNotNull { o ->
             if (o.optBoolean("adult")) return@mapNotNull null
             if (o.optString("original_language") != "en") return@mapNotNull null
             // Recommendations mix shows and movies; keep the kind we asked for.
             o.optString("media_type").takeIf { it.isNotBlank() }?.let { if (it != (if (isMovie) "movie" else "tv")) return@mapNotNull null }
             val genres = o.optJSONArray("genre_ids")?.let { a -> (0 until a.length()).map { a.optInt(it) } }.orEmpty()
-            if (genres.any { it in (if (isMovie) skipMovieGenres else skipTvGenres) }) return@mapNotNull null
-            if (isMovie && ROMANCE_MOVIE_GENRE !in genres) return@mapNotNull null
-            val origin = o.optJSONArray("origin_country")?.let { a -> (0 until a.length()).map { a.optString(it) } }.orEmpty()
-            if (origin.isNotEmpty() && origin.none { it in countries }) return@mapNotNull null
+            if (strict) {
+                if (genres.any { it in (if (isMovie) skipMovieGenres else skipTvGenres) }) return@mapNotNull null
+                if (isMovie && ROMANCE_MOVIE_GENRE !in genres) return@mapNotNull null
+                val origin = o.optJSONArray("origin_country")?.let { a -> (0 until a.length()).map { a.optString(it) } }.orEmpty()
+                if (origin.isNotEmpty() && origin.none { it in countries }) return@mapNotNull null
+            } else if (!isMovie && genres.any { it in noShowGenres }) {
+                return@mapNotNull null
+            }
             val name = (if (isMovie) o.optString("title") else o.optString("name")).takeIf { it.isNotBlank() }
                 ?: return@mapNotNull null
             val released = (if (isMovie) o.optString("release_date") else o.optString("first_air_date"))
                 .takeIf { it.isNotBlank() }?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
-            if (released != null && released.isBefore(today.minusYears(10))) return@mapNotNull null
+            if (strict && released != null && released.isBefore(today.minusYears(10))) return@mapNotNull null
             val id = o.optLong("id")
             AngItem(
                 key = key(id, isMovie),
@@ -122,6 +136,7 @@ object AngDiscovery {
                 tmdbId = id,
                 isMovie = isMovie,
                 voteAverage = o.optDouble("vote_average", 0.0),
+                genres = genres,
             )
         }
 

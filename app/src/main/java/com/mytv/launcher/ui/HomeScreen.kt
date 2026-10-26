@@ -49,6 +49,8 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.mytv.launcher.WatchState
+import com.mytv.launcher.ang.AngItem
+import com.mytv.launcher.ang.Rating
 import com.mytv.launcher.apps.TvApp
 import com.mytv.launcher.sports.Game
 import com.mytv.launcher.sports.Team
@@ -71,8 +73,12 @@ fun HomeScreen(
     watching: WatchState,
     busy: String?,
     updateReady: Boolean,
-    popular: List<Pair<TopTenService, TopTitle>>,
-    onPopular: (TopTenService, TopTitle) -> Unit,
+    popular: List<AngItem>,
+    forYou: List<AngItem>,
+    myRatings: Map<String, Rating>,
+    onOpenTitle: (AngItem) -> Unit,
+    onRateTitle: (AngItem, Rating?) -> Unit,
+    onWatchlist: () -> Unit,
     onUpdate: () -> Unit,
     onApp: (TvApp) -> Unit,
     onMoveApp: (TvApp, Int) -> Unit,
@@ -87,6 +93,7 @@ fun HomeScreen(
 ) {
     val firstApp = remember { FocusRequester() }
     var menuFor by remember { mutableStateOf<TvApp?>(null) }
+    var rateFor by remember { mutableStateOf<AngItem?>(null) }
     val scroll = rememberScrollState()
 
     LaunchedEffect(apps.isNotEmpty()) {
@@ -139,6 +146,7 @@ fun HomeScreen(
                     )
                 }
                 item(key = "__ang") { AngTile(onAng) }
+                item(key = "__watchlist") { WatchlistTile(onWatchlist) }
             }
 
             Spacer(Modifier.height(18.dp))
@@ -147,24 +155,25 @@ fun HomeScreen(
             SectionTitle("Continue Watching", Modifier.padding(start = 48.dp))
             ContinueWatchingRow(watching, onWatchItem, onAllowWatchNext, onLinkTrakt)
 
-            // Row 4: what's hot across the apps you have
-            if (popular.isNotEmpty()) {
-                Spacer(Modifier.height(12.dp))
-                SectionTitle("Popular on Your Apps", Modifier.padding(start = 48.dp))
-                LazyRow(
-                    contentPadding = RowPadding,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.height(250.dp),
-                    verticalAlignment = Alignment.Top,
-                ) {
-                    items(popular, key = { it.second.key }) { (service, title) ->
-                        PopularCard(service, title, onClick = { onPopular(service, title) })
-                    }
-                }
-            }
+            // Row 4: what's hot across the apps you have. Row 5: picked from what you watched.
+            TitleRow("Popular on Your Apps", popular, onOpenTitle) { rateFor = it }
+            TitleRow("Shows for You", forYou, onOpenTitle) { rateFor = it }
         }
 
         if (busy != null) BusyOverlay(busy)
+    }
+
+    rateFor?.let { item ->
+        TasteMenu(
+            title = item.title,
+            current = myRatings[item.key],
+            container = Palette.Card,
+            accent = Palette.Live,
+            onPick = { r -> onRateTitle(item, r); rateFor = null },
+            onDismiss = { rateFor = null },
+            likeHint = "More like this in Shows for You",
+            watchedHint = "Hide it, and use it for recommendations",
+        )
     }
 
     menuFor?.let { app ->
@@ -397,25 +406,31 @@ private fun TraktTile(onClick: () -> Unit) {
     }
 }
 
+/** A row of posters you can open (click) or rate (hold select). Hidden when empty. */
 @Composable
-private fun PopularCard(service: TopTenService, title: TopTitle, onClick: () -> Unit) {
-    var focused by remember { mutableStateOf(false) }
-    Column(Modifier.width(126.dp).padding(top = 8.dp)) {
-        FocusCard(
-            onClick = onClick,
-            modifier = Modifier.size(126.dp, 189.dp).onFocusChanged { focused = it.isFocused || it.hasFocus },
-        ) {
-            AsyncImage(
-                model = title.posterUrl,
-                contentDescription = title.title,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-            )
-            RatingTag(title.ratingRef, focused, Modifier.align(Alignment.TopEnd).padding(8.dp))
+private fun TitleRow(title: String, items: List<AngItem>, onOpen: (AngItem) -> Unit, onHold: (AngItem) -> Unit) {
+    if (items.isEmpty()) return
+    Spacer(Modifier.height(12.dp))
+    SectionTitle(title, Modifier.padding(start = 48.dp))
+    LazyRow(
+        contentPadding = RowPadding,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier.height(250.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        items(items, key = { it.key }) { item ->
+            TitleCard(item, onClick = { onOpen(item) }, onLongClick = { onHold(item) })
         }
-        Spacer(Modifier.height(8.dp))
-        Text(title.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Palette.Ink)
-        Text(service.displayName, fontSize = 11.sp, maxLines = 1, color = Palette.InkSoft)
+    }
+}
+
+@Composable
+private fun WatchlistTile(onClick: () -> Unit) {
+    FocusCard(onClick = onClick, modifier = Modifier.size(TileWidth, TileHeight)) {
+        Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("★", fontSize = 26.sp, color = Color(0xFFF5C518))
+            Text("My Watchlist", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Palette.Ink)
+        }
     }
 }
 

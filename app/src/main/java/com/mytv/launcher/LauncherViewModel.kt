@@ -54,6 +54,7 @@ sealed interface Screen {
     data object EditApps : Screen
     data object TraktLink : Screen
     data object Ang : Screen
+    data object Watchlist : Screen
 }
 
 data class AngState(
@@ -66,6 +67,19 @@ data class AngState(
     /** key → what she said about it (for the hold-select menu). */
     val ratings: Map<String, com.mytv.launcher.ang.Rating> = emptyMap(),
 )
+
+/** Your ratings and lists. */
+data class MyState(
+    val guide: com.mytv.launcher.mine.MyGuide = com.mytv.launcher.mine.MyGuide(),
+    /** key → what you said about it (Popular row badges, the hold-select menu). */
+    val ratings: Map<String, com.mytv.launcher.ang.Rating> = emptyMap(),
+    val loading: Boolean = true,
+) {
+    /** "Shows for you" shows on the home screen once you've rated a few titles. */
+    val showForYouRow: Boolean
+        get() = guide.forYou.isNotEmpty() &&
+            ratings.values.count { it != com.mytv.launcher.ang.Rating.WONT_WATCH } >= com.mytv.launcher.mine.MyGuide.MIN_RATINGS_FOR_HOME_ROW
+}
 
 data class WatchState(
     val items: List<WatchItem> = emptyList(),
@@ -107,6 +121,26 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         com.mytv.launcher.ratings.Ratings.init(app)
     }
     private val taste = com.mytv.launcher.ang.TasteStore(app)
+    private val angTaste = com.mytv.launcher.ang.TasteRepository(
+        app, strict = true,
+        positive = mapOf(com.mytv.launcher.ang.Rating.LIKE to 1),
+        follow = setOf(com.mytv.launcher.ang.Rating.LIKE),
+    )
+
+    // ---- Your own taste (Popular row, Shows for you, My Watchlist) ----
+    private val myStore = com.mytv.launcher.ang.TasteStore(app, "taste_me")
+    private val myTaste = com.mytv.launcher.ang.TasteRepository(
+        app, strict = false,
+        // "Already watched" is your main signal; a like counts double.
+        positive = mapOf(com.mytv.launcher.ang.Rating.LIKE to 2, com.mytv.launcher.ang.Rating.WATCHED to 1),
+        follow = setOf(com.mytv.launcher.ang.Rating.LIKE, com.mytv.launcher.ang.Rating.WATCHED),
+        maxCandidates = 40,
+    )
+    private val _my = MutableStateFlow(MyState())
+    val my = _my.asStateFlow()
+    private var myJob: Job? = null
+    private var myUpcoming: Pair<String, List<AngItem>>? = null
+    private var myUpcomingAt = 0L
     private val topTenRepo = TopTenRepository()
 
     /** Top 10 per streaming service, shown above the apps row. */
@@ -115,20 +149,32 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val topTenConfigured: Boolean get() = topTenRepo.isConfigured
 
     /** Bottom row: the Top 10s of the services you have installed, merged into one ranking. */
-    // Lazy: it reads _allApps, which is declared further down.
+    // Lazy: it reads _allApps / _my, which are declared further down.
     val popular: StateFlow<List<Pair<TopTenService, TopTitle>>> by lazy {
-        kotlinx.coroutines.flow.combine(_topTen, _allApps) { lists, apps ->
+        kotlinx.coroutines.flow.combine(_topTen, _allApps, _my) { lists, apps, mine ->
             val installedServices = TopTenService.entries.filter { s -> apps.any { s.app.matches(it.packageName, it.label) } }.toSet()
-            com.mytv.launcher.topten.TmdbParser.acrossServices(lists.filterKeys { it in installedServices })
+            com.mytv.launcher.topten.TmdbParser.acrossServices(lists.filterKeys { it in installedServices }, limit = 30)
+                // Hide what you've watched, disliked or won't watch.
+                .filter { (_, t) -> mine.ratings[popularItem(TopTenService.NETFLIX, t).key]?.hides != true }
+                .take(20)
         }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, emptyList())
     }
 
-    /** Opens the app a popular title is on. */
-    fun openPopular(service: TopTenService, title: TopTitle) {
-        val app = _allApps.value.firstOrNull { service.app.matches(it.packageName, it.label) }
-        if (app != null && installed.launch(app.packageName)) return
-        if (!Search.open(context, title.title)) toast("Couldn't open ${service.displayName}")
-    }
+    /** A Popular-row title as a ratable item. */
+    fun popularItem(service: TopTenService, t: TopTitle) = AngItem(
+        key = com.mytv.launcher.ang.AngDiscovery.key(t.id, t.isMovie),
+        title = t.title,
+        detail = service.displayName,
+        imageUrl = t.posterUrl,
+        service = service.displayName,
+        date = t.released,
+        badge = null,
+        popularity = t.popularity,
+        tmdbId = t.id,
+        isMovie = t.isMovie,
+        voteAverage = t.voteAverage,
+    )
+
     private var topTenLoadedAt = 0L
 
     private val _ang = MutableStateFlow(AngState())
@@ -178,6 +224,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             is Screen.TeamPage -> Teams.byKey(to.teamKey)?.let(::loadTeam)
             Screen.TraktLink -> startTraktLink()
             Screen.Ang -> loadAng()
+            Screen.Watchlist -> refreshMine()
             else -> Unit
         }
     }
@@ -193,6 +240,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         refreshWatching()
         checkForUpdates()
         refreshTopTen()
+        refreshMine()
         // Warm Ang's TV in the background so it opens instantly (everything is cached).
         if (angJob?.isActive != true) angJob = viewModelScope.launch {
             _allApps.first { it.isNotEmpty() } // need the installed apps to know which services to search
@@ -200,8 +248,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             angRepo.curatedShows()
             angRepo.candidates(providers)
             val ratings = taste.all()
-            angRepo.recommendations(ratings, providers)
-            angRepo.followed(ratings)
+            angTaste.recommendations(ratings, providers)
+            angTaste.followed(ratings)
         }
         liveJob?.cancel()
         liveJob = viewModelScope.launch {
@@ -391,6 +439,42 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // ---- Your taste ----
+
+    /** Rebuilds your lists; the network parts are cached (recommendations 6h, seasons 12h). */
+    fun refreshMine() {
+        myJob?.cancel()
+        myJob = viewModelScope.launch {
+            val ratings = myStore.all()
+            // Instant: your ratings (Watched tab, Popular row filtering) before anything is fetched.
+            _my.update { it.copy(ratings = ratings.associate { r -> r.key to r.rating }) }
+            _allApps.first { it.isNotEmpty() }
+            val providers = installedProviders()
+            val recs = myTaste.recommendations(ratings, providers)
+            val followed = myTaste.followed(ratings)
+            val genres = com.mytv.launcher.mine.MyGuideBuilder.topGenres(recs.items, recs.liked)
+            val sig = genres.joinToString() + providers.joinToString { it.name }
+            val upcoming = myUpcoming?.takeIf { it.first == sig && System.currentTimeMillis() - myUpcomingAt < 6 * 3600_000L }?.second
+                ?: myTaste.upcomingInGenres(providers, genres).also { myUpcoming = sig to it; myUpcomingAt = System.currentTimeMillis() }
+            val guide = withContext(Dispatchers.Default) {
+                com.mytv.launcher.mine.MyGuideBuilder.build(
+                    java.time.LocalDate.now(), ratings, recs.items, recs.liked, recs.disliked, followed, upcoming, ::isAvailable,
+                )
+            }
+            _my.value = MyState(guide, ratings.associate { it.key to it.rating }, loading = false)
+        }
+    }
+
+    /** Hold select on a Popular / Shows for you / Watchlist title. */
+    fun myRate(item: AngItem, rating: com.mytv.launcher.ang.Rating?) {
+        myStore.set(item, rating)
+        toast(rating?.let { "${item.title}: ${it.label.lowercase()}" } ?: "${item.title}: cleared")
+        refreshMine()
+    }
+
+    /** Opens a title's streaming app if you have it, else asks Google TV where it plays. */
+    fun openTitle(item: AngItem) = openAngShow(item)
+
     // ---- Ang's guide ----
 
     private var angInputs = com.mytv.launcher.ang.AngInputs()
@@ -399,7 +483,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     /** Streaming services you have installed: suggestions only come from these. */
     private fun installedProviders(): List<WhereToWatch.Provider> {
         val apps = _allApps.value
-        return WhereToWatch.providers.filter { p -> apps.any { p.service.matches(it.packageName, it.label) } }
+        return WhereToWatch.providers.filter { p -> p.apps.any { s -> apps.any { s.matches(it.packageName, it.label) } } }
     }
 
     /** Whether a network / service name is watchable on an app you have. */
@@ -437,7 +521,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             angRepo.cachedCandidates(providers)?.let {
                 angInputs = angInputs.copy(shows = it.shows, movies = it.movies, upcomingShows = it.upcoming)
             }
-            angRepo.cachedRecs()?.let { r ->
+            angTaste.cachedRecs()?.let { r ->
                 angInputs = angInputs.copy(
                     shows = angInputs.shows + r.items.filter { !it.isMovie },
                     movies = angInputs.movies + r.items.filter { it.isMovie },
@@ -460,8 +544,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private suspend fun refreshAngTaste(providers: List<WhereToWatch.Provider>) {
         val ratings = taste.all()
         val base = angRepo.candidates(providers)
-        val recs = angRepo.recommendations(ratings, providers)
-        val followed = angRepo.followed(ratings)
+        val recs = angTaste.recommendations(ratings, providers)
+        val followed = angTaste.followed(ratings)
         angInputs = angInputs.copy(
             shows = base?.shows.orEmpty() + recs.items.filter { !it.isMovie },
             movies = base?.movies.orEmpty() + recs.items.filter { it.isMovie },

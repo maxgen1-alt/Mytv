@@ -6,7 +6,7 @@ import org.json.JSONObject
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
-/** A streaming service that gets a Top 10 above its app tile. */
+/** A streaming service whose Top 10 feeds "Popular on Your Apps". */
 enum class TopTenService(
     val displayName: String,
     /** TMDB watch-provider ids for the US (several = any of them). */
@@ -20,6 +20,8 @@ enum class TopTenService(
     DISNEY("Disney+", listOf(337), Service.DISNEY),
     APPLE("Apple TV", listOf(350), Service.APPLE_TV),
     PEACOCK("Peacock", listOf(386, 387), Service.PEACOCK),
+    // Comes with your Prime Video account (Prime Video Channels), so it opens in Prime Video.
+    PARAMOUNT("Paramount+", listOf(2303, 531, 582), Service.PRIME_VIDEO),
     ;
 
     companion object {

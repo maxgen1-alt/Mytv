@@ -125,48 +125,14 @@ fun AngScreen(
     }
 
     menuFor?.let { item ->
-        RateMenu(
-            item = item,
+        TasteMenu(
+            title = item.title,
             current = state.ratings[item.key],
+            container = AngPalette.DeepTeal,
+            accent = AngPalette.Pink,
             onPick = { rating -> onRate(item, rating); menuFor = null },
             onDismiss = { menuFor = null },
         )
-    }
-}
-
-/** Hold select on a title: teach Ang's TV her taste. */
-@Composable
-private fun RateMenu(item: AngItem, current: Rating?, onPick: (Rating?) -> Unit, onDismiss: () -> Unit) {
-    val first = remember { FocusRequester() }
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            Modifier
-                .ignoreHeldSelect()
-                .width(320.dp)
-                .background(AngPalette.DeepTeal, RoundedCornerShape(20.dp))
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Text(item.title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 2)
-            current?.let { Text("Currently: ${it.label}", fontSize = 12.sp, color = AngPalette.Yellow) }
-            Spacer(Modifier.height(4.dp))
-            MenuButton("♥  Like it", "More like this, and new seasons", AngPalette.Pink, Modifier.focusRequester(first)) { onPick(Rating.LIKE) }
-            MenuButton("✓  Already watched", "Hide it", Color.White.copy(alpha = 0.18f)) { onPick(Rating.WATCHED) }
-            MenuButton("✕  Dislike", "Hide it, and less like this", Color.White.copy(alpha = 0.18f)) { onPick(Rating.DISLIKE) }
-            MenuButton("Won't watch", "Just hide it", Color.White.copy(alpha = 0.18f)) { onPick(Rating.WONT_WATCH) }
-            if (current != null) MenuButton("Clear", "Forget what I said", Color.Transparent) { onPick(null) }
-        }
-    }
-    LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
-}
-
-@Composable
-private fun MenuButton(title: String, hint: String, color: Color, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    FocusCard(onClick = onClick, container = color, corner = 12.dp, focusedScale = 1.04f, modifier = modifier.fillMaxWidth().height(52.dp)) {
-        Column(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.Center) {
-            Text(title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
-            Text(hint, fontSize = 11.sp, color = Color.White.copy(alpha = 0.75f))
-        }
     }
 }
 

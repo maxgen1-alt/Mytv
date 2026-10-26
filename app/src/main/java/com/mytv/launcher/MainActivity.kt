@@ -15,6 +15,7 @@ import com.mytv.launcher.ui.HomeScreen
 import com.mytv.launcher.ui.MyTvTheme
 import com.mytv.launcher.ui.TeamScreen
 import com.mytv.launcher.ui.TraktLinkScreen
+import com.mytv.launcher.ui.WatchlistScreen
 import com.mytv.launcher.watching.WatchNext
 
 class MainActivity : ComponentActivity() {
@@ -55,14 +56,21 @@ class MainActivity : ComponentActivity() {
                         val busy by vm.busy.collectAsStateWithLifecycle()
                         val updateReady by vm.updateReady.collectAsStateWithLifecycle()
                         val popular by vm.popular.collectAsStateWithLifecycle()
+                        val my by vm.my.collectAsStateWithLifecycle()
+                        fun badged(item: com.mytv.launcher.ang.AngItem) =
+                            if (my.ratings[item.key] == com.mytv.launcher.ang.Rating.LIKE) item.copy(badge = "♥ Liked") else item
                         HomeScreen(
                             apps = apps,
                             liveGames = live,
                             watching = watching,
                             busy = busy,
                             updateReady = updateReady,
-                            popular = popular,
-                            onPopular = vm::openPopular,
+                            popular = popular.map { (service, t) -> badged(vm.popularItem(service, t)) },
+                            forYou = if (my.showForYouRow) my.guide.forYou.take(20) else emptyList(),
+                            myRatings = my.ratings,
+                            onOpenTitle = vm::openTitle,
+                            onRateTitle = vm::myRate,
+                            onWatchlist = { vm.navigate(Screen.Watchlist) },
                             onUpdate = vm::installUpdate,
                             onApp = vm::launchApp,
                             onMoveApp = vm::moveApp,
@@ -97,6 +105,10 @@ class MainActivity : ComponentActivity() {
                     Screen.Ang -> {
                         val ang by vm.ang.collectAsStateWithLifecycle()
                         AngScreen(ang, onShow = vm::openAngShow, onRate = vm::angRate, onResume = vm::playWatchItem)
+                    }
+                    Screen.Watchlist -> {
+                        val my by vm.my.collectAsStateWithLifecycle()
+                        WatchlistScreen(my, onOpen = vm::openTitle, onRate = vm::myRate)
                     }
                     Screen.TraktLink -> {
                         val link by vm.link.collectAsStateWithLifecycle()

@@ -140,17 +140,18 @@ fun Modifier.ignoreHeldSelect(): Modifier {
  * has been focused for a moment (so scrolling past costs nothing), then cached.
  */
 @Composable
-fun RatingTag(ref: RatingRef?, focused: Boolean, modifier: Modifier = Modifier) {
+fun RatingTag(ref: RatingRef?, focused: Boolean, modifier: Modifier = Modifier, always: Boolean = false) {
     if (ref == null) return
     var shown by remember(ref.cacheKey) { mutableStateOf(Ratings.cached(ref)) }
-    LaunchedEffect(ref.cacheKey, focused) {
-        if (focused && shown == null) {
+    val visible = focused || always
+    LaunchedEffect(ref.cacheKey, visible) {
+        if (visible && shown == null) {
             delay(250)
             shown = Ratings.lookup(ref)
         }
     }
     val r = shown ?: return
-    if (!focused) return
+    if (!visible) return
     val imdb = r.source == "IMDb"
     Row(
         modifier
@@ -162,3 +163,4 @@ fun RatingTag(ref: RatingRef?, focused: Boolean, modifier: Modifier = Modifier) 
         Text(" ${r.value}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (imdb) Color.Black else Color.White)
     }
 }
+

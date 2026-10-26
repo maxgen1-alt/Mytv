@@ -24,6 +24,8 @@ data class AngItem(
     val voteAverage: Double = 0.0,
     /** IMDb id when known (her hand-picked shows). */
     val imdbId: String? = null,
+    /** TMDB genre ids. */
+    val genres: List<Int> = emptyList(),
 ) {
     val ratingRef: com.mytv.launcher.ratings.RatingRef
         get() = com.mytv.launcher.ratings.RatingRef(imdbId, tmdbId, isMovie, voteAverage)

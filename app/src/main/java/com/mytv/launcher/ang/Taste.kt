@@ -23,7 +23,22 @@ data class Rated(
     /** TMDB id + type, for "more like this" and following new seasons. */
     val tmdbId: Long? = null,
     val isMovie: Boolean = false,
-)
+    /** For showing it in a list (e.g. My Watchlist → Watched). */
+    val imageUrl: String? = null,
+    val service: String? = null,
+) {
+    fun toItem() = AngItem(
+        key = key,
+        title = title,
+        detail = listOfNotNull(if (isMovie) "Movie" else "Show", service).joinToString(" · "),
+        imageUrl = imageUrl,
+        service = service,
+        date = null,
+        badge = null,
+        tmdbId = tmdbId,
+        isMovie = isMovie,
+    )
+}
 
 /**
  * Ranks candidates by her taste: TMDB popularity and rating, boosted when a

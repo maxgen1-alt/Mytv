@@ -8,7 +8,8 @@ A clean, Apple TV-style launcher on a black-to-graphite gradient:
 | **1. Apps** | Every streaming app installed on the Chromecast, shown with its TV banner. Long-press an app to move it left or right or hide it. The **+ Apps** tile at the end shows or hides apps. |
 | **2. Teams** | **Arsenal** and **Lakers** buttons. When a game is on, the button shows a red **LIVE** badge and the score. Pressing it opens the game in the app that's carrying it. If there's no game, you get a page with upcoming games, recent results and the league table or conference standings. Long-press always opens that page. |
 | **3. Continue Watching** | Shows and movies you're in the middle of in any app, most recent first, with progress bars. Select one to resume it in its app. |
-| **4. Popular on Your Apps** | The Top 10s of the streaming apps you have installed, merged into one ranking: the hottest titles across all of them. Each poster shows which app it's on; select it to open that app. |
+| **4. Popular on Your Apps** | The Top 10s of your streaming apps (Paramount+ included, through Prime Video), merged into one ranking. Hold select to like, mark watched, dislike, or hide a title. |
+| **5. Shows for You** | Appears once you've rated 3 titles: picks based on what you watched and liked, mixed across genres, shows and movies. |
 
 A clock and a ⚙ settings button sit in the top-right.
 
@@ -77,6 +78,19 @@ To also include things you watched on other devices (phone, laptop), you can con
 1. Create an API app at **trakt.tv/oauth/applications/new** (redirect URI `urn:ietf:wg:oauth:2.0:oob`).
 2. Add the Client ID and Secret as repository secrets named `TRAKT_CLIENT_ID` and `TRAKT_CLIENT_SECRET` (or put them in `local.properties`), then rebuild.
 3. A **Connect Trakt** card appears at the end of the row. Select it and enter the code at trakt.tv/activate.
+
+## My Watchlist
+
+The **★ My Watchlist** button sits next to Ang's. It has four tabs:
+
+| Tab | What's in it |
+| --- | --- |
+| **Watched** | Everything you marked "Already watched" or "Like it" (hold select on any title on the home screen) |
+| **For You** | Recommendations from those, with IMDb ratings on every poster, mixed across genres |
+| **New Seasons** | New seasons, out now, of shows you watched or liked |
+| **Coming Soon** | Announced next seasons of your shows, plus upcoming new shows in the genres you watch most |
+
+Your ratings are separate from Ang's. A like counts double an "Already watched" when picking recommendations.
 
 ## Ang's TV
 
