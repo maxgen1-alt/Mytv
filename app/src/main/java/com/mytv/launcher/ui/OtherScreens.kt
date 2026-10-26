@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -42,7 +43,14 @@ import com.mytv.launcher.apps.TvApp
 
 /** Pick which apps appear in the top row. Click toggles shown / hidden. */
 @Composable
-fun EditAppsScreen(apps: List<TvApp>, hidden: Set<String>, version: String, onToggle: (TvApp, Boolean) -> Unit) {
+fun EditAppsScreen(
+    apps: List<TvApp>,
+    hidden: Set<String>,
+    version: String,
+    updateStatus: String,
+    onCheckUpdates: () -> Unit,
+    onToggle: (TvApp, Boolean) -> Unit,
+) {
     val first = remember { FocusRequester() }
     LaunchedEffect(apps.isNotEmpty()) { if (apps.isNotEmpty()) runCatching { first.requestFocus() } }
 
@@ -50,7 +58,12 @@ fun EditAppsScreen(apps: List<TvApp>, hidden: Set<String>, version: String, onTo
         Row(verticalAlignment = Alignment.Bottom) {
             Text("Your apps", fontSize = 30.sp, fontWeight = FontWeight.Bold, color = Palette.Ink)
             Spacer(Modifier.weight(1f))
-            Text("MyTV $version", fontSize = 12.sp, color = Palette.InkSoft)
+            Column(horizontalAlignment = Alignment.End) {
+                Text("MyTV $version", fontSize = 12.sp, color = Palette.InkSoft)
+                if (updateStatus.isNotBlank()) Text(updateStatus, fontSize = 12.sp, color = Palette.Ink)
+            }
+            Spacer(Modifier.width(14.dp))
+            Button(onClick = onCheckUpdates) { Text("Check for updates") }
         }
         Text(
             "Select an app to show or hide it on the top row. Long-press an app on the home screen to move it.",

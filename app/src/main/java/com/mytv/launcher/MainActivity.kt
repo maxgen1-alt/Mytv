@@ -84,7 +84,15 @@ class MainActivity : ComponentActivity() {
                     Screen.EditApps -> {
                         val all by vm.allApps.collectAsStateWithLifecycle()
                         val hidden by vm.hidden.collectAsStateWithLifecycle()
-                        EditAppsScreen(all, hidden, version = vm.versionName, onToggle = vm::setHidden)
+                        val updateStatus by vm.updateStatus.collectAsStateWithLifecycle()
+                        EditAppsScreen(
+                            all,
+                            hidden,
+                            version = vm.versionName,
+                            updateStatus = updateStatus,
+                            onCheckUpdates = vm::checkForUpdatesNow,
+                            onToggle = vm::setHidden,
+                        )
                     }
                     Screen.Ang -> {
                         val ang by vm.ang.collectAsStateWithLifecycle()

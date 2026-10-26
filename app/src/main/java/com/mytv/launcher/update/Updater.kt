@@ -34,28 +34,34 @@ class Updater(private val context: Context) {
     private val dir = File(context.filesDir, "updates")
     private val base = "https://github.com/${BuildConfig.UPDATE_REPO}/releases/latest/download"
 
+    /** versionCode of the latest release, from the last successful check (0 = never checked). */
+    @Volatile var lastSeenVersion: Int = 0
+        private set
+
     /** A downloaded, verified APK newer than what's installed, if any. */
     fun pendingApk(): File? =
         dir.listFiles()?.filter { it.name.endsWith(".apk") }
             ?.firstOrNull { versionOf(it)?.let { v -> v > BuildConfig.VERSION_CODE } == true }
 
     /**
-     * Checks GitHub (at most once per [minIntervalMillis]) and downloads a
-     * newer build if there is one. Returns the ready-to-install APK.
+     * Checks GitHub (at most once per [minIntervalMillis]; 0 = now) and
+     * downloads a newer build if there is one. Returns the ready-to-install APK.
      */
-    suspend fun checkAndDownload(minIntervalMillis: Long = 30 * 60_000L): File? = withContext(Dispatchers.IO) {
+    suspend fun checkAndDownload(minIntervalMillis: Long = 5 * 60_000L): File? = withContext(Dispatchers.IO) {
         cleanUp()
         pendingApk()?.let { return@withContext it }
         val now = System.currentTimeMillis()
         if (now - prefs.getLong(KEY_LAST_CHECK, 0) < minIntervalMillis) return@withContext null
-        prefs.edit().putLong(KEY_LAST_CHECK, now).apply()
 
         val info = runCatching {
             http.newCall(Request.Builder().url("$base/version.json").build()).execute().use { r ->
                 if (r.isSuccessful) JSONObject(r.body!!.string()) else null
             }
         }.getOrNull() ?: return@withContext null
+        // Only a successful check counts, so a dropped connection doesn't delay the next one.
+        prefs.edit().putLong(KEY_LAST_CHECK, now).apply()
         val latest = info.optInt("versionCode", 0)
+        lastSeenVersion = latest
         if (latest <= BuildConfig.VERSION_CODE) return@withContext null
 
         dir.mkdirs()

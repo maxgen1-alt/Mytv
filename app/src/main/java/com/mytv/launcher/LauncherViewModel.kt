@@ -214,6 +214,29 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Shown next to "Check for updates" on the apps screen. */
+    private val _updateStatus = MutableStateFlow("")
+    val updateStatus = _updateStatus.asStateFlow()
+
+    fun checkForUpdatesNow() {
+        updateJob?.cancel()
+        updateJob = viewModelScope.launch {
+            _updateStatus.value = "Checking… (downloading can take a minute)"
+            val apk = updater.checkAndDownload(minIntervalMillis = 0)
+            when {
+                apk != null -> {
+                    _updateStatus.value = "Update downloaded"
+                    _updateReady.value = true
+                    installUpdate()
+                }
+                updater.lastSeenVersion == 0 -> _updateStatus.value = "Couldn't reach GitHub. Check the internet connection."
+                updater.lastSeenVersion > BuildConfig.VERSION_CODE ->
+                    _updateStatus.value = "Version 1.0.${updater.lastSeenVersion} is out but the download failed. Try again."
+                else -> _updateStatus.value = "Up to date"
+            }
+        }
+    }
+
     fun installUpdate() {
         val apk = updater.pendingApk() ?: run { _updateReady.value = false; return }
         if (!context.packageManager.canRequestPackageInstalls()) {
