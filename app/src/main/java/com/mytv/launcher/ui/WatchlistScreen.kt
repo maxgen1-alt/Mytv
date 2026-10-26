@@ -172,7 +172,11 @@ fun WatchlistScreen(state: MyState, onOpen: (AngItem) -> Unit, onRate: (AngItem,
                         onClick = { onOpen(item) },
                         onLongClick = { menuFor = item },
                         alwaysShowRating = tab == Tab.FOR_YOU,
-                        dateLabel = if (tab == Tab.COMING_SOON || tab == Tab.NEW_SEASONS) item.date?.let(::shortDate) else null,
+                        dateLabel = when (tab) {
+                            Tab.COMING_SOON -> item.date?.let(::shortDate) ?: "Date TBA"
+                            Tab.NEW_SEASONS -> item.date?.let(::shortDate)
+                            else -> null
+                        },
                     )
                 }
             }

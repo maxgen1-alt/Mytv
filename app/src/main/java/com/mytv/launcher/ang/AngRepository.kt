@@ -32,8 +32,8 @@ class AngRepository(context: Context) {
         .build()
     private val prefs = context.getSharedPreferences("ang", Context.MODE_PRIVATE)
     private val curatedFile = File(context.filesDir, "ang-curated.json")
-    // v3: adds Easy Watch sitcoms.
-    private val candidatesFile = File(context.cacheDir, "ang-candidates-v3.json")
+    // v4: Coming soon also has upcoming shows on any service.
+    private val candidatesFile = File(context.cacheDir, "ang-candidates-v4.json")
     private val api = "https://api.tvmaze.com"
 
     @Volatile private var curatedMem: List<Pair<CuratedShow, TvShow>>? = null
@@ -161,7 +161,26 @@ class AngRepository(context: Context) {
                     }
                 }
             }
-            Pools(merge(shows.awaitAll()), merge(movies.awaitAll()), merge(upcoming.awaitAll()), merge(sitcoms.awaitAll()))
+            // Upcoming shows on any service, picked by name / description (new shows rarely have keywords yet).
+            val anywhere = listOf("10764", "18|35").flatMap { genres ->
+                (1..2).map { page ->
+                    async {
+                        Tmdb.get(AngDiscovery.upcomingAnywherePath(today, genres, page)) {
+                            AngDiscovery.parseResults(it, false, null, today).filter(AngDiscovery::soundsRomantic)
+                        }
+                    }
+                }
+            }.awaitAll().filterNotNull().flatten().distinctBy { it.key }.sortedByDescending { it.popularity }.take(20)
+            // Where each one will stream (e.g. "Fox Nation"), from its TMDB page.
+            val anywhereLabelled = anywhere.map { item ->
+                async {
+                    val network = item.tmdbId?.let { id -> Tmdb.get(AngDiscovery.detailsPath(id), AngDiscovery::parseNetwork) }
+                    item.copy(service = network)
+                }
+            }.awaitAll()
+            // Shows on your apps first, so a show found both ways keeps its app label.
+            val allUpcoming = (upcoming.awaitAll().filterNotNull().flatten() + anywhereLabelled).distinctBy { it.key }
+            Pools(merge(shows.awaitAll()), merge(movies.awaitAll()), allUpcoming, merge(sitcoms.awaitAll()))
         }
         if (shows.isEmpty() && movies.isEmpty()) return candidatesMem
         val c = Candidates(names, shows, movies, upcoming, sitcoms, System.currentTimeMillis())

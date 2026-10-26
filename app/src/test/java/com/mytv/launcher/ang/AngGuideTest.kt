@@ -171,8 +171,10 @@ class AngGuideTest {
             ),
             ratings = listOf(Rated("tmdb:tv:23", "Nope", Rating.WONT_WATCH, today)),
         )
-        assertEquals(listOf("New Dating Show", "Teen Romance Drama", "Summer House"), g.upcoming.map { it.title })
-        assertEquals("New show · Netflix", g.upcoming.first().detail)
+        // Shows on services you don't have still appear (it's news), labelled as such.
+        assertEquals(listOf("Not On Our Apps", "New Dating Show", "Teen Romance Drama", "Summer House"), g.upcoming.map { it.title })
+        assertEquals("New show · ITVX · not in your apps", g.upcoming.first().detail)
+        assertEquals("New show · Netflix", g.upcoming[1].detail)
     }
 
     @Test
@@ -193,6 +195,34 @@ class AngGuideTest {
         val json = """{"results":[{"id":1668,"name":"Friends","original_language":"en","origin_country":["US"],"genre_ids":[35],"first_air_date":"1994-09-22","vote_average":8.4}]}"""
         assertTrue(AngDiscovery.parseResults(json, false, "HBO Max", today).isEmpty())
         assertEquals(listOf("Friends"), AngDiscovery.parseResults(json, false, "HBO Max", today, maxAgeYears = null).map { it.title })
+    }
+
+    @Test
+    fun comingSoonIncludesHerKindOnAnyServiceLabelled() {
+        val vow = cand(40, "Chris Harrison's The Vow", service = "Fox Nation", date = LocalDate.of(2026, 11, 11))
+        val g = build(upcomingShows = listOf(vow))
+        assertEquals(listOf("Chris Harrison's The Vow"), g.upcoming.map { it.title })
+        assertEquals("New show · Fox Nation · not in your apps", g.upcoming.single().detail)
+    }
+
+    @Test
+    fun renewedWithoutDateShowsAsTbaLast() {
+        val sh = show(4, "Summer House", listOf(season(9, "2025-02-01"), season(10, null)), type = "Reality", service = "Bravo")
+        val li = show(5, "Love Island USA", listOf(season(8, "2027-06-01")), type = "Reality", service = "Peacock")
+        val g = build(curated = listOf(CuratedShow("Summer House", Follow.NEW_SEASONS) to sh, CuratedShow("Love Island USA", Follow.NEW_SEASONS) to li))
+        assertEquals(listOf("Love Island USA", "Summer House"), g.upcoming.map { it.title })
+        assertEquals(null, g.upcoming.last().date)
+        assertEquals("Season 10 · Bravo", g.upcoming.last().detail)
+    }
+
+    @Test
+    fun spotsRomanticShowsByDescription() {
+        val vow = cand(1, "Chris Harrison's The Vow").copy(overview = "Twelve women ready to find their forever choose love and a vow.")
+        val crime = cand(2, "Love Kills").copy(overview = "A detective hunts a killer.")
+        val cooking = cand(3, "Kitchen Nights").copy(overview = "Chefs compete for a prize.")
+        assertTrue(AngDiscovery.soundsRomantic(vow))
+        assertFalse(AngDiscovery.soundsRomantic(crime))
+        assertFalse(AngDiscovery.soundsRomantic(cooking))
     }
 
     @Test
@@ -238,6 +268,9 @@ class AngGuideTest {
         assertEquals(2 to LocalDate.of(2026, 10, 15), f.latestSeason)
         assertEquals(3 to LocalDate.of(2027, 2, 1), f.nextSeason)
         assertEquals("Netflix", f.item.service)
+
+        val renewed = """{"id":51,"name":"Renewed","seasons":[{"season_number":1,"air_date":"2025-03-01"},{"season_number":2,"air_date":null}]}"""
+        assertEquals(2 to null, AngDiscovery.parseFollowed(renewed, Rated("tmdb:tv:51", "Renewed", Rating.LIKE, today, 51), today).nextSeason)
     }
 
     @Test

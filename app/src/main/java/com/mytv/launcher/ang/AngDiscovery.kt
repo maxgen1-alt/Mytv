@@ -10,8 +10,8 @@ data class FollowedShow(
     val item: AngItem,
     /** Latest season that has started: number + premiere date. */
     val latestSeason: Pair<Int, LocalDate>?,
-    /** Next season premiere, once announced. */
-    val nextSeason: Pair<Int, LocalDate>?,
+    /** Next season once announced: number + premiere date (null = renewed, date not set yet). */
+    val nextSeason: Pair<Int, LocalDate?>?,
 )
 
 /**
@@ -76,6 +76,33 @@ object AngDiscovery {
             (if (blocked.isNotEmpty()) "&without_keywords=${blocked.joinToString("|")}" else "") +
             "&with_original_language=en&include_adult=false&language=en-US&sort_by=popularity.desc" +
             "&first_air_date.gte=${today.plusDays(1)}&first_air_date.lte=${today.plusMonths(6)}&page=1"
+
+    /**
+     * Upcoming new shows on ANY service (for Coming soon only), in [genres]:
+     * newly announced shows rarely have keywords yet, so we pick hers by
+     * name / description instead (see [soundsRomantic]).
+     */
+    fun upcomingAnywherePath(today: LocalDate, genres: String, page: Int) =
+        "/discover/tv?with_genres=$genres&with_original_language=en&with_origin_country=US|GB|CA" +
+            "&include_adult=false&language=en-US&sort_by=popularity.desc" +
+            "&first_air_date.gte=${today.plusDays(1)}&first_air_date.lte=${today.plusMonths(6)}&page=$page"
+
+    private val romanticWords = listOf(
+        "love", "romance", "romantic", "dating", "date ", "marry", "married", "marriage", "wedding", "vow",
+        "engaged", "engagement", "propos", "bachelor", "soulmate", "soul mate", "relationship", "couples",
+        "singles", "villa", "forever", "heart", "first kiss", "crush", "boyfriend", "girlfriend",
+    )
+    private val notRomantic = listOf("murder", "killer", "crime", "detective", "horror", "war ", "zombie", "cartel")
+
+    /** Name or description sounds like her kind of show. */
+    fun soundsRomantic(item: AngItem): Boolean {
+        val text = (item.title + " " + item.overview).lowercase()
+        return romanticWords.any { text.contains(it) } && notRomantic.none { text.contains(it) }
+    }
+
+    /** /tv/{id} → its network / streaming service name (e.g. "Fox Nation"). */
+    fun parseNetwork(json: String): String? =
+        (JSONObject(json).optJSONArray("networks") ?: JSONArray()).objects().firstOrNull()?.optString("name")?.takeIf { it.isNotBlank() }
 
     /** Sitcoms (Friends, The Office, Modern Family...), any year, well known and well rated. */
     fun sitcomsPath(providerIds: List<Int>, sitcomKeyword: Int, blocked: List<Int>, page: Int) =
@@ -150,6 +177,7 @@ object AngDiscovery {
                 isMovie = isMovie,
                 voteAverage = o.optDouble("vote_average", 0.0),
                 genres = genres,
+                overview = o.optString("overview"),
             )
         }
 
@@ -170,12 +198,13 @@ object AngDiscovery {
     /** /tv/{id} → her liked show with its latest and next season dates. */
     fun parseFollowed(json: String, rated: Rated, today: LocalDate): FollowedShow {
         val o = JSONObject(json)
-        val seasons = (o.optJSONArray("seasons") ?: JSONArray()).objects().mapNotNull { s ->
+        val all = (o.optJSONArray("seasons") ?: JSONArray()).objects().mapNotNull { s ->
             val n = s.optInt("season_number")
             if (n < 1) return@mapNotNull null // specials
-            s.optString("air_date").takeIf { it.isNotBlank() && it != "null" }
-                ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }?.let { n to it }
+            n to s.optString("air_date").takeIf { it.isNotBlank() && it != "null" }
+                ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
         }
+        val seasons = all.mapNotNull { (n, d) -> d?.let { n to it } }
         val latest = seasons.filter { !it.second.isAfter(today) }.maxByOrNull { it.second }
         val nextFromSeasons = seasons.filter { it.second.isAfter(today) }.minByOrNull { it.second }
         val nextEp = o.optJSONObject("next_episode_to_air")
@@ -183,6 +212,8 @@ object AngDiscovery {
             runCatching { LocalDate.parse(ep.optString("air_date")) }.getOrNull()?.takeIf { it.isAfter(today) }
                 ?.let { ep.optInt("season_number") to it }
         }
+        // Renewed, but no date yet: a listed season after the latest one, without an air date.
+        val nextTba = all.filter { (n, d) -> d == null && n > (latest?.first ?: 0) }.minByOrNull { it.first }
         val service = (o.optJSONArray("networks") ?: JSONArray()).objects().firstOrNull()?.optString("name")
         val item = AngItem(
             key = rated.key,
@@ -195,7 +226,8 @@ object AngDiscovery {
             badge = null,
             tmdbId = o.optLong("id"),
         )
-        return FollowedShow(item, latest, nextFromSeasons ?: nextFromEpisode)
+        val next: Pair<Int, LocalDate?>? = nextFromSeasons ?: nextFromEpisode ?: nextTba?.let { it.first to null }
+        return FollowedShow(item, latest, next)
     }
 
     private fun JSONArray.objects(): List<JSONObject> = (0 until length()).mapNotNull { optJSONObject(it) }

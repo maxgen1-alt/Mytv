@@ -84,7 +84,7 @@ object MyGuideBuilder {
             watched = watched,
             forYou = forYou,
             newSeasons = newSeasons.sortedByDescending { it.date }.distinctBy { it.key },
-            comingSoon = comingSoon.sortedBy { it.date }.distinctBy { it.key },
+            comingSoon = comingSoon.sortedWith(compareBy(nullsLast()) { it.date }).distinctBy { it.key },
         )
     }
 

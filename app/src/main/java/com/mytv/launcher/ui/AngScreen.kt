@@ -126,7 +126,7 @@ fun AngScreen(
             Shelf("New shows you might like", guide.newShows, onShow, ::firstFocus, onLongClick = hold) { it.badge }
             Shelf("Shows you might have missed", guide.missed, onShow, ::firstFocus, onLongClick = hold) { it.badge }
             Shelf("Movies for you", guide.movies, onShow, ::firstFocus, onLongClick = hold) { it.badge }
-            Shelf("Coming soon", guide.upcoming, onShow, ::firstFocus, dated = true, onLongClick = hold) { it.date?.let(::comingLabel) }
+            Shelf("Coming soon", guide.upcoming, onShow, ::firstFocus, dated = true, onLongClick = hold) { it.date?.let(::comingLabel) ?: "Date TBA" }
         }
     }
 

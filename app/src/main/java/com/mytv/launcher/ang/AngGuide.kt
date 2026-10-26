@@ -26,6 +26,8 @@ data class AngItem(
     val imdbId: String? = null,
     /** TMDB genre ids. */
     val genres: List<Int> = emptyList(),
+    /** TMDB description (only used to spot her kind of show; not saved). */
+    val overview: String = "",
 ) {
     val ratingRef: com.mytv.launcher.ratings.RatingRef
         get() = com.mytv.launcher.ratings.RatingRef(imdbId, tmdbId, isMovie, voteAverage)
@@ -129,11 +131,21 @@ object AngGuideBuilder {
         shown += newShows.map { normalize(it.title) }
         val missed = shows.filter { (it.date == null || it.date.isBefore(yearAgo)) && normalize(it.title) !in shown }.take(ROW_SIZE)
         val movies = ranked(inputs.movies).take(ROW_SIZE)
-        // Coming soon also gets brand-new shows of her kind, best taste match first.
-        upcoming += ranked(inputs.upcomingShows)
-            .filter { it.date?.isAfter(today) == true }
-            .take(12)
-            .map { it.copy(detail = listOfNotNull("New show", it.service).joinToString(" · ")) }
+        // Coming soon also gets brand-new shows of her kind, best taste match first. Unlike the
+        // other rows these can be on any service: it's news, and she'll want to know.
+        upcoming += inputs.upcomingShows
+            .filter { it.date?.isAfter(today) == true && ratingOf(it.key, it.title)?.rating?.hides != true && normalize(it.title) !in shown }
+            .distinctBy { it.key }
+            .sortedByDescending { TasteRanker.score(it, inputs.likedRecs, inputs.dislikedRecs) }
+            .take(15)
+            .map {
+                val where = when {
+                    it.service == null -> null
+                    isAvailable(it.service) -> it.service
+                    else -> "${it.service} · not in your apps"
+                }
+                it.copy(detail = listOfNotNull("New show", where).joinToString(" · "))
+            }
 
         return AngGuide(
             watchNow = watchNow.sortedByDescending { it.second ?: LocalDate.MIN }.map { it.first }.distinctBy { it.key },
@@ -141,7 +153,8 @@ object AngGuideBuilder {
             newShows = newShows,
             missed = missed,
             movies = movies,
-            upcoming = upcoming.sortedBy { it.date }.distinctBy { it.key },
+            // Dated premieres soonest first, then renewed-but-no-date-yet.
+            upcoming = upcoming.sortedWith(compareBy(nullsLast()) { it.date }).distinctBy { it.key },
         )
     }
 
@@ -154,15 +167,20 @@ object AngGuideBuilder {
 
     fun normalize(s: String) = s.lowercase().replace(Regex("[^a-z0-9]"), "")
 
-    /** Next season premiere after today: from the season list, or a scheduled episode 1. */
-    private fun nextPremiere(show: TvShow, today: LocalDate): Pair<Int, LocalDate>? {
+    /**
+     * Next season after today: from the season list, or a scheduled episode 1;
+     * or, if a later season is listed without a date, that season with no date (TBA).
+     */
+    private fun nextPremiere(show: TvShow, today: LocalDate): Pair<Int, LocalDate?>? {
         show.seasons
             .filter { it.premiere?.isAfter(today) == true }
             .minByOrNull { it.premiere!! }
             ?.let { return it.number to it.premiere!! }
-        val ep = show.nextEpisode ?: return null
-        val date = ep.airdate ?: return null
-        return if (ep.number == 1 && date.isAfter(today)) ep.season to date else null
+        val ep = show.nextEpisode
+        val date = ep?.airdate
+        if (ep != null && date != null && ep.number == 1 && date.isAfter(today)) return ep.season to date
+        val latest = show.seasons.filter { it.premiere != null && !it.premiere.isAfter(today) }.maxOfOrNull { it.number } ?: 0
+        return show.seasons.filter { it.premiere == null && it.number > latest }.minByOrNull { it.number }?.let { it.number to null }
     }
 
     private fun newLabel(season: Int) = if (season <= 1) "New show" else "New season"
