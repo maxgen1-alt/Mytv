@@ -137,12 +137,19 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val taste = com.mytv.launcher.ang.TasteStore(app)
     private val angTaste = com.mytv.launcher.ang.TasteRepository(
         app, strict = true,
+        // Same as yours: "Already watched" counts too, a like / watching counts double.
         positive = mapOf(
-            com.mytv.launcher.ang.Rating.LIKE to 1,
-            com.mytv.launcher.ang.Rating.WATCHING to 1,
+            com.mytv.launcher.ang.Rating.LIKE to 2,
+            com.mytv.launcher.ang.Rating.WATCHING to 2,
+            com.mytv.launcher.ang.Rating.WATCHED to 1,
             com.mytv.launcher.ang.Rating.WANT to 1,
         ),
-        follow = setOf(com.mytv.launcher.ang.Rating.LIKE, com.mytv.launcher.ang.Rating.WATCHING, com.mytv.launcher.ang.Rating.WANT),
+        follow = setOf(
+            com.mytv.launcher.ang.Rating.LIKE,
+            com.mytv.launcher.ang.Rating.WATCHING,
+            com.mytv.launcher.ang.Rating.WATCHED,
+            com.mytv.launcher.ang.Rating.WANT,
+        ),
     )
 
     // ---- Your own taste (Popular row, Shows for you, My Watchlist) ----
