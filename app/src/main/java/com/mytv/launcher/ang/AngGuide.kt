@@ -34,6 +34,8 @@ data class AngItem(
 data class AngGuide(
     /** Her shows (and liked shows) with something new to watch right now. */
     val watchNow: List<AngItem> = emptyList(),
+    /** Easy Watch: sitcoms (Friends, The Office, Modern Family...). */
+    val easyWatch: List<AngItem> = emptyList(),
     /** Shows from the last year she might like. */
     val newShows: List<AngItem> = emptyList(),
     /** Good shows from the last 10 years she might have missed. */
@@ -55,6 +57,8 @@ data class AngInputs(
     val movies: List<AngItem> = emptyList(),
     /** New shows of her kind that haven't premiered yet. */
     val upcomingShows: List<AngItem> = emptyList(),
+    /** Sitcom candidates for Easy Watch. */
+    val sitcoms: List<AngItem> = emptyList(),
     /** Candidate key → how many liked / disliked titles recommend it. */
     val likedRecs: Map<String, Int> = emptyMap(),
     val dislikedRecs: Map<String, Int> = emptyMap(),
@@ -116,6 +120,9 @@ object AngGuideBuilder {
             .sortedByDescending { TasteRanker.score(it, inputs.likedRecs, inputs.dislikedRecs) }
             .map { if (ratingOf(it.key, it.title)?.rating == Rating.LIKE) it.copy(badge = "♥ Liked") else it }
 
+        val easyWatch = ranked(inputs.sitcoms).take(ROW_SIZE)
+        shown += easyWatch.map { normalize(it.title) }
+
         val yearAgo = today.minusYears(1)
         val shows = ranked(inputs.shows)
         val newShows = shows.filter { it.date != null && !it.date.isBefore(yearAgo) }.take(ROW_SIZE)
@@ -130,6 +137,7 @@ object AngGuideBuilder {
 
         return AngGuide(
             watchNow = watchNow.sortedByDescending { it.second ?: LocalDate.MIN }.map { it.first }.distinctBy { it.key },
+            easyWatch = easyWatch,
             newShows = newShows,
             missed = missed,
             movies = movies,

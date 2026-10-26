@@ -32,8 +32,8 @@ class AngRepository(context: Context) {
         .build()
     private val prefs = context.getSharedPreferences("ang", Context.MODE_PRIVATE)
     private val curatedFile = File(context.filesDir, "ang-curated.json")
-    // v2: adds upcoming new shows.
-    private val candidatesFile = File(context.cacheDir, "ang-candidates-v2.json")
+    // v3: adds Easy Watch sitcoms.
+    private val candidatesFile = File(context.cacheDir, "ang-candidates-v3.json")
     private val api = "https://api.tvmaze.com"
 
     @Volatile private var curatedMem: List<Pair<CuratedShow, TvShow>>? = null
@@ -46,6 +46,8 @@ class AngRepository(context: Context) {
         val movies: List<AngItem>,
         /** New shows of her kind that haven't premiered yet. */
         val upcoming: List<AngItem>,
+        /** Easy Watch: sitcoms. */
+        val sitcoms: List<AngItem>,
         val at: Long,
     )
 
@@ -104,6 +106,8 @@ class AngRepository(context: Context) {
 
     // ---- Suggestions (TMDB discover) ----
 
+    private data class Pools(val shows: List<AngItem>, val movies: List<AngItem>, val upcoming: List<AngItem>, val sitcoms: List<AngItem>)
+
     /** Whatever we have saved for these providers, however old: for an instant first paint. */
     suspend fun cachedCandidates(providers: List<WhereToWatch.Provider>): Candidates? {
         val names = providers.map { it.name }.toSet()
@@ -125,7 +129,8 @@ class AngRepository(context: Context) {
         fun merge(lists: List<List<AngItem>?>) =
             lists.filterNotNull().flatten().sortedByDescending { it.popularity }.distinctBy { it.key }
 
-        val (shows, movies, upcoming) = coroutineScope {
+        val sitcomKeyword = keywordId("sitcom")
+        val (shows, movies, upcoming, sitcoms) = coroutineScope {
             val shows = providers.flatMap { p ->
                 val paths = listOf(AngDiscovery.newShowsPath(today, p.tmdbIds, wanted, blocked)) +
                     (1..2).map { page -> AngDiscovery.missedShowsPath(today, p.tmdbIds, wanted, blocked, page) }
@@ -147,10 +152,19 @@ class AngRepository(context: Context) {
                     }
                 }
             }
-            Triple(merge(shows.awaitAll()), merge(movies.awaitAll()), merge(upcoming.awaitAll()))
+            val sitcoms = if (sitcomKeyword == null) emptyList() else providers.flatMap { p ->
+                (1..2).map { page ->
+                    async {
+                        Tmdb.get(AngDiscovery.sitcomsPath(p.tmdbIds, sitcomKeyword, blocked, page)) {
+                            AngDiscovery.parseResults(it, false, p.name, today, maxAgeYears = null)
+                        }
+                    }
+                }
+            }
+            Pools(merge(shows.awaitAll()), merge(movies.awaitAll()), merge(upcoming.awaitAll()), merge(sitcoms.awaitAll()))
         }
         if (shows.isEmpty() && movies.isEmpty()) return candidatesMem
-        val c = Candidates(names, shows, movies, upcoming, System.currentTimeMillis())
+        val c = Candidates(names, shows, movies, upcoming, sitcoms, System.currentTimeMillis())
         candidatesMem = c
         withContext(Dispatchers.IO) { writeCandidates(c) }
         return c
@@ -163,6 +177,7 @@ class AngRepository(context: Context) {
                 .put("shows", JSONArray(c.shows.map(::encode)))
                 .put("movies", JSONArray(c.movies.map(::encode)))
                 .put("upcoming", JSONArray(c.upcoming.map(::encode)))
+                .put("sitcoms", JSONArray(c.sitcoms.map(::encode)))
                 .put("at", c.at)
                 .toString(),
         )
@@ -172,7 +187,7 @@ class AngRepository(context: Context) {
         val o = JSONObject(candidatesFile.readText())
         fun list(name: String) = o.getJSONArray(name).let { a -> (0 until a.length()).map { decode(a.getJSONObject(it)) } }
         val p = o.getJSONArray("providers").let { a -> (0 until a.length()).map { a.getString(it) }.toSet() }
-        Candidates(p, list("shows"), list("movies"), list("upcoming"), o.getLong("at"))
+        Candidates(p, list("shows"), list("movies"), list("upcoming"), list("sitcoms"), o.getLong("at"))
     }.getOrNull()
 
     private fun encode(i: AngItem) = JSONObject()

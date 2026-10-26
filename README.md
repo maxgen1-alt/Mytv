@@ -101,6 +101,7 @@ The **Ang** button, next to the team buttons, opens her own guide in Love Island
 | --- | --- |
 | **Continue watching** | What she's in the middle of, from the TV's Continue Watching, narrowed to her kind of shows. Select one to resume it. |
 | **Watch now** | The Kardashians, plus a new season of any of her shows or of anything she's liked |
+| **Easy Watch** | Sitcoms of any year: Friends, The Office, Modern Family and the like, on apps you have |
 | **New shows you might like** | Romance, rom-com, coming-of-age and dating shows that started in the last year |
 | **Shows you might have missed** | Well-rated shows like that from the last 10 years |
 | **Movies for you** | Rom-coms, romance and romantic dramas from the last 10 years, new ones included |

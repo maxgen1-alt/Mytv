@@ -571,7 +571,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             // 1. Instant: whatever is cached.
             angRepo.cachedCurated()?.let { angInputs = angInputs.copy(curated = it) }
             angRepo.cachedCandidates(providers)?.let {
-                angInputs = angInputs.copy(shows = it.shows, movies = it.movies, upcomingShows = it.upcoming)
+                angInputs = angInputs.copy(shows = it.shows, movies = it.movies, upcomingShows = it.upcoming, sitcoms = it.sitcoms)
             }
             angTaste.cachedRecs()?.let { r ->
                 angInputs = angInputs.copy(
@@ -602,6 +602,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             shows = base?.shows.orEmpty() + recs.items.filter { !it.isMovie },
             movies = base?.movies.orEmpty() + recs.items.filter { it.isMovie },
             upcomingShows = base?.upcoming.orEmpty(),
+            sitcoms = base?.sitcoms.orEmpty(),
             likedRecs = recs.liked,
             dislikedRecs = recs.disliked,
             followed = followed,
@@ -612,7 +613,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private suspend fun herContinueWatching(): List<WatchItem> {
         val g = _ang.value.guide
         val titles = (angInputs.curated.map { it.second.name } +
-            (g.watchNow + g.newShows + g.missed + g.movies + g.upcoming).map { it.title }).toSet()
+            (g.watchNow + g.easyWatch + g.newShows + g.missed + g.movies + g.upcoming).map { it.title }).toSet()
         return watchNext.load().filter { angRepo.isHers(it.title, titles) }
     }
 

@@ -33,12 +33,13 @@ class AngGuideTest {
         likedRecs: Map<String, Int> = emptyMap(),
         dislikedRecs: Map<String, Int> = emptyMap(),
         upcomingShows: List<AngItem> = emptyList(),
+        sitcoms: List<AngItem> = emptyList(),
         available: (String?) -> Boolean = { WhereToWatch.servicesFor(it).isNotEmpty() },
     ) = AngGuideBuilder.build(
         today,
         AngInputs(
             curated = curated, ratings = ratings, followed = followed, shows = shows, movies = movies,
-            upcomingShows = upcomingShows, likedRecs = likedRecs, dislikedRecs = dislikedRecs,
+            upcomingShows = upcomingShows, sitcoms = sitcoms, likedRecs = likedRecs, dislikedRecs = dislikedRecs,
         ),
         available,
     )
@@ -172,6 +173,26 @@ class AngGuideTest {
         )
         assertEquals(listOf("New Dating Show", "Teen Romance Drama", "Summer House"), g.upcoming.map { it.title })
         assertEquals("New show · Netflix", g.upcoming.first().detail)
+    }
+
+    @Test
+    fun easyWatchListsSitcomsOfAnyAgeAndRespectsRatings() {
+        val g = build(
+            sitcoms = listOf(
+                cand(30, "Friends", service = "HBO Max", pop = 200.0, date = LocalDate.of(1994, 9, 22)),
+                cand(31, "The Office", service = "Peacock", pop = 150.0, date = LocalDate.of(2005, 3, 24)),
+                cand(32, "Seen It All", pop = 300.0, date = LocalDate.of(2010, 1, 1)),
+            ),
+            ratings = listOf(Rated("tmdb:tv:32", "Seen It All", Rating.WONT_WATCH, today)),
+        )
+        assertEquals(listOf("Friends", "The Office"), g.easyWatch.map { it.title })
+    }
+
+    @Test
+    fun parsesOldSitcomsWhenAgeLimitIsOff() {
+        val json = """{"results":[{"id":1668,"name":"Friends","original_language":"en","origin_country":["US"],"genre_ids":[35],"first_air_date":"1994-09-22","vote_average":8.4}]}"""
+        assertTrue(AngDiscovery.parseResults(json, false, "HBO Max", today).isEmpty())
+        assertEquals(listOf("Friends"), AngDiscovery.parseResults(json, false, "HBO Max", today, maxAgeYears = null).map { it.title })
     }
 
     @Test

@@ -76,7 +76,7 @@ fun AngScreen(
     val first = remember { FocusRequester() }
     val guide = state.guide
     var menuFor by remember { mutableStateOf<AngItem?>(null) }
-    val all = guide.watchNow + guide.newShows + guide.missed + guide.movies + guide.upcoming
+    val all = guide.watchNow + guide.easyWatch + guide.newShows + guide.missed + guide.movies + guide.upcoming
     val firstKey = continueWatching.firstOrNull()?.key ?: all.firstOrNull()?.key
     LaunchedEffect(firstKey) { if (firstKey != null) runCatching { first.requestFocus() } }
 
@@ -122,6 +122,7 @@ fun AngScreen(
                 state.watchingNow.firstOrNull { MANUAL_PREFIX + it.key == wi.key }?.let { menuFor = it }
             }
             Shelf("Watch now", guide.watchNow, onShow, ::firstFocus, onLongClick = hold) { it.badge }
+            Shelf("Easy Watch", guide.easyWatch, onShow, ::firstFocus, onLongClick = hold) { it.badge }
             Shelf("New shows you might like", guide.newShows, onShow, ::firstFocus, onLongClick = hold) { it.badge }
             Shelf("Shows you might have missed", guide.missed, onShow, ::firstFocus, onLongClick = hold) { it.badge }
             Shelf("Movies for you", guide.movies, onShow, ::firstFocus, onLongClick = hold) { it.badge }

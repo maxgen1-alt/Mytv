@@ -77,6 +77,11 @@ object AngDiscovery {
             "&with_original_language=en&include_adult=false&language=en-US&sort_by=popularity.desc" +
             "&first_air_date.gte=${today.plusDays(1)}&first_air_date.lte=${today.plusMonths(6)}&page=1"
 
+    /** Sitcoms (Friends, The Office, Modern Family...), any year, well known and well rated. */
+    fun sitcomsPath(providerIds: List<Int>, sitcomKeyword: Int, blocked: List<Int>, page: Int) =
+        "/discover/tv?${common(providerIds, blocked)}&with_genres=35&with_keywords=$sitcomKeyword" +
+            "&vote_count.gte=150&vote_average.gte=6.8&page=$page"
+
     /** Romance movies (rom-coms, romance, romantic dramas) from the last 10 years, new ones included. */
     fun moviesPath(today: LocalDate, providerIds: List<Int>, blocked: List<Int>, page: Int) =
         "/discover/movie?${common(providerIds, blocked)}&with_genres=$ROMANCE_MOVIE_GENRE" +
@@ -100,7 +105,15 @@ object AngDiscovery {
      * A page of TMDB results (discover / recommendations / search) → items.
      * [serviceName] labels where it streams, when known.
      */
-    fun parseResults(json: String, isMovie: Boolean, serviceName: String?, today: LocalDate, strict: Boolean = true): List<AngItem> =
+    fun parseResults(
+        json: String,
+        isMovie: Boolean,
+        serviceName: String?,
+        today: LocalDate,
+        strict: Boolean = true,
+        /** Ang's suggestions stop at 10 years old; Easy Watch sitcoms can be any age. */
+        maxAgeYears: Long? = 10,
+    ): List<AngItem> =
         (JSONObject(json).optJSONArray("results") ?: JSONArray()).objects().mapNotNull { o ->
             if (o.optBoolean("adult")) return@mapNotNull null
             if (o.optString("original_language") != "en") return@mapNotNull null
@@ -119,7 +132,7 @@ object AngDiscovery {
                 ?: return@mapNotNull null
             val released = (if (isMovie) o.optString("release_date") else o.optString("first_air_date"))
                 .takeIf { it.isNotBlank() }?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
-            if (strict && released != null && released.isBefore(today.minusYears(10))) return@mapNotNull null
+            if (strict && maxAgeYears != null && released != null && released.isBefore(today.minusYears(maxAgeYears))) return@mapNotNull null
             val id = o.optLong("id")
             AngItem(
                 key = key(id, isMovie),
