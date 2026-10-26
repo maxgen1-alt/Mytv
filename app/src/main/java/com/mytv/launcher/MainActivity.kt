@@ -9,6 +9,7 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mytv.launcher.sports.Teams
+import com.mytv.launcher.ui.AngListScreen
 import com.mytv.launcher.ui.AngScreen
 import com.mytv.launcher.ui.EditAppsScreen
 import com.mytv.launcher.ui.HomeScreen
@@ -107,11 +108,16 @@ class MainActivity : ComponentActivity() {
                         val ang by vm.ang.collectAsStateWithLifecycle()
                         AngScreen(
                             ang,
+                            onOpenList = vm::openAngList,
                             continueWatching = vm.withWatchingNow(ang.continueWatching, ang.watchingNow),
                             onShow = vm::openAngShow,
                             onRate = vm::angRate,
                             onResume = vm::playWatchItem,
                         )
+                    }
+                    Screen.AngList -> {
+                        val ang by vm.ang.collectAsStateWithLifecycle()
+                        AngListScreen(ang, onOpen = vm::openAngShow, onRate = vm::angRate)
                     }
                     Screen.Watchlist -> {
                         val my by vm.my.collectAsStateWithLifecycle()
@@ -144,6 +150,6 @@ class MainActivity : ComponentActivity() {
     /** Pressing Home while we're already in front: jump back to the main screen. */
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
-        vm.back()
+        vm.goHome()
     }
 }

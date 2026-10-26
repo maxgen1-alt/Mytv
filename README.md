@@ -114,6 +114,8 @@ Every suggestion is English, from the US, Canada or UK, on a streaming app you h
 - **✓ Already watched / Won't watch:** hides it.
 - **✕ Dislike:** hides it, and pushes shows like it down.
 
+**♥ Her List** (top-right of Ang's TV) shows everything she's rated, in 5 tabs: Watching, Liked, Watched, Disliked and Won't watch. Hold select on a show to move it to another list, or clear it.
+
 Ratings are saved on the TV. Her hand-picked shows are in [`ang/AngShows.kt`](app/src/main/java/com/mytv/launcher/ang/AngShows.kt). Suggestions come from TMDB, so they need the `TMDB_API_KEY` secret.
 
 ## How the team buttons find the game

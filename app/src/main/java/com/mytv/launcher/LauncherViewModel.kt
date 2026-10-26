@@ -55,6 +55,8 @@ sealed interface Screen {
     data object TraktLink : Screen
     data object Ang : Screen
     data object Watchlist : Screen
+    /** Her List: everything she rated, inside Ang's TV. */
+    data object AngList : Screen
 }
 
 data class AngState(
@@ -68,6 +70,8 @@ data class AngState(
     val ratings: Map<String, com.mytv.launcher.ang.Rating> = emptyMap(),
     /** Titles she marked "Watching now" (shown in her Continue watching). */
     val watchingNow: List<AngItem> = emptyList(),
+    /** Everything she has rated (for Her List). */
+    val rated: List<com.mytv.launcher.ang.Rated> = emptyList(),
 )
 
 /** Your ratings and lists. */
@@ -245,7 +249,20 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     fun back() {
         linkJob?.cancel()
+        // Her List lives inside Ang's TV: Back returns there.
+        _screen.value = if (_screen.value == Screen.AngList) Screen.Ang else Screen.Home
+    }
+
+    /** The remote's Home button: always the home screen. */
+    fun goHome() {
+        linkJob?.cancel()
         _screen.value = Screen.Home
+    }
+
+    /** Opens Her List (keeps Ang's TV loaded underneath). */
+    fun openAngList() {
+        _screen.value = Screen.AngList
+        viewModelScope.launch { publishAng() }
     }
 
     /** Called every time the launcher comes to the front. */
@@ -558,6 +575,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 ratings = ratings.associate { r -> r.key to r.rating },
                 watchingNow = ratings.filter { r -> r.rating == com.mytv.launcher.ang.Rating.WATCHING }
                     .sortedByDescending { r -> r.date }.map { r -> r.toItem().copy(date = r.date) },
+                rated = ratings.filter { r -> r.title.isNotBlank() },
                 loading = loading ?: it.loading,
                 discovering = discovering ?: it.discovering,
             )

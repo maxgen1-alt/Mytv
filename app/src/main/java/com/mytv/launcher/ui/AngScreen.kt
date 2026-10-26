@@ -67,6 +67,7 @@ private val dateFormat = DateTimeFormatter.ofPattern("EEE, MMM d")
 @Composable
 fun AngScreen(
     state: AngState,
+    onOpenList: () -> Unit,
     /** Her Continue watching: the TV's list plus what she marked "Watching now". */
     continueWatching: List<WatchItem>,
     onShow: (AngItem) -> Unit,
@@ -96,11 +97,21 @@ fun AngScreen(
                     when {
                         state.loading -> "Updating…"
                         state.discovering -> "Finding shows for you…"
-                        else -> "Hold select on anything: like it, dislike it, or mark it watched"
+                        else -> "Hold select on anything to like it, dislike it, or mark it watched"
                     },
                     fontSize = 13.sp,
                     color = Color.White.copy(alpha = 0.85f),
                 )
+                Spacer(Modifier.width(16.dp))
+                FocusCard(onClick = onOpenList, container = AngPalette.Pink, corner = 18.dp, focusedScale = 1.06f, modifier = Modifier.height(36.dp)) {
+                    Text(
+                        "♥ Her List",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        modifier = Modifier.align(Alignment.Center).padding(horizontal = 16.dp),
+                    )
+                }
             }
             Spacer(Modifier.height(20.dp))
 
