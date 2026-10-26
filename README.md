@@ -89,7 +89,7 @@ The **Ang** button, next to the team buttons, opens her own guide in Love Island
 | **New shows you might like** | Romance, rom-com, coming-of-age and dating shows that started in the last year |
 | **Shows you might have missed** | Well-rated shows like that from the last 10 years |
 | **Movies for you** | Rom-coms, romance and romantic dramas from the last 10 years, new ones included |
-| **Coming soon** | Announced next seasons of her shows and liked shows |
+| **Coming soon** | Announced next seasons of her shows and liked shows, plus new shows of her kind premiering in the next 6 months on your apps |
 
 Every suggestion is English, from the US, Canada or UK, on a streaming app you have installed, and never adult or erotic.
 

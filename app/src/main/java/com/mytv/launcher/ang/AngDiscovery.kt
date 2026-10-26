@@ -59,6 +59,14 @@ object AngDiscovery {
             "&first_air_date.gte=${today.minusYears(10)}&first_air_date.lte=${today.minusYears(1)}" +
             "&vote_count.gte=50&vote_average.gte=6.5&page=$page"
 
+    /** New shows of her kind premiering in the next 6 months, made by [networkIds] (streaming originals). */
+    fun upcomingShowsPath(today: LocalDate, networkIds: List<Int>, wanted: List<Int>, blocked: List<Int>) =
+        "/discover/tv?with_networks=${networkIds.joinToString("|")}" +
+            "&with_keywords=${wanted.joinToString("|")}" +
+            (if (blocked.isNotEmpty()) "&without_keywords=${blocked.joinToString("|")}" else "") +
+            "&with_original_language=en&include_adult=false&language=en-US&sort_by=popularity.desc" +
+            "&first_air_date.gte=${today.plusDays(1)}&first_air_date.lte=${today.plusMonths(6)}&page=1"
+
     /** Romance movies (rom-coms, romance, romantic dramas) from the last 10 years, new ones included. */
     fun moviesPath(today: LocalDate, providerIds: List<Int>, blocked: List<Int>, page: Int) =
         "/discover/movie?${common(providerIds, blocked)}&with_genres=$ROMANCE_MOVIE_GENRE" +

@@ -33,7 +33,8 @@ class AngRepository(context: Context) {
         .build()
     private val prefs = context.getSharedPreferences("ang", Context.MODE_PRIVATE)
     private val curatedFile = File(context.filesDir, "ang-curated.json")
-    private val candidatesFile = File(context.cacheDir, "ang-candidates-v1.json")
+    // v2: adds upcoming new shows.
+    private val candidatesFile = File(context.cacheDir, "ang-candidates-v2.json")
     private val api = "https://api.tvmaze.com"
 
     @Volatile private var curatedMem: List<Pair<CuratedShow, TvShow>>? = null
@@ -43,7 +44,14 @@ class AngRepository(context: Context) {
     private val followedMem = HashMap<Long, Pair<Long, String>>() // tmdb id -> (fetched at, json)
 
     /** Suggestion pools from discover, for one set of installed providers. */
-    data class Candidates(val providers: Set<String>, val shows: List<AngItem>, val movies: List<AngItem>, val at: Long)
+    data class Candidates(
+        val providers: Set<String>,
+        val shows: List<AngItem>,
+        val movies: List<AngItem>,
+        /** New shows of her kind that haven't premiered yet. */
+        val upcoming: List<AngItem>,
+        val at: Long,
+    )
 
     /** "More like this": candidates recommended by her liked titles, plus counts for ranking. */
     data class Recs(val items: List<AngItem>, val liked: Map<String, Int>, val disliked: Map<String, Int>)
@@ -124,7 +132,7 @@ class AngRepository(context: Context) {
         fun merge(lists: List<List<AngItem>?>) =
             lists.filterNotNull().flatten().sortedByDescending { it.popularity }.distinctBy { it.key }
 
-        val (shows, movies) = coroutineScope {
+        val (shows, movies, upcoming) = coroutineScope {
             val shows = providers.flatMap { p ->
                 val paths = listOf(AngDiscovery.newShowsPath(today, p.tmdbIds, wanted, blocked)) +
                     (1..2).map { page -> AngDiscovery.missedShowsPath(today, p.tmdbIds, wanted, blocked, page) }
@@ -139,10 +147,17 @@ class AngRepository(context: Context) {
                     }
                 }
             }
-            merge(shows.awaitAll()) to merge(movies.awaitAll())
+            val upcoming = providers.map { p ->
+                async {
+                    Tmdb.get(AngDiscovery.upcomingShowsPath(today, p.tmdbNetworks, wanted, blocked)) {
+                        AngDiscovery.parseResults(it, false, p.name, today)
+                    }
+                }
+            }
+            Triple(merge(shows.awaitAll()), merge(movies.awaitAll()), merge(upcoming.awaitAll()))
         }
         if (shows.isEmpty() && movies.isEmpty()) return candidatesMem
-        val c = Candidates(names, shows, movies, System.currentTimeMillis())
+        val c = Candidates(names, shows, movies, upcoming, System.currentTimeMillis())
         candidatesMem = c
         withContext(Dispatchers.IO) { writeCandidates(c) }
         return c
@@ -154,6 +169,7 @@ class AngRepository(context: Context) {
                 .put("providers", JSONArray(c.providers.toList()))
                 .put("shows", JSONArray(c.shows.map(::encode)))
                 .put("movies", JSONArray(c.movies.map(::encode)))
+                .put("upcoming", JSONArray(c.upcoming.map(::encode)))
                 .put("at", c.at)
                 .toString(),
         )
@@ -163,7 +179,7 @@ class AngRepository(context: Context) {
         val o = JSONObject(candidatesFile.readText())
         fun list(name: String) = o.getJSONArray(name).let { a -> (0 until a.length()).map { decode(a.getJSONObject(it)) } }
         val p = o.getJSONArray("providers").let { a -> (0 until a.length()).map { a.getString(it) }.toSet() }
-        Candidates(p, list("shows"), list("movies"), o.getLong("at"))
+        Candidates(p, list("shows"), list("movies"), list("upcoming"), o.getLong("at"))
     }.getOrNull()
 
     private fun encode(i: AngItem) = JSONObject()

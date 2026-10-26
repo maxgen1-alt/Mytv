@@ -33,7 +33,7 @@ data class AngGuide(
     val missed: List<AngItem> = emptyList(),
     /** Rom-coms / romance / romantic dramas from the last 10 years. */
     val movies: List<AngItem> = emptyList(),
-    /** Next seasons of her shows and liked shows, soonest first. */
+    /** Next seasons of her shows and liked shows, and new shows of her kind, soonest first. */
     val upcoming: List<AngItem> = emptyList(),
 )
 
@@ -46,6 +46,8 @@ data class AngInputs(
     /** Candidate shows / movies on your apps (discover + "more like what she liked"). */
     val shows: List<AngItem> = emptyList(),
     val movies: List<AngItem> = emptyList(),
+    /** New shows of her kind that haven't premiered yet. */
+    val upcomingShows: List<AngItem> = emptyList(),
     /** Candidate key → how many liked / disliked titles recommend it. */
     val likedRecs: Map<String, Int> = emptyMap(),
     val dislikedRecs: Map<String, Int> = emptyMap(),
@@ -113,6 +115,11 @@ object AngGuideBuilder {
         shown += newShows.map { normalize(it.title) }
         val missed = shows.filter { (it.date == null || it.date.isBefore(yearAgo)) && normalize(it.title) !in shown }.take(ROW_SIZE)
         val movies = ranked(inputs.movies).take(ROW_SIZE)
+        // Coming soon also gets brand-new shows of her kind, best taste match first.
+        upcoming += ranked(inputs.upcomingShows)
+            .filter { it.date?.isAfter(today) == true }
+            .take(12)
+            .map { it.copy(detail = listOfNotNull("New show", it.service).joinToString(" · ")) }
 
         return AngGuide(
             watchNow = watchNow.sortedByDescending { it.second ?: LocalDate.MIN }.map { it.first }.distinctBy { it.key },

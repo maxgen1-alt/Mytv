@@ -430,7 +430,9 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
             // 1. Instant: whatever is cached.
             angRepo.cachedCurated()?.let { angInputs = angInputs.copy(curated = it) }
-            angRepo.cachedCandidates(providers)?.let { angInputs = angInputs.copy(shows = it.shows, movies = it.movies) }
+            angRepo.cachedCandidates(providers)?.let {
+                angInputs = angInputs.copy(shows = it.shows, movies = it.movies, upcomingShows = it.upcoming)
+            }
             angRepo.cachedRecs()?.let { r ->
                 angInputs = angInputs.copy(
                     shows = angInputs.shows + r.items.filter { !it.isMovie },
@@ -459,6 +461,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         angInputs = angInputs.copy(
             shows = base?.shows.orEmpty() + recs.items.filter { !it.isMovie },
             movies = base?.movies.orEmpty() + recs.items.filter { it.isMovie },
+            upcomingShows = base?.upcoming.orEmpty(),
             likedRecs = recs.liked,
             dislikedRecs = recs.disliked,
             followed = followed,

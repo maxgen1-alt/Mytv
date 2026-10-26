@@ -32,8 +32,16 @@ class AngGuideTest {
         movies: List<AngItem> = emptyList(),
         likedRecs: Map<String, Int> = emptyMap(),
         dislikedRecs: Map<String, Int> = emptyMap(),
+        upcomingShows: List<AngItem> = emptyList(),
         available: (String?) -> Boolean = { WhereToWatch.servicesFor(it).isNotEmpty() },
-    ) = AngGuideBuilder.build(today, AngInputs(curated, ratings, followed, shows, movies, likedRecs, dislikedRecs), available)
+    ) = AngGuideBuilder.build(
+        today,
+        AngInputs(
+            curated = curated, ratings = ratings, followed = followed, shows = shows, movies = movies,
+            upcomingShows = upcomingShows, likedRecs = likedRecs, dislikedRecs = dislikedRecs,
+        ),
+        available,
+    )
 
     private fun cand(id: Long, title: String, service: String = "Netflix", pop: Double = 10.0, date: LocalDate? = today.minusMonths(2), movie: Boolean = false) =
         AngItem(AngDiscovery.key(id, movie), title, "", null, service, date, null, pop, id, movie, 7.0)
@@ -146,6 +154,24 @@ class AngGuideTest {
             dislikedRecs = mapOf(c.key to 2),
         )
         assertEquals(listOf("Like Her Fave", "Popular", "Like Her Hated"), g.missed.map { it.title })
+    }
+
+    @Test
+    fun comingSoonAddsNewShowsOfHerKind() {
+        val sh = show(4, "Summer House", listOf(season(10, "2027-01-15")), type = "Reality", service = "Bravo")
+        val g = build(
+            curated = listOf(CuratedShow("Summer House", Follow.NEW_SEASONS) to sh),
+            upcomingShows = listOf(
+                cand(20, "New Dating Show", date = today.plusDays(10)),
+                cand(21, "Teen Romance Drama", service = "Prime Video", date = today.plusMonths(2)),
+                cand(22, "Not On Our Apps", service = "ITVX", date = today.plusDays(5)),
+                cand(23, "Nope", date = today.plusDays(20)),
+                cand(24, "Already Out", date = today.minusDays(1)),
+            ),
+            ratings = listOf(Rated("tmdb:tv:23", "Nope", Rating.WONT_WATCH, today)),
+        )
+        assertEquals(listOf("New Dating Show", "Teen Romance Drama", "Summer House"), g.upcoming.map { it.title })
+        assertEquals("New show · Netflix", g.upcoming.first().detail)
     }
 
     @Test
