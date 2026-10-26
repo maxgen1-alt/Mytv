@@ -171,10 +171,8 @@ class AngGuideTest {
             ),
             ratings = listOf(Rated("tmdb:tv:23", "Nope", Rating.WONT_WATCH, today)),
         )
-        // Shows on services you don't have still appear (it's news), labelled as such.
-        assertEquals(listOf("Not On Our Apps", "New Dating Show", "Teen Romance Drama", "Summer House"), g.upcoming.map { it.title })
-        assertEquals("New show · ITVX · not in your apps", g.upcoming.first().detail)
-        assertEquals("New show · Netflix", g.upcoming[1].detail)
+        assertEquals(listOf("New Dating Show", "Teen Romance Drama", "Summer House"), g.upcoming.map { it.title })
+        assertEquals("New show · Netflix", g.upcoming.first().detail)
     }
 
     @Test
@@ -198,11 +196,10 @@ class AngGuideTest {
     }
 
     @Test
-    fun comingSoonIncludesHerKindOnAnyServiceLabelled() {
+    fun comingSoonSkipsServicesYouDontHave() {
         val vow = cand(40, "Chris Harrison's The Vow", service = "Fox Nation", date = LocalDate.of(2026, 11, 11))
-        val g = build(upcomingShows = listOf(vow))
-        assertEquals(listOf("Chris Harrison's The Vow"), g.upcoming.map { it.title })
-        assertEquals("New show · Fox Nation · not in your apps", g.upcoming.single().detail)
+        val netflix = cand(41, "Netflix Love Show", service = "Netflix", date = LocalDate.of(2026, 11, 20))
+        assertEquals(listOf("Netflix Love Show"), build(upcomingShows = listOf(vow, netflix)).upcoming.map { it.title })
     }
 
     @Test

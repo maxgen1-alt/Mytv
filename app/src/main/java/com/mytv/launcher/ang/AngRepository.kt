@@ -161,7 +161,8 @@ class AngRepository(context: Context) {
                     }
                 }
             }
-            // Upcoming shows on any service, picked by name / description (new shows rarely have keywords yet).
+            // Upcoming shows picked by name / description (new shows rarely have keywords yet); the
+            // guide keeps only the ones on your apps, using the network looked up below.
             val anywhere = listOf("10764", "18|35").flatMap { genres ->
                 (1..2).map { page ->
                     async {

@@ -131,21 +131,16 @@ object AngGuideBuilder {
         shown += newShows.map { normalize(it.title) }
         val missed = shows.filter { (it.date == null || it.date.isBefore(yearAgo)) && normalize(it.title) !in shown }.take(ROW_SIZE)
         val movies = ranked(inputs.movies).take(ROW_SIZE)
-        // Coming soon also gets brand-new shows of her kind, best taste match first. Unlike the
-        // other rows these can be on any service: it's news, and she'll want to know.
+        // Coming soon also gets brand-new shows of her kind on your apps, best taste match first.
         upcoming += inputs.upcomingShows
-            .filter { it.date?.isAfter(today) == true && ratingOf(it.key, it.title)?.rating?.hides != true && normalize(it.title) !in shown }
+            .filter {
+                it.date?.isAfter(today) == true && isAvailable(it.service) &&
+                    ratingOf(it.key, it.title)?.rating?.hides != true && normalize(it.title) !in shown
+            }
             .distinctBy { it.key }
             .sortedByDescending { TasteRanker.score(it, inputs.likedRecs, inputs.dislikedRecs) }
             .take(15)
-            .map {
-                val where = when {
-                    it.service == null -> null
-                    isAvailable(it.service) -> it.service
-                    else -> "${it.service} · not in your apps"
-                }
-                it.copy(detail = listOfNotNull("New show", where).joinToString(" · "))
-            }
+            .map { it.copy(detail = listOfNotNull("New show", it.service).joinToString(" · ")) }
 
         return AngGuide(
             watchNow = watchNow.sortedByDescending { it.second ?: LocalDate.MIN }.map { it.first }.distinctBy { it.key },
