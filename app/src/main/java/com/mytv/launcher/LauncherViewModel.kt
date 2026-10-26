@@ -7,6 +7,11 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.mytv.launcher.ang.AngGuide
+import com.mytv.launcher.ang.AngGuideBuilder
+import com.mytv.launcher.ang.AngItem
+import com.mytv.launcher.ang.AngRepository
+import com.mytv.launcher.ang.WhereToWatch
 import com.mytv.launcher.apps.InstalledApps
 import com.mytv.launcher.apps.Search
 import com.mytv.launcher.apps.TvApp
@@ -39,7 +44,15 @@ sealed interface Screen {
     data class TeamPage(val teamKey: String) : Screen
     data object EditApps : Screen
     data object TraktLink : Screen
+    data object Ang : Screen
 }
+
+data class AngState(
+    val guide: AngGuide = AngGuide(),
+    val loading: Boolean = true,
+    /** Still scanning streaming premieres for new shows. */
+    val discovering: Boolean = false,
+)
 
 data class WatchState(
     val items: List<WatchItem> = emptyList(),
@@ -75,6 +88,11 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val trakt = TraktClient(app)
     private val watchNext = WatchNext(app)
     private val updater = Updater(app)
+    private val angRepo = AngRepository(app)
+
+    private val _ang = MutableStateFlow(AngState())
+    val ang = _ang.asStateFlow()
+    private var angJob: Job? = null
 
     /** A newer version is downloaded and needs one click to install. */
     private val _updateReady = MutableStateFlow(false)
@@ -118,6 +136,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         when (to) {
             is Screen.TeamPage -> Teams.byKey(to.teamKey)?.let(::loadTeam)
             Screen.TraktLink -> startTraktLink()
+            Screen.Ang -> loadAng()
             else -> Unit
         }
     }
@@ -132,6 +151,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         refreshApps()
         refreshWatching()
         checkForUpdates()
+        // Warm Ang's new-show scan in the background (cached for a day).
+        if (angJob?.isActive != true) angJob = viewModelScope.launch { angRepo.premieres() }
         liveJob?.cancel()
         liveJob = viewModelScope.launch {
             while (isActive) {
@@ -273,6 +294,31 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 loading = false,
             )
         }
+    }
+
+    // ---- Ang's guide ----
+
+    private fun loadAng() {
+        angJob?.cancel()
+        angJob = viewModelScope.launch {
+            _ang.update { it.copy(loading = true) }
+            val today = java.time.LocalDate.now()
+            val curated = angRepo.curatedShows()
+            // Show her shows straight away; new-show discovery can take ~30s when not cached.
+            _ang.update { AngState(AngGuideBuilder.build(today, curated, emptyList()), loading = false, discovering = true) }
+            val premieres = angRepo.premieres(today)
+            _ang.value = AngState(AngGuideBuilder.build(today, curated, premieres), loading = false, discovering = false)
+        }
+    }
+
+    /** Opens the show's streaming app if it's installed, else asks Google TV where it plays. */
+    fun openAngShow(item: AngItem) {
+        val apps = _allApps.value
+        val app = WhereToWatch.servicesFor(item.service).firstNotNullOfOrNull { service ->
+            apps.firstOrNull { service.matches(it.packageName, it.label) }
+        }
+        if (app != null && installed.launch(app.packageName)) return
+        if (!Search.open(context, item.title)) toast("Couldn't find where ${item.title} is playing")
     }
 
     // ---- Continue watching ----

@@ -9,6 +9,7 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mytv.launcher.sports.Teams
+import com.mytv.launcher.ui.AngScreen
 import com.mytv.launcher.ui.EditAppsScreen
 import com.mytv.launcher.ui.HomeScreen
 import com.mytv.launcher.ui.MyTvTheme
@@ -66,6 +67,7 @@ class MainActivity : ComponentActivity() {
                             onEditApps = { vm.navigate(Screen.EditApps) },
                             onTeam = vm::onTeamPressed,
                             onTeamPage = { vm.navigate(Screen.TeamPage(it.key)) },
+                            onAng = { vm.navigate(Screen.Ang) },
                             onWatchItem = vm::playWatchItem,
                             onAllowWatchNext = ::requestWatchNext,
                             onLinkTrakt = { vm.navigate(Screen.TraktLink) },
@@ -80,6 +82,10 @@ class MainActivity : ComponentActivity() {
                         val all by vm.allApps.collectAsStateWithLifecycle()
                         val hidden by vm.hidden.collectAsStateWithLifecycle()
                         EditAppsScreen(all, hidden, version = vm.versionName, onToggle = vm::setHidden)
+                    }
+                    Screen.Ang -> {
+                        val ang by vm.ang.collectAsStateWithLifecycle()
+                        AngScreen(ang, onShow = vm::openAngShow)
                     }
                     Screen.TraktLink -> {
                         val link by vm.link.collectAsStateWithLifecycle()

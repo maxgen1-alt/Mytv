@@ -77,6 +77,7 @@ fun HomeScreen(
     onEditApps: () -> Unit,
     onTeam: (Team) -> Unit,
     onTeamPage: (Team) -> Unit,
+    onAng: () -> Unit,
     onWatchItem: (WatchItem) -> Unit,
     onAllowWatchNext: () -> Unit,
     onLinkTrakt: () -> Unit,
@@ -133,6 +134,7 @@ fun HomeScreen(
                         onLongClick = { onTeamPage(team) },
                     )
                 }
+                item(key = "__ang") { AngTile(onAng) }
             }
 
             Spacer(Modifier.height(18.dp))
@@ -265,6 +267,19 @@ private fun TeamTile(team: Team, live: Game?, onClick: () -> Unit, onLongClick: 
                 color = Palette.Ink,
                 modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp),
             )
+        }
+    }
+}
+
+@Composable
+private fun AngTile(onClick: () -> Unit) {
+    FocusCard(onClick = onClick, modifier = Modifier.size(TileWidth, TileHeight)) {
+        Box(Modifier.fillMaxSize().background(AngPalette.Tile), contentAlignment = Alignment.Center) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Ang", fontSize = 30.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Spacer(Modifier.width(6.dp))
+                Text("♥", fontSize = 24.sp, color = AngPalette.Yellow)
+            }
         }
     }
 }

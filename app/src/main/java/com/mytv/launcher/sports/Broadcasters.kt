@@ -15,6 +15,7 @@ enum class Service(private val keywords: List<String>, private val exactLabels: 
     FOX(listOf("fox one", "fox sports", "com.foxsports", "com.fox.")),
     APPLE_TV(listOf("apple tv", "com.apple.atve")),
     NETFLIX(listOf("netflix")),
+    DISNEY(listOf("disney")),
     YOUTUBE_TV(listOf("youtube tv", "tvunplugged")),
     HULU(listOf("hulu")),
     SLING(listOf("sling")),
