@@ -27,25 +27,36 @@ class TopTenRepository(
 
     suspend fun load(): Map<TopTenService, List<TopTitle>> = coroutineScope {
         if (!isConfigured) return@coroutineScope emptyMap()
-        TopTenService.entries.map { service -> async { service to forService(service) } }
+        // What everyone's watching this week (all services), used to boost the ranking.
+        val trending = (1..3).map { page ->
+            async { get("/trending/all/week?language=en-US&page=$page")?.let(TmdbParser::parseTrending) }
+        }.awaitAll().filterNotNull().flatten()
+        TopTenService.entries.map { service -> async { service to forService(service, trending) } }
             .awaitAll()
             .filter { it.second.isNotEmpty() }
             .toMap()
     }
 
-    private suspend fun forService(service: TopTenService): List<TopTitle> = coroutineScope {
+    private suspend fun forService(service: TopTenService, trending: List<String>): List<TopTitle> = coroutineScope {
         val providers = service.tmdbProviders.joinToString("|")
         val common = "watch_region=US&with_watch_providers=$providers&with_watch_monetization_types=flatrate" +
             "&sort_by=popularity.desc&language=en-US&include_adult=false"
-        // Only shows that aired something lately, so long-finished series don't crowd the list.
-        val recent = LocalDate.now().minusDays(90)
+        val today = LocalDate.now()
+        // Shows with new episodes in the last month (new seasons, weekly shows)...
         val tv = (1..2).map { page ->
-            async { get("/discover/tv?$common&air_date.gte=$recent&page=$page")?.let { TmdbParser.parseDiscover(it, isMovie = false) } }
+            async {
+                get("/discover/tv?$common&air_date.gte=${today.minusDays(30)}&air_date.lte=${today.plusDays(1)}&page=$page")
+                    ?.let { TmdbParser.parseDiscover(it, isMovie = false) }
+            }
         }
-        val movies = async {
-            get("/discover/movie?$common&vote_count.gte=20&page=1")?.let { TmdbParser.parseDiscover(it, isMovie = true) }
+        // ...and movies from the last six months (originals, plus films just arrived from cinemas).
+        val movies = (1..2).map { page ->
+            async {
+                get("/discover/movie?$common&primary_release_date.gte=${today.minusDays(180)}&page=$page")
+                    ?.let { TmdbParser.parseDiscover(it, isMovie = true) }
+            }
         }
-        TmdbParser.topTen((tv.awaitAll() + movies.await()).filterNotNull())
+        TmdbParser.topTen((tv + movies).awaitAll().filterNotNull(), trending, today)
     }
 
     private suspend fun get(path: String): String? = withContext(Dispatchers.IO) {

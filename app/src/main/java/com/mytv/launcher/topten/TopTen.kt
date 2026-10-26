@@ -3,6 +3,8 @@ package com.mytv.launcher.topten
 import com.mytv.launcher.sports.Service
 import org.json.JSONArray
 import org.json.JSONObject
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 
 /** A streaming service that gets a Top 10 above its app tile. */
 enum class TopTenService(
@@ -33,7 +35,11 @@ data class TopTitle(
     val backdropUrl: String?,
     val isMovie: Boolean,
     val popularity: Double,
-)
+    /** First air date (shows) or release date (movies). */
+    val released: LocalDate? = null,
+) {
+    val key: String get() = (if (isMovie) "movie:" else "tv:") + id
+}
 
 object TmdbParser {
     private const val IMG = "https://image.tmdb.org/t/p/"
@@ -55,16 +61,48 @@ object TmdbParser {
                 backdropUrl = o.optStringOrNull("backdrop_path")?.let { IMG + "w1280" + it },
                 isMovie = isMovie,
                 popularity = o.optDouble("popularity", 0.0),
+                released = (if (isMovie) o.optStringOrNull("release_date") else o.optStringOrNull("first_air_date"))
+                    ?.let { runCatching { LocalDate.parse(it) }.getOrNull() },
             )
         }
     }
 
-    /** Shows and movies together, most popular first. */
-    fun topTen(lists: List<List<TopTitle>>): List<TopTitle> =
-        lists.flatten()
-            .distinctBy { (if (it.isMovie) "m" else "t") + it.id }
-            .sortedByDescending { it.popularity }
+    /** /trending/all/week → "tv:123" / "movie:456" keys in trending order. */
+    fun parseTrending(json: String): List<String> {
+        val results = JSONObject(json).optJSONArray("results") ?: return emptyList()
+        return (0 until results.length()).mapNotNull { i ->
+            val o = results.optJSONObject(i) ?: return@mapNotNull null
+            when (o.optString("media_type")) {
+                "movie" -> "movie:" + o.optLong("id")
+                "tv" -> "tv:" + o.optLong("id")
+                else -> null
+            }
+        }
+    }
+
+    /**
+     * Real Top 10s are mostly brand-new, buzzy releases, so rank by
+     * popularity boosted by (a) being in TMDB's trending-this-week list,
+     * higher = bigger boost, and (b) being released in the last few weeks.
+     */
+    fun topTen(lists: List<List<TopTitle>>, trending: List<String> = emptyList(), today: LocalDate = LocalDate.now()): List<TopTitle> {
+        val trendRank = trending.withIndex().associate { (i, k) -> k to i }
+        fun score(t: TopTitle): Double {
+            val trend = trendRank[t.key]?.let { 4.0 - 2.5 * it / trending.size.coerceAtLeast(1) } ?: 1.0
+            val age = t.released?.let { ChronoUnit.DAYS.between(it, today) }
+            val fresh = when {
+                age == null || age < 0 -> 1.0
+                age <= 14 -> 2.0
+                age <= 45 -> 1.5
+                else -> 1.0
+            }
+            return t.popularity * trend * fresh
+        }
+        return lists.flatten()
+            .distinctBy { it.key }
+            .sortedByDescending(::score)
             .take(10)
+    }
 
     private fun JSONArray?.ints(): List<Int> = if (this == null) emptyList() else (0 until length()).map { optInt(it) }
 

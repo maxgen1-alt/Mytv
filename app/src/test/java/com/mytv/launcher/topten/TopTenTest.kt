@@ -25,6 +25,20 @@ class TopTenTest {
     }
 
     @Test
+    fun newAndTrendingBeatsOldPopular() {
+        val today = java.time.LocalDate.of(2026, 10, 26)
+        val old = TopTitle(1, "Old Hit", null, null, isMovie = false, popularity = 300.0, released = today.minusYears(8))
+        val fresh = TopTitle(2, "New Drop", null, null, isMovie = false, popularity = 120.0, released = today.minusDays(5))
+        val trendy = TopTitle(3, "Buzzy Movie", null, null, isMovie = true, popularity = 90.0, released = today.minusDays(60))
+        val trending = TmdbParser.parseTrending(
+            """{"results":[{"id":3,"media_type":"movie"},{"id":2,"media_type":"tv"},{"id":9,"media_type":"person"}]}""",
+        )
+        assertEquals(listOf("movie:3", "tv:2"), trending)
+        val top = TmdbParser.topTen(listOf(listOf(old, fresh, trendy)), trending, today)
+        assertEquals(listOf("New Drop", "Buzzy Movie", "Old Hit"), top.map { it.title })
+    }
+
+    @Test
     fun mapsAppsToServices() {
         assertEquals(TopTenService.NETFLIX, TopTenService.forApp("com.netflix.ninja", "Netflix"))
         assertEquals(TopTenService.DISNEY, TopTenService.forApp("com.disney.disneyplus", "Disney+"))
