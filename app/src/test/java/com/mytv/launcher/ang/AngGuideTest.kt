@@ -249,6 +249,20 @@ class AngGuideTest {
     }
 
     @Test
+    fun watchingMovesShowsOutOfWatchNow() {
+        val k = show(3, "The Kardashians", listOf(season(1, "2022-04-14")), type = "Reality", service = "Hulu")
+        val sp = show(7, "Sterling Point", listOf(season(2, "2026-10-20")))
+        val g = build(
+            curated = listOf(CuratedShow("The Kardashians", Follow.ALWAYS) to k, CuratedShow("Sterling Point", Follow.NEW_SEASONS) to sp),
+            ratings = listOf(
+                Rated("tvmaze:3", "The Kardashians", Rating.WATCHING, today),
+                Rated("tvmaze:7", "Sterling Point", Rating.WATCHING, today),
+            ),
+        )
+        assertTrue(g.watchNow.isEmpty())
+    }
+
+    @Test
     fun likedSuggestionGetsHeartBadge() {
         val g = build(shows = listOf(cand(1, "Fave")), ratings = listOf(Rated("tmdb:tv:1", "Fave", Rating.LIKE, today, 1)))
         assertEquals("♥ Liked", g.newShows.single().badge)

@@ -64,9 +64,12 @@ object MyGuideBuilder {
         val newSeasons = mutableListOf<AngItem>()
         val comingSoon = mutableListOf<AngItem>()
         for (f in followed) {
-            val since = ratings.firstOrNull { it.key == f.item.key }?.date
+            val rated = ratings.firstOrNull { it.key == f.item.key }
+            val since = rated?.date
             f.latestSeason?.let { (n, date) ->
-                val fresh = ChronoUnit.DAYS.between(date, today) in 0..60 && (since == null || date.isAfter(since))
+                // Ones you're watching are in Continue Watching instead.
+                val fresh = rated?.rating != Rating.WATCHING &&
+                    ChronoUnit.DAYS.between(date, today) in 0..60 && (since == null || date.isAfter(since))
                 if (fresh) newSeasons += f.item.copy(detail = seasonDetail(n, f.item.service), date = date, badge = "New season")
             }
             f.nextSeason?.let { (n, date) ->

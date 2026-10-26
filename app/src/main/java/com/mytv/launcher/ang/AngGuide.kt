@@ -99,7 +99,9 @@ object AngGuideBuilder {
             }
             val caughtUp = listOfNotNull(spec.caughtUpAsOf, rating?.takeIf { it.rating == Rating.WATCHED }?.date).maxOrNull()
             val isNew = latest?.let { isNewSince(it.second, caughtUp, today) } == true
-            if (spec.follow == Follow.ALWAYS || isNew) {
+            // Shows she's watching live in Continue watching, not here.
+            val watching = rating?.rating == Rating.WATCHING
+            if (!watching && (spec.follow == Follow.ALWAYS || isNew)) {
                 watchNow += curatedItem(show, service, latest?.first, latest?.second, if (isNew) newLabel(latest!!.first) else null) to latest?.second
             }
             next?.let { (season, date) -> upcoming += curatedItem(show, service, season, date, newLabel(season)) }
@@ -123,7 +125,7 @@ object AngGuideBuilder {
                 badge = "New season",
             )
             if (day.isAfter(today)) upcoming += item
-            else if (isNewSince(day, listOfNotNull(spec.caughtUpAsOf, r?.takeIf { it.rating == Rating.WATCHED }?.date).maxOrNull(), today)) {
+            else if (r?.rating != Rating.WATCHING && isNewSince(day, listOfNotNull(spec.caughtUpAsOf, r?.takeIf { it.rating == Rating.WATCHED }?.date).maxOrNull(), today)) {
                 watchNow += item to day
             }
             shown += normalize(spec.query)
@@ -133,9 +135,10 @@ object AngGuideBuilder {
         for (f in inputs.followed) {
             val title = normalize(f.item.title)
             if (title in shown) continue
-            val likedOn = ratingOf(f.item.key, f.item.title)?.date
+            val rated = ratingOf(f.item.key, f.item.title)
+            val likedOn = rated?.date
             f.latestSeason?.let { (n, date) ->
-                if (isNewSince(date, likedOn, today)) {
+                if (rated?.rating != Rating.WATCHING && isNewSince(date, likedOn, today)) {
                     watchNow += f.item.copy(detail = seasonDetail(n, f.item.service), date = date, badge = newLabel(n)) to date
                 }
             }
