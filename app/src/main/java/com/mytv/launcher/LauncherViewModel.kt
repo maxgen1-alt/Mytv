@@ -658,12 +658,22 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         )
     }
 
-    /** The TV's Continue Watching, narrowed to her kind of shows. */
+    /**
+     * Continue Watching, narrowed to her: shows on her list (liked, watching,
+     * watch later, watched), her guide's shows, or her kind of show.
+     * Anything she disliked or won't watch never shows.
+     */
     private suspend fun herContinueWatching(): List<WatchItem> {
         val g = _ang.value.guide
-        val titles = (angInputs.curated.map { it.second.name } +
+        val ratings = taste.all()
+        val norm = AngGuideBuilder::normalize
+        val no = ratings.filter { it.rating == com.mytv.launcher.ang.Rating.DISLIKE || it.rating == com.mytv.launcher.ang.Rating.WONT_WATCH }
+            .map { norm(it.title) }.toSet()
+        val titles = (ratings.filter { norm(it.title) !in no }.map { it.title } +
+            angInputs.curated.map { it.second.name } +
             (g.watchNow + g.easyWatch + g.newShows + g.missed + g.movies + g.upcoming).map { it.title }).toSet()
-        return watchNext.load().filter { angRepo.isHers(it.title, titles) }
+        val items = _watching.value.items.ifEmpty { watchNext.load() }
+        return items.filter { norm(it.title) !in no && angRepo.isHers(it.title, titles) }
     }
 
     /** Hold select → Like / Already watched / Dislike / Won't watch (null clears it). */
@@ -737,9 +747,9 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             }
             val local = async { watchNext.load() }
             val remote = async { if (trakt.isConfigured && trakt.isLinked) trakt.continueWatching() else emptyList() }
-            val fromApps = local.await()
+            val fromApps = local.await().filter { it.packageName == null || com.mytv.launcher.watching.NowPlaying.shouldTrack(it.packageName) }
             val noted = com.mytv.launcher.watching.PlayHistory.entries(context).value
-            val tracked = noted.mapNotNull(::notedItem)
+            val tracked = noted.filter { com.mytv.launcher.watching.NowPlaying.shouldTrack(it.packageName) }.mapNotNull(::notedItem)
             val seen = HashSet<String>()
             val merged = (fromApps + tracked + remote.await()).filter { seen.add(it.title.lowercase()) }
                 .sortedByDescending { it.lastWatchedMillis }
@@ -765,6 +775,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 traktConfigured = trakt.isConfigured,
                 traktLinked = trakt.isLinked,
             )
+            val hers = herContinueWatching()
+            _ang.update { it.copy(continueWatching = hers) }
         }
     }
 

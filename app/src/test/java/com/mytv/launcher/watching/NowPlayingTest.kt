@@ -46,6 +46,7 @@ class NowPlayingTest {
     @Test fun filters() {
         assertFalse(NowPlaying.shouldTrack("com.google.android.youtube.tv"))
         assertFalse(NowPlaying.shouldTrack("com.spotify.tv.android"))
+        assertFalse(NowPlaying.shouldTrack("com.dazn"))
         assertTrue(NowPlaying.shouldTrack("com.netflix.ninja"))
         assertTrue(NowPlaying.tooShort(90_000))
         assertFalse(NowPlaying.tooShort(0))

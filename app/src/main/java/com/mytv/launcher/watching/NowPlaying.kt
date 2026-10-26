@@ -12,9 +12,9 @@ object NowPlaying {
     private val sxe = Regex("""\bS(?:eason)?\s*(\d{1,2})\s*[:·,.\- ]*\s*E(?:p(?:isode)?)?\.?\s*(\d{1,3})\b""", RegexOption.IGNORE_CASE)
     private val seasonEpisode = Regex("""\bSeason\s+(\d{1,2})\D{1,6}Episode\s+(\d{1,3})\b""", RegexOption.IGNORE_CASE)
 
-    /** Apps we never note: music, short videos, us. */
+    /** Apps we never note: music, short videos, sports, us. */
     private val skip = listOf(
-        "com.mytv.launcher", "youtube", "spotify", "music", "pandora", "audible", "soundcloud", "tidal", "deezer",
+        "com.mytv.launcher", "youtube", "dazn", "spotify", "music", "pandora", "audible", "soundcloud", "tidal", "deezer",
         "podcast", "com.google.android.katniss", "com.google.android.tvlauncher", "com.google.android.apps.tv.launcherx",
     )
 
