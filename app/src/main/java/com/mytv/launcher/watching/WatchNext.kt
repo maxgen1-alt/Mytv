@@ -21,11 +21,17 @@ class WatchNext(private val context: Context) {
         context.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED
     }
 
+    /** False if the last read was refused or failed (for the status line on the apps screen). */
+    @Volatile var lastReadOk: Boolean = true
+        private set
+
     suspend fun load(): List<WatchItem> = withContext(Dispatchers.IO) {
         if (!hasPermission()) return@withContext emptyList()
         val cursor = runCatching {
             context.contentResolver.query(CONTENT_URI, null, null, null, null)
-        }.getOrNull() ?: return@withContext emptyList()
+        }.getOrNull()
+        lastReadOk = cursor != null
+        if (cursor == null) return@withContext emptyList()
 
         val pm = context.packageManager
         val labels = HashMap<String, String>()

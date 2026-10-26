@@ -92,6 +92,8 @@ data class MyState(
 }
 
 data class WatchState(
+    /** Why Continue Watching shows what it shows (on the apps screen). */
+    val status: String = "",
     val items: List<WatchItem> = emptyList(),
     val loading: Boolean = true,
     /** Watch Next needs the TV listings permission and we don't have it yet. */
@@ -731,6 +733,13 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 .sortedByDescending { it.lastWatchedMillis }
                 .take(25)
             _watching.value = WatchState(
+                status = when {
+                    !watchNext.hasPermission() -> "Continue Watching: no access yet. Select \"Allow access\"."
+                    !watchNext.lastReadOk -> "Continue Watching: this TV refused access to its list."
+                    fromApps.isEmpty() -> "Continue Watching: access OK, but no app has shared anything in progress with the TV."
+                    else -> "Continue Watching: ${fromApps.size} in progress from " +
+                        fromApps.map { it.source }.distinct().joinToString(", ")
+                },
                 items = merged,
                 loading = false,
                 needsPermission = !watchNext.hasPermission(),

@@ -96,12 +96,16 @@ class MainActivity : ComponentActivity() {
                         val all by vm.allApps.collectAsStateWithLifecycle()
                         val hidden by vm.hidden.collectAsStateWithLifecycle()
                         val updateStatus by vm.updateStatus.collectAsStateWithLifecycle()
+                        val watchState by vm.watching.collectAsStateWithLifecycle()
                         EditAppsScreen(
                             all,
                             hidden,
                             version = vm.versionName,
                             updateStatus = updateStatus,
                             onCheckUpdates = vm::checkForUpdatesNow,
+                            watchStatus = watchState.status,
+                            needsWatchAccess = watchState.needsPermission,
+                            onAllowWatchAccess = ::requestWatchNext,
                             onToggle = vm::setHidden,
                         )
                     }

@@ -47,6 +47,9 @@ fun EditAppsScreen(
     version: String,
     updateStatus: String,
     onCheckUpdates: () -> Unit,
+    watchStatus: String,
+    needsWatchAccess: Boolean,
+    onAllowWatchAccess: () -> Unit,
     onToggle: (TvApp, Boolean) -> Unit,
 ) {
     val first = remember { FocusRequester() }
@@ -68,6 +71,16 @@ fun EditAppsScreen(
             fontSize = 14.sp,
             color = Palette.InkSoft,
         )
+        if (watchStatus.isNotBlank()) {
+            Spacer(Modifier.height(10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(watchStatus, fontSize = 14.sp, color = Palette.Ink)
+                if (needsWatchAccess) {
+                    Spacer(Modifier.width(14.dp))
+                    Button(onClick = onAllowWatchAccess) { Text("Allow access") }
+                }
+            }
+        }
         Spacer(Modifier.height(20.dp))
         LazyVerticalGrid(
             columns = GridCells.Adaptive(150.dp),
