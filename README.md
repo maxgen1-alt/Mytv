@@ -8,6 +8,7 @@ A clean, Apple TV-style launcher on a black-to-graphite gradient:
 | **1. Apps** | Every streaming app installed on the Chromecast, shown with its TV banner. Long-press an app to move it left or right or hide it. The **+ Apps** tile at the end shows or hides apps. |
 | **2. Teams** | **Arsenal** and **Lakers** buttons. When a game is on, the button shows a red **LIVE** badge and the score. Pressing it opens the game in the app that's carrying it. If there's no game, you get a page with upcoming games, recent results and the league table or conference standings. Long-press always opens that page. |
 | **3. Continue Watching** | Shows and movies you're in the middle of in any app, most recent first, with progress bars. Select one to resume it in its app. |
+| **4. Popular on Your Apps** | The Top 10s of the streaming apps you have installed, merged into one ranking: the hottest titles across all of them. Each poster shows which app it's on; select it to open that app. |
 
 A clock and a ⚙ settings button sit in the top-right.
 

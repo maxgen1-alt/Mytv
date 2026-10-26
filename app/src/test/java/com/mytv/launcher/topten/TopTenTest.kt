@@ -39,6 +39,20 @@ class TopTenTest {
     }
 
     @Test
+    fun mergesAcrossServices() {
+        fun t(id: Long, score: Double) = TopTitle(id, "T$id", null, null, isMovie = false, popularity = 0.0, score = score)
+        val merged = TmdbParser.acrossServices(
+            mapOf(
+                TopTenService.NETFLIX to listOf(t(1, 50.0), t(2, 10.0)),
+                TopTenService.HULU to listOf(t(3, 30.0), t(2, 40.0)),
+            ),
+        )
+        assertEquals(listOf(1L, 2L, 3L), merged.map { it.second.id })
+        // Title 2 is on both; it's listed under Hulu, where it scores higher.
+        assertEquals(TopTenService.HULU, merged[1].first)
+    }
+
+    @Test
     fun mapsAppsToServices() {
         assertEquals(TopTenService.NETFLIX, TopTenService.forApp("com.netflix.ninja", "Netflix"))
         assertEquals(TopTenService.DISNEY, TopTenService.forApp("com.disney.disneyplus", "Disney+"))

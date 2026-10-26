@@ -37,6 +37,8 @@ data class TopTitle(
     val popularity: Double,
     /** First air date (shows) or release date (movies). */
     val released: LocalDate? = null,
+    /** Ranking score (popularity x trending x freshness), set by [TmdbParser.topTen]. */
+    val score: Double = 0.0,
 ) {
     val key: String get() = (if (isMovie) "movie:" else "tv:") + id
 }
@@ -100,9 +102,21 @@ object TmdbParser {
         }
         return lists.flatten()
             .distinctBy { it.key }
-            .sortedByDescending(::score)
+            .map { it.copy(score = score(it)) }
+            .sortedByDescending { it.score }
             .take(10)
     }
+
+    /**
+     * "Popular across your apps": every service's Top 10 merged into one
+     * ranking. A title on several services is listed once, under the
+     * service where it ranks best.
+     */
+    fun acrossServices(lists: Map<TopTenService, List<TopTitle>>, limit: Int = 20): List<Pair<TopTenService, TopTitle>> =
+        lists.flatMap { (service, titles) -> titles.map { service to it } }
+            .sortedByDescending { it.second.score }
+            .distinctBy { it.second.key }
+            .take(limit)
 
     private fun JSONArray?.ints(): List<Int> = if (this == null) emptyList() else (0 until length()).map { optInt(it) }
 

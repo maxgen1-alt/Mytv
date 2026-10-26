@@ -55,6 +55,7 @@ class MainActivity : ComponentActivity() {
                         val busy by vm.busy.collectAsStateWithLifecycle()
                         val updateReady by vm.updateReady.collectAsStateWithLifecycle()
                         val topTen by vm.topTen.collectAsStateWithLifecycle()
+                        val popular by vm.popular.collectAsStateWithLifecycle()
                         HomeScreen(
                             apps = apps,
                             liveGames = live,
@@ -62,6 +63,8 @@ class MainActivity : ComponentActivity() {
                             busy = busy,
                             updateReady = updateReady,
                             topTen = topTen,
+                            popular = popular,
+                            onPopular = vm::openPopular,
                             topTenConfigured = vm.topTenConfigured,
                             onUpdate = vm::installUpdate,
                             onApp = vm::launchApp,

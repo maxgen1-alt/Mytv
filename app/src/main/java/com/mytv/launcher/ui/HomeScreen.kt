@@ -75,6 +75,8 @@ fun HomeScreen(
     busy: String?,
     updateReady: Boolean,
     topTen: Map<TopTenService, List<TopTitle>>,
+    popular: List<Pair<TopTenService, TopTitle>>,
+    onPopular: (TopTenService, TopTitle) -> Unit,
     topTenConfigured: Boolean,
     onUpdate: () -> Unit,
     onApp: (TvApp) -> Unit,
@@ -168,6 +170,22 @@ fun HomeScreen(
             // Row 3: continue watching
             SectionTitle("Continue Watching", Modifier.padding(start = 48.dp))
             ContinueWatchingRow(watching, onWatchItem, onAllowWatchNext, onLinkTrakt)
+
+            // Row 4: what's hot across the apps you have
+            if (popular.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                SectionTitle("Popular on Your Apps", Modifier.padding(start = 48.dp))
+                LazyRow(
+                    contentPadding = RowPadding,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.height(250.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    items(popular, key = { it.second.key }) { (service, title) ->
+                        PopularCard(service, title, onClick = { onPopular(service, title) })
+                    }
+                }
+            }
         }
 
         if (busy != null) BusyOverlay(busy)
@@ -402,6 +420,23 @@ private fun TraktTile(onClick: () -> Unit) {
         FocusCard(onClick = onClick, container = Palette.CardSoft, modifier = Modifier.size(TileHeight, 130.dp)) {
             Text("Trakt", fontSize = 13.sp, color = Palette.InkSoft, modifier = Modifier.align(Alignment.Center))
         }
+    }
+}
+
+@Composable
+private fun PopularCard(service: TopTenService, title: TopTitle, onClick: () -> Unit) {
+    Column(Modifier.width(126.dp).padding(top = 8.dp)) {
+        FocusCard(onClick = onClick, modifier = Modifier.size(126.dp, 189.dp)) {
+            AsyncImage(
+                model = title.posterUrl,
+                contentDescription = title.title,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(title.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Palette.Ink)
+        Text(service.displayName, fontSize = 11.sp, maxLines = 1, color = Palette.InkSoft)
     }
 }
 

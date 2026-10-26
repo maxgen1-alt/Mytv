@@ -40,6 +40,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -102,6 +103,22 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val _topTen = MutableStateFlow<Map<TopTenService, List<TopTitle>>>(emptyMap())
     val topTen = _topTen.asStateFlow()
     val topTenConfigured: Boolean get() = topTenRepo.isConfigured
+
+    /** Bottom row: the Top 10s of the services you have installed, merged into one ranking. */
+    // Lazy: it reads _allApps, which is declared further down.
+    val popular: StateFlow<List<Pair<TopTenService, TopTitle>>> by lazy {
+        kotlinx.coroutines.flow.combine(_topTen, _allApps) { lists, apps ->
+            val installedServices = TopTenService.entries.filter { s -> apps.any { s.app.matches(it.packageName, it.label) } }.toSet()
+            com.mytv.launcher.topten.TmdbParser.acrossServices(lists.filterKeys { it in installedServices })
+        }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, emptyList())
+    }
+
+    /** Opens the app a popular title is on. */
+    fun openPopular(service: TopTenService, title: TopTitle) {
+        val app = _allApps.value.firstOrNull { service.app.matches(it.packageName, it.label) }
+        if (app != null && installed.launch(app.packageName)) return
+        if (!Search.open(context, title.title)) toast("Couldn't open ${service.displayName}")
+    }
     private var topTenLoadedAt = 0L
 
     private val _ang = MutableStateFlow(AngState())
