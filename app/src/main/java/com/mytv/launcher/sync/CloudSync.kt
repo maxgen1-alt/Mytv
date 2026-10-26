@@ -84,6 +84,10 @@ object CloudSync {
     private fun request(path: String) = Request.Builder()
         .url(url + path)
         .header("apikey", key)
-        .header("Authorization", "Bearer $key")
         .header("x-household", household)
+        .apply {
+            // Older "anon" keys are JWTs and also go in Authorization; new
+            // sb_publishable_ keys must only be sent as apikey.
+            if (key.startsWith("eyJ")) header("Authorization", "Bearer $key")
+        }
 }
