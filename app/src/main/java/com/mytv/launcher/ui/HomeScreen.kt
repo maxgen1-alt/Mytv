@@ -48,6 +48,7 @@ import androidx.tv.material3.Button
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
+import com.mytv.launcher.MANUAL_PREFIX
 import com.mytv.launcher.WatchState
 import com.mytv.launcher.ang.AngItem
 import com.mytv.launcher.ang.Rating
@@ -76,6 +77,8 @@ fun HomeScreen(
     popular: List<AngItem>,
     forYou: List<AngItem>,
     myRatings: Map<String, Rating>,
+    /** Continue Watching key → the "Watching now" title it came from. */
+    watchingNow: Map<String, AngItem>,
     onOpenTitle: (AngItem) -> Unit,
     onRateTitle: (AngItem, Rating?) -> Unit,
     onWatchlist: () -> Unit,
@@ -153,7 +156,7 @@ fun HomeScreen(
 
             // Row 3: continue watching
             SectionTitle("Continue Watching", Modifier.padding(start = 48.dp))
-            ContinueWatchingRow(watching, onWatchItem, onAllowWatchNext, onLinkTrakt)
+            ContinueWatchingRow(watching, onWatchItem, onAllowWatchNext, onLinkTrakt) { wi -> watchingNow[wi.key]?.let { rateFor = it } }
 
             // Row 4: what's hot across the apps you have. Row 5: picked from what you watched.
             TitleRow("Popular on Your Apps", popular, onOpenTitle) { rateFor = it }
@@ -317,6 +320,7 @@ private fun ContinueWatchingRow(
     onItem: (WatchItem) -> Unit,
     onAllow: () -> Unit,
     onLink: () -> Unit,
+    onHold: (WatchItem) -> Unit,
 ) {
     if (state.items.isEmpty()) {
         when {
@@ -330,7 +334,10 @@ private fun ContinueWatchingRow(
         modifier = Modifier.height(190.dp),
         verticalAlignment = Alignment.Top,
     ) {
-        items(state.items, key = { it.key }) { item -> WatchCard(item, onClick = { onItem(item) }) }
+        items(state.items, key = { it.key }) { item ->
+            // Cards you added with "Watching now" can be changed with hold select.
+            WatchCard(item, onClick = { onItem(item) }, onLongClick = if (item.key.startsWith(MANUAL_PREFIX)) ({ onHold(item) }) else null)
+        }
         if (state.needsPermission) {
             item(key = "__allow") {
                 SetupTile("Turn on Continue Watching", "Show what you're in the middle of in every app.", onAllow)
@@ -359,9 +366,9 @@ private fun SetupTile(title: String, body: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun WatchCard(item: WatchItem, onClick: () -> Unit) {
+private fun WatchCard(item: WatchItem, onClick: () -> Unit, onLongClick: (() -> Unit)? = null) {
     Column(Modifier.width(232.dp).padding(top = 8.dp)) {
-        FocusCard(onClick = onClick, modifier = Modifier.size(232.dp, 130.dp)) {
+        FocusCard(onClick = onClick, onLongClick = onLongClick, modifier = Modifier.size(232.dp, 130.dp)) {
             if (item.imageUrl != null) {
                 AsyncImage(
                     model = item.imageUrl,

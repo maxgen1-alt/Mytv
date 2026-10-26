@@ -85,6 +85,7 @@ The **★ My Watchlist** button sits next to Ang's. It has four tabs:
 
 | Tab | What's in it |
 | --- | --- |
+| **Watching** | What you marked "Watching now". These are also in your Continue Watching row. |
 | **Watched** | Everything you marked "Already watched" or "Like it" (hold select on any title on the home screen) |
 | **For You** | Recommendations from those, with IMDb ratings on every poster, mixed across genres |
 | **New Seasons** | New seasons, out now, of shows you watched or liked |

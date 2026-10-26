@@ -6,6 +6,8 @@ import kotlin.math.ln
 /** What she said about a show or movie (hold select → menu). */
 enum class Rating(val label: String) {
     LIKE("Liked"),
+    /** In progress: shows up in Continue Watching. */
+    WATCHING("Watching now"),
     WATCHED("Already watched"),
     DISLIKE("Disliked"),
     WONT_WATCH("Won't watch"),

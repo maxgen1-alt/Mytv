@@ -66,6 +66,8 @@ data class AngState(
     val discovering: Boolean = false,
     /** key → what she said about it (for the hold-select menu). */
     val ratings: Map<String, com.mytv.launcher.ang.Rating> = emptyMap(),
+    /** Titles she marked "Watching now" (shown in her Continue watching). */
+    val watchingNow: List<AngItem> = emptyList(),
 )
 
 /** Your ratings and lists. */
@@ -107,6 +109,9 @@ sealed interface LinkState {
     data class Failed(val message: String) : LinkState
 }
 
+/** Continue Watching cards that came from "Watching now" (hold select to change them). */
+const val MANUAL_PREFIX = "manual:"
+
 class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     private val context get() = getApplication<Application>()
@@ -123,8 +128,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val taste = com.mytv.launcher.ang.TasteStore(app)
     private val angTaste = com.mytv.launcher.ang.TasteRepository(
         app, strict = true,
-        positive = mapOf(com.mytv.launcher.ang.Rating.LIKE to 1),
-        follow = setOf(com.mytv.launcher.ang.Rating.LIKE),
+        positive = mapOf(com.mytv.launcher.ang.Rating.LIKE to 1, com.mytv.launcher.ang.Rating.WATCHING to 1),
+        follow = setOf(com.mytv.launcher.ang.Rating.LIKE, com.mytv.launcher.ang.Rating.WATCHING),
     )
 
     // ---- Your own taste (Popular row, Shows for you, My Watchlist) ----
@@ -132,8 +137,16 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val myTaste = com.mytv.launcher.ang.TasteRepository(
         app, strict = false,
         // "Already watched" is your main signal; a like counts double.
-        positive = mapOf(com.mytv.launcher.ang.Rating.LIKE to 2, com.mytv.launcher.ang.Rating.WATCHED to 1),
-        follow = setOf(com.mytv.launcher.ang.Rating.LIKE, com.mytv.launcher.ang.Rating.WATCHED),
+        positive = mapOf(
+            com.mytv.launcher.ang.Rating.LIKE to 2,
+            com.mytv.launcher.ang.Rating.WATCHING to 2,
+            com.mytv.launcher.ang.Rating.WATCHED to 1,
+        ),
+        follow = setOf(
+            com.mytv.launcher.ang.Rating.LIKE,
+            com.mytv.launcher.ang.Rating.WATCHING,
+            com.mytv.launcher.ang.Rating.WATCHED,
+        ),
         maxCandidates = 40,
     )
     private val _my = MutableStateFlow(MyState())
@@ -475,6 +488,31 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     /** Opens a title's streaming app if you have it, else asks Google TV where it plays. */
     fun openTitle(item: AngItem) = openAngShow(item)
 
+    /**
+     * Continue Watching = what the TV knows you're in the middle of, plus what
+     * you marked "Watching now" (unless the TV already lists it).
+     */
+    fun withWatchingNow(fromTv: List<WatchItem>, watchingNow: List<AngItem>): List<WatchItem> {
+        val tvTitles = fromTv.map { AngGuideBuilder.normalize(it.title) }.toSet()
+        val manual = watchingNow.filter { AngGuideBuilder.normalize(it.title) !in tvTitles }.map { i ->
+            val app = WhereToWatch.servicesFor(i.service).firstNotNullOfOrNull { s ->
+                _allApps.value.firstOrNull { s.matches(it.packageName, it.label) }
+            }
+            WatchItem(
+                key = MANUAL_PREFIX + i.key,
+                title = i.title,
+                subtitle = listOfNotNull("Watching", i.service).joinToString(" · "),
+                imageUrl = i.imageUrl,
+                progress = null,
+                lastWatchedMillis = i.date?.atStartOfDay(java.time.ZoneId.systemDefault())?.toInstant()?.toEpochMilli() ?: 0L,
+                searchQuery = i.title,
+                source = i.service.orEmpty(),
+                packageName = app?.packageName,
+            )
+        }
+        return (fromTv + manual).sortedByDescending { it.lastWatchedMillis }
+    }
+
     // ---- Ang's guide ----
 
     private var angInputs = com.mytv.launcher.ang.AngInputs()
@@ -504,6 +542,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             it.copy(
                 guide = guide,
                 ratings = ratings.associate { r -> r.key to r.rating },
+                watchingNow = ratings.filter { r -> r.rating == com.mytv.launcher.ang.Rating.WATCHING }
+                    .sortedByDescending { r -> r.date }.map { r -> r.toItem().copy(date = r.date) },
                 loading = loading ?: it.loading,
                 discovering = discovering ?: it.discovering,
             )

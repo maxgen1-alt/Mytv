@@ -57,6 +57,7 @@ fun TasteMenu(
             current?.let { Text("Currently: ${it.label}", fontSize = 12.sp, color = accent) }
             Spacer(Modifier.height(4.dp))
             MenuButton("♥  Like it", likeHint, accent, Modifier.focusRequester(first)) { onPick(Rating.LIKE) }
+            MenuButton("▶  Watching now", "Add it to Continue Watching", plain) { onPick(Rating.WATCHING) }
             MenuButton("✓  Already watched", watchedHint, plain) { onPick(Rating.WATCHED) }
             MenuButton("✕  Dislike", "Hide it, and less like this", plain) { onPick(Rating.DISLIKE) }
             MenuButton("Won't watch", "Just hide it", plain) { onPick(Rating.WONT_WATCH) }

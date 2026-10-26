@@ -40,6 +40,21 @@ class MyGuideTest {
     }
 
     @Test
+    fun watchingNowIsItsOwnListAndNotRecommended() {
+        val g = build(
+            ratings = listOf(
+                Rated("tmdb:tv:7", "In Progress", Rating.WATCHING, today.minusDays(1), 7, false, null, "Hulu"),
+                Rated("tmdb:tv:8", "Done", Rating.WATCHED, today),
+            ),
+            recs = listOf(item(7, "In Progress"), item(9, "Fresh")),
+        )
+        assertEquals(listOf("In Progress"), g.watching.map { it.title })
+        assertEquals(today.minusDays(1), g.watching.single().date)
+        assertEquals(listOf("Done"), g.watched.map { it.title })
+        assertEquals(listOf("Fresh"), g.forYou.map { it.title })
+    }
+
+    @Test
     fun forYouSkipsWhatYouRatedAndAppsYouDontHave() {
         val g = build(
             ratings = listOf(Rated("tmdb:tv:1", "Seen", Rating.WATCHED, today)),

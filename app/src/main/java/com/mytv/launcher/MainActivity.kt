@@ -62,7 +62,8 @@ class MainActivity : ComponentActivity() {
                         HomeScreen(
                             apps = apps,
                             liveGames = live,
-                            watching = watching,
+                            watching = watching.copy(items = vm.withWatchingNow(watching.items, my.guide.watching)),
+                            watchingNow = my.guide.watching.associateBy { MANUAL_PREFIX + it.key },
                             busy = busy,
                             updateReady = updateReady,
                             popular = popular.map { (service, t) -> badged(vm.popularItem(service, t)) },
@@ -104,7 +105,13 @@ class MainActivity : ComponentActivity() {
                     }
                     Screen.Ang -> {
                         val ang by vm.ang.collectAsStateWithLifecycle()
-                        AngScreen(ang, onShow = vm::openAngShow, onRate = vm::angRate, onResume = vm::playWatchItem)
+                        AngScreen(
+                            ang,
+                            continueWatching = vm.withWatchingNow(ang.continueWatching, ang.watchingNow),
+                            onShow = vm::openAngShow,
+                            onRate = vm::angRate,
+                            onResume = vm::playWatchItem,
+                        )
                     }
                     Screen.Watchlist -> {
                         val my by vm.my.collectAsStateWithLifecycle()

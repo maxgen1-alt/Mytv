@@ -45,6 +45,7 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.mytv.launcher.AngState
+import com.mytv.launcher.MANUAL_PREFIX
 import com.mytv.launcher.ang.AngItem
 import com.mytv.launcher.ang.Rating
 import com.mytv.launcher.watching.WatchItem
@@ -66,6 +67,8 @@ private val dateFormat = DateTimeFormatter.ofPattern("EEE, MMM d")
 @Composable
 fun AngScreen(
     state: AngState,
+    /** Her Continue watching: the TV's list plus what she marked "Watching now". */
+    continueWatching: List<WatchItem>,
     onShow: (AngItem) -> Unit,
     onRate: (AngItem, Rating?) -> Unit,
     onResume: (WatchItem) -> Unit,
@@ -74,7 +77,7 @@ fun AngScreen(
     val guide = state.guide
     var menuFor by remember { mutableStateOf<AngItem?>(null) }
     val all = guide.watchNow + guide.newShows + guide.missed + guide.movies + guide.upcoming
-    val firstKey = state.continueWatching.firstOrNull()?.key ?: all.firstOrNull()?.key
+    val firstKey = continueWatching.firstOrNull()?.key ?: all.firstOrNull()?.key
     LaunchedEffect(firstKey) { if (firstKey != null) runCatching { first.requestFocus() } }
 
     Box(Modifier.fillMaxSize().background(AngPalette.Background)) {
@@ -101,7 +104,7 @@ fun AngScreen(
             }
             Spacer(Modifier.height(20.dp))
 
-            if (!state.loading && !state.discovering && state.continueWatching.isEmpty() && all.isEmpty()) {
+            if (!state.loading && !state.discovering && continueWatching.isEmpty() && all.isEmpty()) {
                 Text(
                     "Couldn't load shows right now. Check the internet connection.",
                     color = Color.White,
@@ -115,7 +118,9 @@ fun AngScreen(
                 if (!focusUsed) { focusUsed = true; Modifier.focusRequester(first) } else Modifier
             val hold: (AngItem) -> Unit = { menuFor = it }
 
-            ContinueShelf(state.continueWatching, onResume, ::firstFocus)
+            ContinueShelf(continueWatching, onResume, ::firstFocus) { wi ->
+                state.watchingNow.firstOrNull { MANUAL_PREFIX + it.key == wi.key }?.let { menuFor = it }
+            }
             Shelf("Watch now", guide.watchNow, onShow, ::firstFocus, onLongClick = hold) { it.badge }
             Shelf("New shows you might like", guide.newShows, onShow, ::firstFocus, onLongClick = hold) { it.badge }
             Shelf("Shows you might have missed", guide.missed, onShow, ::firstFocus, onLongClick = hold) { it.badge }
@@ -187,7 +192,12 @@ private fun Shelf(
 
 /** Landscape cards that resume playback, like the home screen's Continue Watching. */
 @Composable
-private fun ContinueShelf(items: List<WatchItem>, onResume: (WatchItem) -> Unit, firstFocus: () -> Modifier) {
+private fun ContinueShelf(
+    items: List<WatchItem>,
+    onResume: (WatchItem) -> Unit,
+    firstFocus: () -> Modifier,
+    onHold: (WatchItem) -> Unit,
+) {
     if (items.isEmpty()) return
     Text(
         "Continue watching",
@@ -207,6 +217,7 @@ private fun ContinueShelf(items: List<WatchItem>, onResume: (WatchItem) -> Unit,
             Column(Modifier.width(220.dp).padding(top = 8.dp)) {
                 FocusCard(
                     onClick = { onResume(item) },
+                    onLongClick = if (item.key.startsWith(MANUAL_PREFIX)) ({ onHold(item) }) else null,
                     modifier = (if (item == items.first()) focusFirst else Modifier).size(220.dp, 124.dp),
                     container = AngPalette.DeepTeal,
                 ) {
