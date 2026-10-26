@@ -15,19 +15,6 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
-data class WatchItem(
-    val key: String,
-    val title: String,
-    /** e.g. "S2 · E5 · The Name" or "Movie · 2024" */
-    val subtitle: String,
-    val imageUrl: String?,
-    /** 0..1 for something paused mid-way, null for "next episode" items. */
-    val progress: Float?,
-    val lastWatchedMillis: Long,
-    /** What we hand to Google TV search to find where it plays. */
-    val searchQuery: String,
-)
-
 data class DeviceCode(
     val deviceCode: String,
     val userCode: String,
@@ -128,6 +115,7 @@ class TraktClient(context: Context) {
                         progress = progress,
                         lastWatchedMillis = pausedAt,
                         searchQuery = title,
+                        source = "Trakt",
                     )
                 }
                 "episode" -> {
@@ -173,6 +161,7 @@ class TraktClient(context: Context) {
             progress = progress,
             lastWatchedMillis = lastWatched,
             searchQuery = "$title season $s episode $e",
+            source = "Trakt",
         )
     }
 

@@ -6,7 +6,7 @@ A clean, Apple TV-style launcher on a light blue background:
 | --- | --- |
 | **1. Apps** | Every streaming app installed on the Chromecast, shown with its TV banner. Long-press an app to move it left or right or hide it. The **+ Apps** tile at the end shows or hides apps. |
 | **2. Teams** | **Arsenal** and **Lakers** buttons. When a game is on, the button shows a red **LIVE** badge and the score. Pressing it opens the game in the app that's carrying it. If there's no game, you get a page with upcoming games, recent results and the league table or conference standings. Long-press always opens that page. |
-| **3. Continue Watching** | Shows and movies you're in the middle of, most recent first, pulled from your [Trakt](https://trakt.tv) account. Select one to jump to it. |
+| **3. Continue Watching** | Shows and movies you're in the middle of in any app, most recent first, with progress bars. Select one to resume it in its app. |
 
 A clock and a ⚙ settings button sit in the top-right.
 
@@ -55,22 +55,26 @@ adb shell pm enable com.google.android.tungsten.setupwraith
 ```
 With the stock launcher disabled, Google's profile and account screens and the Google TV "For you" content aren't available. Everything else, including the Google Assistant / mic search, keeps working.
 
-## 4. Turn on Continue Watching (Trakt)
+## 4. Continue Watching
 
-Android doesn't let a home-screen app read the Continue Watching lists inside Netflix, Disney+, Max and so on. Google TV's own row comes from Google's servers, and no third-party app can get at it. The best cross-app source available is **Trakt.tv**. Trakt collects watch progress from its streaming-service sync, apps that scrobble to it (Plex, Kodi, Infuse, Jellyfin and others) and manual check-ins.
+Android TV keeps a shared **Watch Next** list. Streaming apps add to it whenever you watch something, and Google TV's own Continue Watching row reads from it. MyTV reads the same list, so nothing needs logging. Each card resumes playback inside the app it came from.
 
-1. Create a free account at [trakt.tv](https://trakt.tv) and connect your streaming services or apps there.
-2. Create an API app at **trakt.tv/oauth/applications/new**:
-   - Name: `MyTV`
-   - Redirect URI: `urn:ietf:wg:oauth:2.0:oob`
-3. Add the **Client ID** and **Client Secret** as repository secrets named `TRAKT_CLIENT_ID` and `TRAKT_CLIENT_SECRET` (repo **Settings → Secrets and variables → Actions**). Then re-run the build. (For local builds, put them in `local.properties`.)
-4. On the TV, select **Connect Trakt** in the Continue Watching row. Enter the code shown at trakt.tv/activate on your phone.
+It needs the **TV listings** permission, once:
+- MyTV asks on first launch. Choose **Allow**.
+- If you said no, or no prompt appeared, select the **Turn on Continue Watching** card. If that still doesn't work, the firmware has no on-screen prompt; grant it from a computer:
+  ```sh
+  adb shell pm grant com.mytv.launcher android.permission.READ_TV_LISTINGS
+  ```
+  If that says "Unknown permission", run `adb shell pm list permissions | grep -i -E "tv|epg|watch"` and grant the one listed.
 
-The row shows two kinds of items:
-- things paused part-way through (with a progress bar), and
-- the **next episode** of shows you've watched in the last ~6 months.
+What shows up depends on each app: only apps that publish to Watch Next appear. Most big streaming apps do, but not every one. If an app's shows appear on Google TV's stock row, they'll appear here.
 
-Selecting an item hands it to Google TV search, which shows **Watch on <app>** for whichever service has it.
+### Optional: Trakt
+
+To also include things you watched on other devices (phone, laptop), you can connect [Trakt.tv](https://trakt.tv). Its automatic streaming-service sync is a paid VIP feature.
+1. Create an API app at **trakt.tv/oauth/applications/new** (redirect URI `urn:ietf:wg:oauth:2.0:oob`).
+2. Add the Client ID and Secret as repository secrets named `TRAKT_CLIENT_ID` and `TRAKT_CLIENT_SECRET` (or put them in `local.properties`), then rebuild.
+3. A **Connect Trakt** card appears at the end of the row. Select it and enter the code at trakt.tv/activate.
 
 ## How the team buttons find the game
 

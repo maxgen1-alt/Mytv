@@ -76,6 +76,7 @@ fun HomeScreen(
     onTeam: (Team) -> Unit,
     onTeamPage: (Team) -> Unit,
     onWatchItem: (WatchItem) -> Unit,
+    onAllowWatchNext: () -> Unit,
     onLinkTrakt: () -> Unit,
 ) {
     val firstApp = remember { FocusRequester() }
@@ -136,7 +137,7 @@ fun HomeScreen(
 
             // Row 3: continue watching
             SectionTitle("Continue Watching", Modifier.padding(start = 48.dp))
-            ContinueWatchingRow(watching, onWatchItem, onLinkTrakt)
+            ContinueWatchingRow(watching, onWatchItem, onAllowWatchNext, onLinkTrakt)
         }
 
         if (busy != null) BusyOverlay(busy)
@@ -255,38 +256,47 @@ private fun TeamTile(team: Team, live: Game?, onClick: () -> Unit, onLongClick: 
 }
 
 @Composable
-private fun ContinueWatchingRow(state: WatchState, onItem: (WatchItem) -> Unit, onLink: () -> Unit) {
-    when (state) {
-        WatchState.Loading -> Hint("Loading…")
-        WatchState.NotConfigured, WatchState.NotLinked -> LazyRow(contentPadding = RowPadding) {
-            item {
-                FocusCard(onClick = onLink, container = Palette.CardSoft, modifier = Modifier.size(260.dp, 120.dp)) {
-                    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.Center) {
-                        Text("Connect Trakt", fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            "See everything you're in the middle of, from every app, in one row.",
-                            fontSize = 12.sp,
-                            color = Palette.InkSoft,
-                        )
-                    }
-                }
+private fun ContinueWatchingRow(
+    state: WatchState,
+    onItem: (WatchItem) -> Unit,
+    onAllow: () -> Unit,
+    onLink: () -> Unit,
+) {
+    if (state.items.isEmpty()) {
+        when {
+            state.loading -> Hint("Loading…")
+            !state.needsPermission -> Hint("Nothing in progress right now. Start something in any app and it shows up here.")
+        }
+    }
+    LazyRow(
+        contentPadding = RowPadding,
+        horizontalArrangement = Arrangement.spacedBy(18.dp),
+        modifier = Modifier.height(190.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        items(state.items, key = { it.key }) { item -> WatchCard(item, onClick = { onItem(item) }) }
+        if (state.needsPermission) {
+            item(key = "__allow") {
+                SetupTile("Turn on Continue Watching", "Show what you're in the middle of in every app.", onAllow)
             }
         }
-        is WatchState.Ready -> if (state.items.isEmpty()) {
-            Hint("Nothing in progress right now.")
-            LazyRow(contentPadding = RowPadding, modifier = Modifier.padding(top = 10.dp)) {
-                item { TraktTile(onLink) }
+        if (state.traktConfigured) {
+            item(key = "__trakt") {
+                if (state.traktLinked) TraktTile(onLink)
+                else SetupTile("Connect Trakt", "Optional: add history from other devices.", onLink)
             }
-        } else {
-            LazyRow(
-                contentPadding = RowPadding,
-                horizontalArrangement = Arrangement.spacedBy(18.dp),
-                modifier = Modifier.height(190.dp),
-                verticalAlignment = Alignment.Top,
-            ) {
-                items(state.items, key = { it.key }) { item -> WatchCard(item, onClick = { onItem(item) }) }
-                item(key = "__trakt") { TraktTile(onLink) }
+        }
+    }
+}
+
+@Composable
+private fun SetupTile(title: String, body: String, onClick: () -> Unit) {
+    Column(Modifier.padding(top = 8.dp)) {
+        FocusCard(onClick = onClick, container = Palette.CardSoft, modifier = Modifier.size(260.dp, 130.dp)) {
+            Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.Center) {
+                Text(title, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(4.dp))
+                Text(body, fontSize = 12.sp, color = Palette.InkSoft)
             }
         }
     }

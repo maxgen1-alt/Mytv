@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -13,13 +14,31 @@ import com.mytv.launcher.ui.HomeScreen
 import com.mytv.launcher.ui.MyTvTheme
 import com.mytv.launcher.ui.TeamScreen
 import com.mytv.launcher.ui.TraktLinkScreen
+import com.mytv.launcher.watching.WatchNext
 
 class MainActivity : ComponentActivity() {
 
     private val vm: LauncherViewModel by viewModels()
 
+    private val watchNextPermission =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+            // No prompt on some firmware: the request comes straight back denied.
+            if (result.values.none { it }) vm.showPermissionHelp()
+            vm.refreshWatching()
+        }
+
+    private fun requestWatchNext() = watchNextPermission.launch(WatchNext.PERMISSIONS.toTypedArray())
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Ask once on first launch so Continue Watching just works.
+        val prefs = getSharedPreferences("launcher", MODE_PRIVATE)
+        if (!prefs.getBoolean("asked_watch_next", false) && !WatchNext(this).hasPermission()) {
+            prefs.edit().putBoolean("asked_watch_next", true).apply()
+            requestWatchNext()
+        }
+
         setContent {
             MyTvTheme {
                 val screen by vm.screen.collectAsStateWithLifecycle()
@@ -45,6 +64,7 @@ class MainActivity : ComponentActivity() {
                             onTeam = vm::onTeamPressed,
                             onTeamPage = { vm.navigate(Screen.TeamPage(it.key)) },
                             onWatchItem = vm::playWatchItem,
+                            onAllowWatchNext = ::requestWatchNext,
                             onLinkTrakt = { vm.navigate(Screen.TraktLink) },
                         )
                     }

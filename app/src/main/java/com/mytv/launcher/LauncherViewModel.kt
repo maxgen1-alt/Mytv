@@ -18,6 +18,7 @@ import com.mytv.launcher.sports.WatchOption
 import com.mytv.launcher.watching.DeviceCode
 import com.mytv.launcher.watching.PollResult
 import com.mytv.launcher.watching.TraktClient
+import com.mytv.launcher.watching.WatchNext
 import com.mytv.launcher.watching.WatchItem
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -36,12 +37,15 @@ sealed interface Screen {
     data object TraktLink : Screen
 }
 
-sealed interface WatchState {
-    data object NotConfigured : WatchState
-    data object NotLinked : WatchState
-    data object Loading : WatchState
-    data class Ready(val items: List<WatchItem>) : WatchState
-}
+data class WatchState(
+    val items: List<WatchItem> = emptyList(),
+    val loading: Boolean = true,
+    /** Watch Next needs the TV listings permission and we don't have it yet. */
+    val needsPermission: Boolean = false,
+    /** Trakt is optional: offered only when this build has Trakt API keys. */
+    val traktConfigured: Boolean = false,
+    val traktLinked: Boolean = false,
+)
 
 data class TeamDetail(
     val live: Game? = null,
@@ -65,6 +69,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val installed = InstalledApps(app)
     private val espn = EspnClient()
     private val trakt = TraktClient(app)
+    private val watchNext = WatchNext(app)
 
     private val _screen = MutableStateFlow<Screen>(Screen.Home)
     val screen = _screen.asStateFlow()
@@ -78,7 +83,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val _hidden = MutableStateFlow<Set<String>>(emptySet())
     val hidden = _hidden.asStateFlow()
 
-    private val _watching = MutableStateFlow<WatchState>(WatchState.Loading)
+    private val _watching = MutableStateFlow(WatchState())
     val watching = _watching.asStateFlow()
 
     /** Team key -> the game on right now (drives the LIVE badge on the home screen). */
@@ -212,20 +217,49 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---- Continue watching ----
 
+    private var watchingJob: Job? = null
+
+    /**
+     * Continue Watching = the system Watch Next list (what every app reports)
+     * plus, optionally, Trakt. Same title from both shows once, newest first.
+     */
     fun refreshWatching() {
-        when {
-            !trakt.isConfigured -> _watching.value = WatchState.NotConfigured
-            !trakt.isLinked -> _watching.value = WatchState.NotLinked
-            else -> viewModelScope.launch {
-                if (_watching.value !is WatchState.Ready) _watching.value = WatchState.Loading
-                val items = trakt.continueWatching()
-                _watching.value = if (trakt.isLinked) WatchState.Ready(items) else WatchState.NotLinked
+        watchingJob?.cancel()
+        watchingJob = viewModelScope.launch {
+            _watching.update {
+                it.copy(
+                    loading = it.items.isEmpty(),
+                    needsPermission = !watchNext.hasPermission(),
+                    traktConfigured = trakt.isConfigured,
+                    traktLinked = trakt.isLinked,
+                )
             }
+            val local = async { watchNext.load() }
+            val remote = async { if (trakt.isConfigured && trakt.isLinked) trakt.continueWatching() else emptyList() }
+            val fromApps = local.await()
+            val seen = fromApps.map { it.title.lowercase() }.toSet()
+            val merged = (fromApps + remote.await().filter { it.title.lowercase() !in seen })
+                .sortedByDescending { it.lastWatchedMillis }
+                .take(25)
+            _watching.value = WatchState(
+                items = merged,
+                loading = false,
+                needsPermission = !watchNext.hasPermission(),
+                traktConfigured = trakt.isConfigured,
+                traktLinked = trakt.isLinked,
+            )
         }
     }
 
     fun playWatchItem(item: WatchItem) {
-        if (!Search.open(context, item.searchQuery)) toast("Couldn't open search for ${item.title}")
+        if (watchNext.open(item)) return
+        if (item.packageName != null && installed.launch(item.packageName)) return
+        if (!Search.open(context, item.searchQuery)) toast("Couldn't open ${item.title}")
+    }
+
+    /** Shown when the system has no permission prompt for TV listings. */
+    fun showPermissionHelp() {
+        toast("Allow access from a computer: adb shell pm grant ${context.packageName} ${WatchNext.PERMISSIONS.first()}")
     }
 
     private fun startTraktLink() {
