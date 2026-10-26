@@ -16,6 +16,8 @@ data class TvShow(
     val genres: List<String>,
     /** Network or streaming service, e.g. "Netflix", "Bravo", "Prime Video". */
     val service: String?,
+    /** ISO country of the network / streaming service; null for global streamers. */
+    val country: String? = null,
     val imageUrl: String?,
     val seasons: List<TvSeason> = emptyList(),
     val nextEpisode: TvEpisode? = null,
@@ -29,8 +31,10 @@ object TvMazeParser {
 
     fun parseShow(o: JSONObject): TvShow {
         val embedded = o.optJSONObject("_embedded")
-        val service = o.optJSONObject("webChannel")?.optString("name")?.takeIf { it.isNotBlank() }
-            ?: o.optJSONObject("network")?.optString("name")?.takeIf { it.isNotBlank() }
+        val channel = o.optJSONObject("webChannel")?.takeIf { it.optString("name").isNotBlank() }
+            ?: o.optJSONObject("network")?.takeIf { it.optString("name").isNotBlank() }
+        val service = channel?.optString("name")
+        val country = channel?.optJSONObject("country")?.optStringOrNull("code")
         val image = o.optJSONObject("image")
         return TvShow(
             id = o.optLong("id"),
@@ -39,6 +43,7 @@ object TvMazeParser {
             language = o.optStringOrNull("language"),
             genres = o.optJSONArray("genres")?.strings().orEmpty(),
             service = service,
+            country = country,
             imageUrl = image?.optStringOrNull("medium")?.https() ?: image?.optStringOrNull("original")?.https(),
             seasons = embedded?.optJSONArray("seasons")?.objects()?.map {
                 TvSeason(it.optInt("number"), date(it.optStringOrNull("premiereDate")), date(it.optStringOrNull("endDate")))

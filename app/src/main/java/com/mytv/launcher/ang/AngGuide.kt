@@ -27,10 +27,15 @@ data class AngGuide(
 
 object AngGuideBuilder {
 
+    /**
+     * [watched]: show id → date she marked it watched on the TV (long-press),
+     * on top of each show's built-in [CuratedShow.caughtUpAsOf].
+     */
     fun build(
         today: LocalDate,
         curated: List<Pair<CuratedShow, TvShow>>,
         premieres: List<Premiere>,
+        watched: Map<Long, LocalDate> = emptyMap(),
     ): AngGuide {
         val watchNow = mutableListOf<Pair<AngItem, LocalDate?>>()
         val upcoming = mutableListOf<AngItem>()
@@ -39,7 +44,11 @@ object AngGuideBuilder {
             val latest = show.seasons
                 .filter { it.premiere != null && !it.premiere.isAfter(today) }
                 .maxByOrNull { it.premiere!! }
-            val isNew = latest?.premiere?.let { ChronoUnit.DAYS.between(it, today) <= AngShows.NEW_SEASON_DAYS } == true
+            val caughtUp = listOfNotNull(spec.caughtUpAsOf, watched[show.id]).maxOrNull()
+            val isNew = latest?.premiere?.let { premiere ->
+                ChronoUnit.DAYS.between(premiere, today) <= AngShows.NEW_SEASON_DAYS &&
+                    (caughtUp == null || premiere.isAfter(caughtUp))
+            } == true
 
             if (spec.follow == Follow.ALWAYS || isNew) {
                 watchNow += item(show, latest?.number, latest?.premiere, if (isNew) newLabel(latest!!.number) else null) to latest?.premiere

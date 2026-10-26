@@ -27,7 +27,8 @@ class AngRepository(context: Context) {
         .readTimeout(15, TimeUnit.SECONDS)
         .build()
     private val prefs = context.getSharedPreferences("ang", Context.MODE_PRIVATE)
-    private val premiereCache = File(context.cacheDir, "ang-premieres.json")
+    // v2: adds country, so caches built before the English-only filter get rebuilt.
+    private val premiereCache = File(context.cacheDir, "ang-premieres-v2.json")
     private val api = "https://api.tvmaze.com"
 
     @Volatile private var cachedPremieres: List<Premiere>? = null
@@ -64,6 +65,38 @@ class AngRepository(context: Context) {
         return relevant
     }
 
+    // ---- "Mark as watched" (long-press in Ang's TV) ----
+
+    fun markWatched(showId: Long, date: LocalDate = LocalDate.now()) {
+        prefs.edit().putLong("watched:$showId", date.toEpochDay()).apply()
+    }
+
+    fun watched(): Map<Long, LocalDate> = prefs.all.mapNotNull { (k, v) ->
+        if (!k.startsWith("watched:") || v !is Long) return@mapNotNull null
+        k.removePrefix("watched:").toLongOrNull()?.let { it to LocalDate.ofEpochDay(v) }
+    }.toMap()
+
+    // ---- Her Continue Watching ----
+
+    /**
+     * Is this Continue Watching title one of hers? Yes if it's in her guide,
+     * otherwise we look it up on TVmaze once and remember the answer.
+     */
+    suspend fun isHers(title: String, guideTitles: Set<String>): Boolean {
+        val norm = normalize(title)
+        if (norm in guideTitles.map(::normalize)) return true
+        val key = "hers:$norm"
+        if (prefs.contains(key)) return prefs.getBoolean(key, false)
+        val url = "$api/singlesearch/shows".toHttpUrl().newBuilder().addQueryParameter("q", title).build().toString()
+        val body = get(url) ?: return false // unknown for now; ask again next time
+        val show = runCatching { TvMazeParser.parseShow(JSONObject(body)) }.getOrNull()
+        val hers = show != null && normalize(show.name) == norm && AngShows.isHerKindOfShow(show)
+        prefs.edit().putBoolean(key, hers).apply()
+        return hers
+    }
+
+    private fun normalize(s: String) = s.lowercase().replace(Regex("[^a-z0-9]"), "")
+
     private suspend fun showId(spec: CuratedShow): Long? {
         val key = "id:${spec.query}"
         prefs.getLong(key, -1).takeIf { it > 0 }?.let { return it }
@@ -78,7 +111,7 @@ class AngRepository(context: Context) {
         return show.id
     }
 
-    private fun fresh() = System.currentTimeMillis() - prefs.getLong("premieres_at", 0) < 24 * 3600_000L
+    private fun fresh() = System.currentTimeMillis() - prefs.getLong("premieres_v2_at", 0) < 24 * 3600_000L
 
     private fun writeCache(days: Int, list: List<Premiere>) {
         // Store as the original schedule format so the same parser reads it back.
@@ -97,13 +130,18 @@ class AngRepository(context: Context) {
                             .put("type", p.show.type)
                             .put("language", p.show.language)
                             .put("genres", org.json.JSONArray(p.show.genres))
-                            .put("webChannel", JSONObject().put("name", p.show.service))
+                            .put(
+                                "webChannel",
+                                JSONObject()
+                                    .put("name", p.show.service)
+                                    .put("country", p.show.country?.let { JSONObject().put("code", it) }),
+                            )
                             .put("image", JSONObject().put("medium", p.show.imageUrl)),
                     ),
             )
         }
         runCatching { premiereCache.writeText(arr.toString()) }
-        if (days > 0) prefs.edit().putLong("premieres_at", System.currentTimeMillis()).apply()
+        if (days > 0) prefs.edit().putLong("premieres_v2_at", System.currentTimeMillis()).apply()
     }
 
     private fun readCache(): List<Premiere>? =

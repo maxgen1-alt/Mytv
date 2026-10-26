@@ -54,6 +54,8 @@ sealed interface Screen {
 
 data class AngState(
     val guide: AngGuide = AngGuide(),
+    /** Her shows from the TV's Continue Watching list, to resume where she left off. */
+    val continueWatching: List<WatchItem> = emptyList(),
     val loading: Boolean = true,
     /** Still scanning streaming premieres for new shows. */
     val discovering: Boolean = false,
@@ -353,17 +355,39 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---- Ang's guide ----
 
+    private var angCurated: List<Pair<com.mytv.launcher.ang.CuratedShow, com.mytv.launcher.ang.TvShow>> = emptyList()
+    private var angPremieres: List<com.mytv.launcher.ang.Premiere> = emptyList()
+
     private fun loadAng() {
         angJob?.cancel()
         angJob = viewModelScope.launch {
             _ang.update { it.copy(loading = true) }
             val today = java.time.LocalDate.now()
-            val curated = angRepo.curatedShows()
+            angCurated = angRepo.curatedShows()
             // Show her shows straight away; new-show discovery can take ~30s when not cached.
-            _ang.update { AngState(AngGuideBuilder.build(today, curated, emptyList()), loading = false, discovering = true) }
-            val premieres = angRepo.premieres(today)
-            _ang.value = AngState(AngGuideBuilder.build(today, curated, premieres), loading = false, discovering = false)
+            val quick = AngGuideBuilder.build(today, angCurated, angPremieres, angRepo.watched())
+            _ang.update { it.copy(guide = quick, loading = false, discovering = true) }
+            launch { _ang.update { it.copy(continueWatching = herContinueWatching(quick)) } }
+            angPremieres = angRepo.premieres(today)
+            val full = AngGuideBuilder.build(today, angCurated, angPremieres, angRepo.watched())
+            _ang.update { it.copy(guide = full, discovering = false) }
+            _ang.update { it.copy(continueWatching = herContinueWatching(full)) }
         }
+    }
+
+    /** The TV's Continue Watching, narrowed to her kind of shows. */
+    private suspend fun herContinueWatching(guide: AngGuide): List<WatchItem> {
+        val titles = (angCurated.map { it.second.name } +
+            (guide.watchNow + guide.newShows + guide.upcoming).map { it.title }).toSet()
+        return watchNext.load().filter { angRepo.isHers(it.title, titles) }
+    }
+
+    /** Long-press in Ang's TV: she's seen it, hide it until a newer season comes out. */
+    fun angMarkWatched(item: AngItem) {
+        angRepo.markWatched(item.showId)
+        val guide = AngGuideBuilder.build(java.time.LocalDate.now(), angCurated, angPremieres, angRepo.watched())
+        _ang.update { it.copy(guide = guide) }
+        toast("${item.title}: marked as watched")
     }
 
     /** Opens the show's streaming app if it's installed, else asks Google TV where it plays. */

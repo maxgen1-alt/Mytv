@@ -96,7 +96,7 @@ class MainActivity : ComponentActivity() {
                     }
                     Screen.Ang -> {
                         val ang by vm.ang.collectAsStateWithLifecycle()
-                        AngScreen(ang, onShow = vm::openAngShow)
+                        AngScreen(ang, onShow = vm::openAngShow, onMarkWatched = vm::angMarkWatched, onResume = vm::playWatchItem)
                     }
                     Screen.TraktLink -> {
                         val link by vm.link.collectAsStateWithLifecycle()
