@@ -21,6 +21,8 @@ data class TvShow(
     val imageUrl: String?,
     val seasons: List<TvSeason> = emptyList(),
     val nextEpisode: TvEpisode? = null,
+    /** e.g. "tt1234567", for the IMDb rating. */
+    val imdbId: String? = null,
 )
 
 /** A season premiere seen in TVmaze's streaming schedule. */
@@ -49,6 +51,7 @@ object TvMazeParser {
                 TvSeason(it.optInt("number"), date(it.optStringOrNull("premiereDate")), date(it.optStringOrNull("endDate")))
             }.orEmpty(),
             nextEpisode = embedded?.optJSONObject("nextepisode")?.let(::parseEpisode),
+            imdbId = o.optJSONObject("externals")?.optStringOrNull("imdb"),
         )
     }
 

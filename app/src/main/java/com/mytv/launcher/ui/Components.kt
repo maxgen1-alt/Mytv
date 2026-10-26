@@ -10,6 +10,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import android.view.KeyEvent
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.Row
+import com.mytv.launcher.ratings.RatingRef
+import com.mytv.launcher.ratings.Ratings
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.remember
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.Alignment
@@ -124,5 +132,33 @@ fun Modifier.ignoreHeldSelect(): Modifier {
         } else {
             true // still the held press (repeats / its release): swallow it
         }
+    }
+}
+
+/**
+ * Small "IMDb 7.8" tag for a focused title. Looked up only once the title
+ * has been focused for a moment (so scrolling past costs nothing), then cached.
+ */
+@Composable
+fun RatingTag(ref: RatingRef?, focused: Boolean, modifier: Modifier = Modifier) {
+    if (ref == null) return
+    var shown by remember(ref.cacheKey) { mutableStateOf(Ratings.cached(ref)) }
+    LaunchedEffect(ref.cacheKey, focused) {
+        if (focused && shown == null) {
+            delay(250)
+            shown = Ratings.lookup(ref)
+        }
+    }
+    val r = shown ?: return
+    if (!focused) return
+    val imdb = r.source == "IMDb"
+    Row(
+        modifier
+            .background(if (imdb) Color(0xFFF5C518) else Color(0xFF01B4E4), RoundedCornerShape(5.dp))
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(r.source, fontSize = 10.sp, fontWeight = FontWeight.Black, color = if (imdb) Color.Black else Color.White)
+        Text(" ${r.value}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (imdb) Color.Black else Color.White)
     }
 }

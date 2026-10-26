@@ -102,6 +102,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val watchNext = WatchNext(app)
     private val updater = Updater(app)
     private val angRepo = AngRepository(app)
+
+    init {
+        com.mytv.launcher.ratings.Ratings.init(app)
+    }
     private val taste = com.mytv.launcher.ang.TasteStore(app)
     private val topTenRepo = TopTenRepository()
 

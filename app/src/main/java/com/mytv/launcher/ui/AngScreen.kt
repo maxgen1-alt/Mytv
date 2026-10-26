@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -290,11 +291,12 @@ private fun PosterCard(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)?,
 ) {
+    var focused by remember { mutableStateOf(false) }
     Column(Modifier.width(134.dp).padding(top = 8.dp)) {
         FocusCard(
             onClick = onClick,
             onLongClick = onLongClick,
-            modifier = modifier.size(134.dp, 196.dp),
+            modifier = modifier.size(134.dp, 196.dp).onFocusChanged { focused = it.isFocused || it.hasFocus },
             container = AngPalette.DeepTeal,
         ) {
             if (item.imageUrl != null) {
@@ -326,6 +328,7 @@ private fun PosterCard(
                     )
                 }
             }
+            RatingTag(item.ratingRef, focused, Modifier.align(Alignment.TopEnd).padding(8.dp))
         }
         Spacer(Modifier.height(8.dp))
         Text(item.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)

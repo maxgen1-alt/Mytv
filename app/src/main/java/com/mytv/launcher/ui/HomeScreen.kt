@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -398,14 +399,19 @@ private fun TraktTile(onClick: () -> Unit) {
 
 @Composable
 private fun PopularCard(service: TopTenService, title: TopTitle, onClick: () -> Unit) {
+    var focused by remember { mutableStateOf(false) }
     Column(Modifier.width(126.dp).padding(top = 8.dp)) {
-        FocusCard(onClick = onClick, modifier = Modifier.size(126.dp, 189.dp)) {
+        FocusCard(
+            onClick = onClick,
+            modifier = Modifier.size(126.dp, 189.dp).onFocusChanged { focused = it.isFocused || it.hasFocus },
+        ) {
             AsyncImage(
                 model = title.posterUrl,
                 contentDescription = title.title,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
             )
+            RatingTag(title.ratingRef, focused, Modifier.align(Alignment.TopEnd).padding(8.dp))
         }
         Spacer(Modifier.height(8.dp))
         Text(title.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Palette.Ink)

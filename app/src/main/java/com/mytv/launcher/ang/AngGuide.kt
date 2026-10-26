@@ -22,7 +22,12 @@ data class AngItem(
     val isMovie: Boolean = false,
     /** TMDB average rating, 0-10. */
     val voteAverage: Double = 0.0,
-)
+    /** IMDb id when known (her hand-picked shows). */
+    val imdbId: String? = null,
+) {
+    val ratingRef: com.mytv.launcher.ratings.RatingRef
+        get() = com.mytv.launcher.ratings.RatingRef(imdbId, tmdbId, isMovie, voteAverage)
+}
 
 data class AngGuide(
     /** Her shows (and liked shows) with something new to watch right now. */
@@ -163,5 +168,6 @@ object AngGuideBuilder {
         service = show.service,
         date = date,
         badge = badge,
+        imdbId = show.imdbId,
     )
 }

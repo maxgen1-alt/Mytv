@@ -223,7 +223,7 @@ class AngGuideTest {
     fun parsesTvMazeShapes() {
         val showJson = """
             {"id":7,"name":"Love Island","type":"Reality","language":"English","genres":["Romance"],
-             "network":{"name":"ITV2","country":{"code":"GB"}},"webChannel":null,"image":{"medium":"http://x/p.jpg"},
+             "network":{"name":"ITV2","country":{"code":"GB"}},"webChannel":null,"externals":{"imdb":"tt2879786"},"image":{"medium":"http://x/p.jpg"},
              "_embedded":{"seasons":[{"number":12,"premiereDate":"2026-06-01","endDate":"2026-07-30"},
                                      {"number":13,"premiereDate":null,"endDate":null}],
                           "nextepisode":{"season":13,"number":1,"airdate":"2027-06-05"}}}
@@ -231,6 +231,7 @@ class AngGuideTest {
         val s = TvMazeParser.parseShow(org.json.JSONObject(showJson))
         assertEquals("ITV2", s.service)
         assertEquals("GB", s.country)
+        assertEquals("tt2879786", s.imdbId)
         assertEquals("https://x/p.jpg", s.imageUrl)
         assertEquals(2, s.seasons.size)
         assertEquals(LocalDate.of(2027, 6, 5), s.nextEpisode?.airdate)

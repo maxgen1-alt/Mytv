@@ -39,8 +39,12 @@ data class TopTitle(
     val released: LocalDate? = null,
     /** Ranking score (popularity x trending x freshness), set by [TmdbParser.topTen]. */
     val score: Double = 0.0,
+    /** TMDB average rating, 0-10. */
+    val voteAverage: Double = 0.0,
 ) {
     val key: String get() = (if (isMovie) "movie:" else "tv:") + id
+    val ratingRef: com.mytv.launcher.ratings.RatingRef
+        get() = com.mytv.launcher.ratings.RatingRef(null, id, isMovie, voteAverage)
 }
 
 object TmdbParser {
@@ -65,6 +69,7 @@ object TmdbParser {
                 popularity = o.optDouble("popularity", 0.0),
                 released = (if (isMovie) o.optStringOrNull("release_date") else o.optStringOrNull("first_air_date"))
                     ?.let { runCatching { LocalDate.parse(it) }.getOrNull() },
+                voteAverage = o.optDouble("vote_average", 0.0),
             )
         }
     }

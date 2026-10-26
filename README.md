@@ -125,6 +125,16 @@ The Top 10s come from [TMDB](https://www.themoviedb.org): the most popular title
 3. Copy the **API Key** (the short one) or the **API Read Access Token** (the long one). Either works.
 4. Add it as a repository secret named `TMDB_API_KEY`, then re-run **Build APK**. The TV picks it up through the auto-updater.
 
+## IMDb ratings (OMDb key)
+
+When you stop on a show or movie in Ang's TV or the Popular row, a small **IMDb 7.8** tag appears on the poster. IMDb has no free API, so ratings come from [OMDb](https://www.omdbapi.com). It's free, with a limit of 1,000 lookups a day, and ratings are cached for a week.
+
+1. Go to omdbapi.com → **API Key** → choose **FREE**, and enter your email.
+2. Click the activation link in the email. The key arrives in that same email.
+3. Add it as a repository secret named `OMDB_API_KEY`, then re-run **Build APK**.
+
+Until the key is added, the tag shows TMDB's score instead (blue **TMDB 7.6**).
+
 ## Updates
 
 MyTV updates itself. Every push builds a new version and publishes it as this repo's `latest` release (`MyTV.apk` plus `version.json`). MyTV checks for one when you open it and every few hours after that, and downloads it in the background.
