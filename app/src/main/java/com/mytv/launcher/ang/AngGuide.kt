@@ -64,8 +64,9 @@ object AngGuideBuilder {
             .map { item(it.show, it.season, it.date, newLabel(it.season)) }
 
         return AngGuide(
-            watchNow = watchNow.sortedByDescending { it.second ?: LocalDate.MIN }.map { it.first },
-            newShows = newShows,
+            // Rows are keyed by show id, so never list a show twice in one row.
+            watchNow = watchNow.sortedByDescending { it.second ?: LocalDate.MIN }.map { it.first }.distinctBy { it.showId },
+            newShows = newShows.distinctBy { it.showId },
             upcoming = upcoming.sortedBy { it.date }.distinctBy { it.showId },
         )
     }

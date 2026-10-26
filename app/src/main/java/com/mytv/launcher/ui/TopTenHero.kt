@@ -50,20 +50,23 @@ private val PosterHeight = 108.dp
  */
 @Composable
 fun TopTenHero(service: TopTenService?, titles: List<TopTitle>, configured: Boolean) {
-    val key = if (service != null && titles.isNotEmpty()) service else null
-    Crossfade(targetState = key, animationSpec = tween(350), label = "topten") { shown ->
+    // The fade animates between whole snapshots (service + its titles): while
+    // the old one fades out it must keep drawing its own titles, not the new
+    // app's, which may be empty.
+    val shown = if (service != null && titles.isNotEmpty()) HeroContent(service, titles) else null
+    val hint = if (service != null && titles.isEmpty() && !configured) "Add a TMDB key to see the Top 10 here" else null
+    Crossfade(targetState = shown, animationSpec = tween(350), label = "topten") { content ->
         Box(Modifier.fillMaxWidth().height(HeroHeight)) {
-            if (shown == null) {
-                Greeting(hint = if (service != null && !configured) "Add a TMDB key to see the Top 10 here" else null)
-            } else {
-                TopTen(shown, titles)
-            }
+            if (content == null) Greeting(hint) else TopTen(content.service, content.titles)
         }
     }
 }
 
+private data class HeroContent(val service: TopTenService, val titles: List<TopTitle>)
+
 @Composable
 private fun TopTen(service: TopTenService, titles: List<TopTitle>) {
+    if (titles.isEmpty()) return
     Box(Modifier.fillMaxSize()) {
         // #1's artwork on the right, fading into the background.
         titles.first().backdropUrl?.let { url ->
