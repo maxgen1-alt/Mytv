@@ -132,6 +132,7 @@ fun AngScreen(
             ContinueShelf(continueWatching, onResume, ::firstFocus) { wi ->
                 state.watchingNow.firstOrNull { MANUAL_PREFIX + it.key == wi.key }?.let { menuFor = it }
             }
+            Shelf("Watch later", state.watchLater, onShow, ::firstFocus, onLongClick = hold) { null }
             Shelf("Watch now", guide.watchNow, onShow, ::firstFocus, onLongClick = hold) { it.badge }
             Shelf("Easy Watch", guide.easyWatch, onShow, ::firstFocus, onLongClick = hold) { it.badge }
             Shelf("New shows you might like", guide.newShows, onShow, ::firstFocus, onLongClick = hold) { it.badge }

@@ -13,6 +13,8 @@ import java.time.temporal.ChronoUnit
 data class MyGuide(
     /** What you're in the middle of ("Watching now"), newest first; also in Continue Watching. */
     val watching: List<AngItem> = emptyList(),
+    /** What you saved with "Watch later", newest first. */
+    val watchLater: List<AngItem> = emptyList(),
     /** Everything you marked watched or liked, newest first. */
     val watched: List<AngItem> = emptyList(),
     /** Recommended from what you watched / liked, varied across genres. */
@@ -57,6 +59,10 @@ object MyGuideBuilder {
             .sortedByDescending { it.date }
             .map { it.toItem().copy(date = it.date) }
 
+        val watchLater = ratings.filter { it.rating == Rating.WANT }
+            .sortedByDescending { it.date }
+            .map { it.toItem() }
+
         val ranked = recs.filter(::unseen).distinctBy { it.key }
             .sortedByDescending { TasteRanker.score(it, likedRecs, dislikedRecs) }
         val forYou = varied(ranked, perGenre = 4).take(30)
@@ -84,6 +90,7 @@ object MyGuideBuilder {
 
         return MyGuide(
             watching = watching,
+            watchLater = watchLater,
             watched = watched,
             forYou = forYou,
             newSeasons = newSeasons.sortedByDescending { it.date }.distinctBy { it.key },

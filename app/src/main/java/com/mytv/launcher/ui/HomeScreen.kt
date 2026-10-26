@@ -76,6 +76,7 @@ fun HomeScreen(
     updateReady: Boolean,
     popular: List<AngItem>,
     forYou: List<AngItem>,
+    watchLater: List<AngItem>,
     myRatings: Map<String, Rating>,
     /** Continue Watching key → the "Watching now" title it came from. */
     watchingNow: Map<String, AngItem>,
@@ -157,6 +158,7 @@ fun HomeScreen(
             // Row 3: continue watching
             SectionTitle("Continue Watching", Modifier.padding(start = 48.dp))
             ContinueWatchingRow(watching, onWatchItem, onAllowWatchNext, onLinkTrakt) { wi -> watchingNow[wi.key]?.let { rateFor = it } }
+            TitleRow("Watch Later", watchLater, onOpenTitle) { rateFor = it }
 
             // Row 4: what's hot across the apps you have. Row 5: picked from what you watched.
             TitleRow("Popular on Your Apps", popular, onOpenTitle) { rateFor = it }

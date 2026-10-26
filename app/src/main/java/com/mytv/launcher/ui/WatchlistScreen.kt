@@ -96,6 +96,7 @@ private fun Chip(text: String, bg: Color, fg: Color, modifier: Modifier) {
 
 private enum class Tab(val title: String, val empty: String) {
     WATCHING("Watching", "Hold select on any show and choose \"Watching now\". It shows here and in Continue Watching."),
+    LATER("Watch Later", "Hold select on any show and choose \"Watch later\" to save it here."),
     WATCHED("Watched", "Hold select on any show or movie on the home screen and choose \"Already watched\" or \"Like it\". It lands here."),
     FOR_YOU("For You", "Mark a few shows you've watched and recommendations show up here."),
     NEW_SEASONS("New Seasons", "New seasons of shows you watched or liked appear here when they come out."),
@@ -113,6 +114,7 @@ fun WatchlistScreen(state: MyState, onOpen: (AngItem) -> Unit, onRate: (AngItem,
     val g = state.guide
     val items = when (tab) {
         Tab.WATCHING -> g.watching
+        Tab.LATER -> g.watchLater
         Tab.WATCHED -> g.watched
         Tab.FOR_YOU -> g.forYou
         Tab.NEW_SEASONS -> g.newSeasons

@@ -8,6 +8,8 @@ enum class Rating(val label: String) {
     LIKE("Liked"),
     /** In progress: shows up in Continue Watching. */
     WATCHING("Watching now"),
+    /** Saved for later: the Watch Later list. */
+    WANT("Watch later"),
     WATCHED("Already watched"),
     DISLIKE("Disliked"),
     WONT_WATCH("Won't watch"),

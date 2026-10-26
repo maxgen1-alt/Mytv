@@ -55,6 +55,17 @@ class MyGuideTest {
     }
 
     @Test
+    fun watchLaterIsItsOwnListAndLeavesSuggestions() {
+        val g = build(
+            ratings = listOf(Rated("tmdb:tv:11", "Someday", Rating.WANT, today, 11, false, null, "Netflix")),
+            recs = listOf(item(11, "Someday"), item(12, "Other")),
+        )
+        assertEquals(listOf("Someday"), g.watchLater.map { it.title })
+        assertEquals(listOf("Other"), g.forYou.map { it.title })
+        assertTrue(g.watched.isEmpty())
+    }
+
+    @Test
     fun forYouSkipsWhatYouRatedAndAppsYouDontHave() {
         val g = build(
             ratings = listOf(Rated("tmdb:tv:1", "Seen", Rating.WATCHED, today)),

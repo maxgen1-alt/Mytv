@@ -69,6 +69,7 @@ class MainActivity : ComponentActivity() {
                             updateReady = updateReady,
                             popular = popular.map { (service, t) -> badged(vm.popularItem(service, t)) },
                             forYou = if (my.showForYouRow) my.guide.forYou.take(20) else emptyList(),
+                            watchLater = my.guide.watchLater,
                             myRatings = my.ratings,
                             onOpenTitle = vm::openTitle,
                             onRateTitle = vm::myRate,

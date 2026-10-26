@@ -45,6 +45,7 @@ import com.mytv.launcher.ang.Rating
 
 private enum class HerTab(val title: String, val rating: Rating, val empty: String) {
     WATCHING("Watching", Rating.WATCHING, "Shows she marked \"Watching now\" show up here and in her Continue watching."),
+    LATER("Watch later", Rating.WANT, "Shows she saved with \"Watch later\"."),
     LIKED("Liked", Rating.LIKE, "Shows she liked: followed for new seasons, and more like them get suggested."),
     WATCHED("Watched", Rating.WATCHED, "Shows she marked \"Already watched\"."),
     DISLIKED("Disliked", Rating.DISLIKE, "Shows she disliked: hidden, and fewer like them get suggested."),

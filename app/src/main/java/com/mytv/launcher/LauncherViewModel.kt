@@ -72,7 +72,11 @@ data class AngState(
     val watchingNow: List<AngItem> = emptyList(),
     /** Everything she has rated (for Her List). */
     val rated: List<com.mytv.launcher.ang.Rated> = emptyList(),
-)
+) {
+    /** What she saved with "Watch later", newest first. */
+    val watchLater: List<AngItem>
+        get() = rated.filter { it.rating == com.mytv.launcher.ang.Rating.WANT }.sortedByDescending { it.date }.map { it.toItem() }
+}
 
 /** Your ratings and lists. */
 data class MyState(
@@ -133,8 +137,12 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val taste = com.mytv.launcher.ang.TasteStore(app)
     private val angTaste = com.mytv.launcher.ang.TasteRepository(
         app, strict = true,
-        positive = mapOf(com.mytv.launcher.ang.Rating.LIKE to 1, com.mytv.launcher.ang.Rating.WATCHING to 1),
-        follow = setOf(com.mytv.launcher.ang.Rating.LIKE, com.mytv.launcher.ang.Rating.WATCHING),
+        positive = mapOf(
+            com.mytv.launcher.ang.Rating.LIKE to 1,
+            com.mytv.launcher.ang.Rating.WATCHING to 1,
+            com.mytv.launcher.ang.Rating.WANT to 1,
+        ),
+        follow = setOf(com.mytv.launcher.ang.Rating.LIKE, com.mytv.launcher.ang.Rating.WATCHING, com.mytv.launcher.ang.Rating.WANT),
     )
 
     // ---- Your own taste (Popular row, Shows for you, My Watchlist) ----
@@ -146,11 +154,13 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             com.mytv.launcher.ang.Rating.LIKE to 2,
             com.mytv.launcher.ang.Rating.WATCHING to 2,
             com.mytv.launcher.ang.Rating.WATCHED to 1,
+            com.mytv.launcher.ang.Rating.WANT to 1,
         ),
         follow = setOf(
             com.mytv.launcher.ang.Rating.LIKE,
             com.mytv.launcher.ang.Rating.WATCHING,
             com.mytv.launcher.ang.Rating.WATCHED,
+            com.mytv.launcher.ang.Rating.WANT,
         ),
         maxCandidates = 40,
     )
