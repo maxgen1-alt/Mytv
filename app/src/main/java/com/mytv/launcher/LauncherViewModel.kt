@@ -1,6 +1,8 @@
 package com.mytv.launcher
 
 import android.app.Application
+import coil.imageLoader
+import coil.request.ImageRequest
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -25,6 +27,9 @@ import com.mytv.launcher.sports.Teams
 import com.mytv.launcher.sports.WatchOption
 import com.mytv.launcher.watching.DeviceCode
 import com.mytv.launcher.watching.PollResult
+import com.mytv.launcher.topten.TopTenRepository
+import com.mytv.launcher.topten.TopTenService
+import com.mytv.launcher.topten.TopTitle
 import com.mytv.launcher.update.Updater
 import com.mytv.launcher.watching.TraktClient
 import com.mytv.launcher.watching.WatchNext
@@ -89,6 +94,13 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val watchNext = WatchNext(app)
     private val updater = Updater(app)
     private val angRepo = AngRepository(app)
+    private val topTenRepo = TopTenRepository()
+
+    /** Top 10 per streaming service, shown above the apps row. */
+    private val _topTen = MutableStateFlow<Map<TopTenService, List<TopTitle>>>(emptyMap())
+    val topTen = _topTen.asStateFlow()
+    val topTenConfigured: Boolean get() = topTenRepo.isConfigured
+    private var topTenLoadedAt = 0L
 
     private val _ang = MutableStateFlow(AngState())
     val ang = _ang.asStateFlow()
@@ -151,6 +163,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         refreshApps()
         refreshWatching()
         checkForUpdates()
+        refreshTopTen()
         // Warm Ang's new-show scan in the background (cached for a day).
         if (angJob?.isActive != true) angJob = viewModelScope.launch { angRepo.premieres() }
         liveJob?.cancel()
@@ -293,6 +306,25 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 standings = standings.await(),
                 loading = false,
             )
+        }
+    }
+
+    // ---- Top 10 ----
+
+    private fun refreshTopTen() {
+        if (System.currentTimeMillis() - topTenLoadedAt < 6 * 3600_000L) return
+        viewModelScope.launch {
+            val lists = topTenRepo.load()
+            if (lists.isEmpty()) return@launch
+            topTenLoadedAt = System.currentTimeMillis()
+            _topTen.value = lists
+            // Warm the image cache so posters are there the moment you land on an app.
+            val loader = context.imageLoader
+            lists.values.flatten().forEach { t ->
+                listOfNotNull(t.posterUrl, t.backdropUrl).forEach { url ->
+                    loader.enqueue(ImageRequest.Builder(context).data(url).build())
+                }
+            }
         }
     }
 

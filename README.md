@@ -4,6 +4,7 @@ A clean, Apple TV-style launcher on a light blue background:
 
 | Row | What it does |
 | --- | --- |
+| **Top 10** | Not a row you select: as you move across the apps, the area above shows **Top 10 on Netflix / Hulu / Prime Video / Disney+ / Apple TV / Peacock** with posters, and the #1 title's artwork fades in behind. Other apps (YouTube, YouTube TV...) get a greeting and the date instead. |
 | **1. Apps** | Every streaming app installed on the Chromecast, shown with its TV banner. Long-press an app to move it left or right or hide it. The **+ Apps** tile at the end shows or hides apps. |
 | **2. Teams** | **Arsenal** and **Lakers** buttons. When a game is on, the button shows a red **LIVE** badge and the score. Pressing it opens the game in the app that's carrying it. If there's no game, you get a page with upcoming games, recent results and the league table or conference standings. Long-press always opens that page. |
 | **3. Continue Watching** | Shows and movies you're in the middle of in any app, most recent first, with progress bars. Select one to resume it in its app. |
@@ -91,6 +92,15 @@ On the team page during a game, each app that can show it gets its own **Watch o
 The networks-to-apps mapping lives in [`Broadcasters.kt`](app/src/main/java/com/mytv/launcher/sports/Broadcasters.kt). Each competition's fallback broadcasters (used when ESPN lists none) are in [`Team.kt`](app/src/main/java/com/mytv/launcher/sports/Team.kt). Edit those if your setup differs, e.g. you watch the Lakers on Spectrum SportsNet.
 
 **Honest limits:** streaming apps don't publish "play this live game" links, so MyTV opens the right app, and from there it's usually one click on the live game, which they put front and centre. ESPN's API is unofficial and could change.
+
+## Top 10 (TMDB key)
+
+The Top 10s come from [TMDB](https://www.themoviedb.org): the most popular titles right now among everything streaming on that service in the US. Only Netflix publishes an official Top 10, so all six use the same source. That means the order won't exactly match what the apps show.
+
+1. Create a free account at themoviedb.org.
+2. Go to **Settings → API** and request a key. Choose "Personal" use; it's approved instantly.
+3. Copy the **API Key** (the short one) or the **API Read Access Token** (the long one). Either works.
+4. Add it as a repository secret named `TMDB_API_KEY`, then re-run **Build APK**. The TV picks it up through the auto-updater.
 
 ## Updates
 

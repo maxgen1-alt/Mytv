@@ -27,6 +27,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -35,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -54,6 +56,8 @@ import com.mytv.launcher.apps.TvApp
 import com.mytv.launcher.sports.Game
 import com.mytv.launcher.sports.Team
 import com.mytv.launcher.sports.Teams
+import com.mytv.launcher.topten.TopTenService
+import com.mytv.launcher.topten.TopTitle
 import com.mytv.launcher.watching.WatchItem
 import kotlinx.coroutines.delay
 import java.text.DateFormat
@@ -70,6 +74,8 @@ fun HomeScreen(
     watching: WatchState,
     busy: String?,
     updateReady: Boolean,
+    topTen: Map<TopTenService, List<TopTitle>>,
+    topTenConfigured: Boolean,
     onUpdate: () -> Unit,
     onApp: (TvApp) -> Unit,
     onMoveApp: (TvApp, Int) -> Unit,
@@ -84,6 +90,12 @@ fun HomeScreen(
 ) {
     val firstApp = remember { FocusRequester() }
     var menuFor by remember { mutableStateOf<TvApp?>(null) }
+    val scroll = rememberScrollState()
+    var focusedApp by remember { mutableStateOf<TvApp?>(null) }
+    var appFocusTick by remember { mutableIntStateOf(0) }
+
+    // Landing on the apps row always brings the Top 10 back into view.
+    LaunchedEffect(appFocusTick) { if (appFocusTick > 0) scroll.animateScrollTo(0) }
 
     LaunchedEffect(apps.isNotEmpty()) {
         if (apps.isNotEmpty()) runCatching { firstApp.requestFocus() }
@@ -93,11 +105,19 @@ fun HomeScreen(
         Column(
             Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scroll)
                 .padding(vertical = 28.dp),
         ) {
             TopBar(updateReady, onUpdate)
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(8.dp))
+
+            // Above the apps: Top 10 for whichever app is focused (not focusable, just visual).
+            val focusedService = focusedApp?.let { TopTenService.forApp(it.packageName, it.label) }
+            TopTenHero(
+                service = focusedService,
+                titles = focusedService?.let { topTen[it] }.orEmpty(),
+                configured = topTenConfigured,
+            )
 
             // Row 1: streaming apps
             LazyRow(
@@ -109,7 +129,13 @@ fun HomeScreen(
                 items(apps, key = { it.packageName }) { app ->
                     AppTile(
                         app = app,
-                        modifier = if (app == apps.first()) Modifier.focusRequester(firstApp) else Modifier,
+                        modifier = (if (app == apps.first()) Modifier.focusRequester(firstApp) else Modifier)
+                            .onFocusChanged {
+                                if (it.hasFocus || it.isFocused) {
+                                    focusedApp = app
+                                    appFocusTick++
+                                }
+                            },
                         onClick = { onApp(app) },
                         onLongClick = { menuFor = app },
                     )

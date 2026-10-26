@@ -30,6 +30,8 @@ android {
 
         buildConfigField("String", "TRAKT_CLIENT_ID", "\"${secret("TRAKT_CLIENT_ID")}\"")
         buildConfigField("String", "TRAKT_CLIENT_SECRET", "\"${secret("TRAKT_CLIENT_SECRET")}\"")
+        // Free key from themoviedb.org, for the Top 10 above the apps row.
+        buildConfigField("String", "TMDB_API_KEY", "\"${secret("TMDB_API_KEY")}\"")
         // Where the auto-updater looks for new releases.
         val repo = System.getenv("GITHUB_REPOSITORY") ?: "maxgen1-alt/Mytv"
         buildConfigField("String", "UPDATE_REPO", "\"$repo\"")

@@ -54,12 +54,15 @@ class MainActivity : ComponentActivity() {
                         val watching by vm.watching.collectAsStateWithLifecycle()
                         val busy by vm.busy.collectAsStateWithLifecycle()
                         val updateReady by vm.updateReady.collectAsStateWithLifecycle()
+                        val topTen by vm.topTen.collectAsStateWithLifecycle()
                         HomeScreen(
                             apps = apps,
                             liveGames = live,
                             watching = watching,
                             busy = busy,
                             updateReady = updateReady,
+                            topTen = topTen,
+                            topTenConfigured = vm.topTenConfigured,
                             onUpdate = vm::installUpdate,
                             onApp = vm::launchApp,
                             onMoveApp = vm::moveApp,
