@@ -95,7 +95,7 @@ fun TeamScreen(
 
             detail.live?.let { live ->
                 SectionTitle("Live")
-                val options = detail.liveOptions.ifEmpty { listOf(null) }
+                val options: List<WatchOption?> = detail.liveOptions.ifEmpty { listOf(null) }
                 options.forEachIndexed { i, opt ->
                     GameCard(
                         team = team,
