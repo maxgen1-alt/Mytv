@@ -34,12 +34,15 @@ import com.mytv.launcher.update.Updater
 import com.mytv.launcher.watching.TraktClient
 import com.mytv.launcher.watching.WatchNext
 import com.mytv.launcher.watching.WatchItem
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
@@ -183,8 +186,13 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         refreshWatching()
         checkForUpdates()
         refreshTopTen()
-        // Warm Ang's new-show scan in the background (cached for a day).
-        if (angJob?.isActive != true) angJob = viewModelScope.launch { angRepo.premieres() }
+        // Warm Ang's TV in the background so it opens instantly (everything is cached).
+        if (angJob?.isActive != true) angJob = viewModelScope.launch {
+            _allApps.first { it.isNotEmpty() } // need the installed apps to know which services to search
+            angRepo.curatedShows()
+            angRepo.discover(installedProviders())
+            angRepo.premieres()
+        }
         liveJob?.cancel()
         liveJob = viewModelScope.launch {
             while (isActive) {
@@ -275,11 +283,14 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---- Apps ----
 
+    /** Reads installed apps and draws their banners on a background thread (never blocks the UI). */
     fun refreshApps() {
-        val all = installed.load()
-        _allApps.value = all
-        _hidden.value = installed.hiddenPackages()
-        _apps.value = installed.visible(all)
+        viewModelScope.launch {
+            val all = withContext(Dispatchers.Default) { installed.load() }
+            _allApps.value = all
+            _hidden.value = installed.hiddenPackages()
+            _apps.value = installed.visible(all)
+        }
     }
 
     fun launchApp(app: TvApp) {
@@ -356,16 +367,16 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private fun refreshTopTen() {
         if (System.currentTimeMillis() - topTenLoadedAt < 6 * 3600_000L) return
         viewModelScope.launch {
-            val lists = topTenRepo.load()
+            val apps = withContext(Dispatchers.Default) { installed.load() }
+            val services = TopTenService.entries.filter { s -> apps.any { s.app.matches(it.packageName, it.label) } }.toSet()
+            val lists = topTenRepo.load(services)
             if (lists.isEmpty()) return@launch
             topTenLoadedAt = System.currentTimeMillis()
             _topTen.value = lists
-            // Warm the image cache so posters are there the moment you land on an app.
+            // Warm the image cache so the Popular row's posters are there instantly.
             val loader = context.imageLoader
-            lists.values.flatten().forEach { t ->
-                listOfNotNull(t.posterUrl, t.backdropUrl).forEach { url ->
-                    loader.enqueue(ImageRequest.Builder(context).data(url).build())
-                }
+            lists.values.flatten().mapNotNull { it.posterUrl }.forEach { url ->
+                loader.enqueue(ImageRequest.Builder(context).data(url).build())
             }
         }
     }
@@ -374,19 +385,45 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     private var angCurated: List<Pair<com.mytv.launcher.ang.CuratedShow, com.mytv.launcher.ang.TvShow>> = emptyList()
     private var angPremieres: List<com.mytv.launcher.ang.Premiere> = emptyList()
+    private var angDiscovered: List<AngItem> = emptyList()
+
+    /** Streaming services you have installed, for "New shows you might like". */
+    private fun installedProviders(): List<WhereToWatch.Provider> {
+        val apps = _allApps.value
+        return WhereToWatch.providers.filter { p -> apps.any { p.service.matches(it.packageName, it.label) } }
+    }
+
+    /** Whether a network / service name is watchable on an app you have. */
+    private fun isAvailable(serviceName: String?): Boolean {
+        val apps = _allApps.value
+        return WhereToWatch.servicesFor(serviceName).any { s -> apps.any { s.matches(it.packageName, it.label) } }
+    }
+
+    private fun buildAngGuide(): AngGuide = AngGuideBuilder.build(
+        today = java.time.LocalDate.now(),
+        curated = angCurated,
+        premieres = angPremieres,
+        watched = angRepo.watched(),
+        isAvailable = ::isAvailable,
+        discovered = angDiscovered,
+    )
 
     private fun loadAng() {
         angJob?.cancel()
         angJob = viewModelScope.launch {
-            _ang.update { it.copy(loading = true) }
-            val today = java.time.LocalDate.now()
+            // 1. Instant: whatever is cached.
+            angRepo.cachedCurated()?.let { angCurated = it }
+            angRepo.cachedDiscovered(installedProviders().map { it.name }.toSet())?.let { angDiscovered = it }
+            val instant = withContext(Dispatchers.Default) { buildAngGuide() }
+            _ang.update { it.copy(guide = instant, loading = angCurated.isEmpty(), discovering = true) }
+            launch { _ang.update { it.copy(continueWatching = herContinueWatching(instant)) } }
+
+            // 2. Refresh anything stale, updating the screen as each part lands.
             angCurated = angRepo.curatedShows()
-            // Show her shows straight away; new-show discovery can take ~30s when not cached.
-            val quick = AngGuideBuilder.build(today, angCurated, angPremieres, angRepo.watched())
-            _ang.update { it.copy(guide = quick, loading = false, discovering = true) }
-            launch { _ang.update { it.copy(continueWatching = herContinueWatching(quick)) } }
-            angPremieres = angRepo.premieres(today)
-            val full = AngGuideBuilder.build(today, angCurated, angPremieres, angRepo.watched())
+            angDiscovered = angRepo.discover(installedProviders())
+            _ang.update { it.copy(guide = buildAngGuide(), loading = false) }
+            angPremieres = angRepo.premieres()
+            val full = withContext(Dispatchers.Default) { buildAngGuide() }
             _ang.update { it.copy(guide = full, discovering = false) }
             _ang.update { it.copy(continueWatching = herContinueWatching(full)) }
         }
@@ -399,11 +436,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         return watchNext.load().filter { angRepo.isHers(it.title, titles) }
     }
 
-    /** Long-press in Ang's TV: she's seen it, hide it until a newer season comes out. */
+    /** Long-press in Ang's TV: she's seen it. Curated shows come back for a newer season. */
     fun angMarkWatched(item: AngItem) {
-        angRepo.markWatched(item.showId)
-        val guide = AngGuideBuilder.build(java.time.LocalDate.now(), angCurated, angPremieres, angRepo.watched())
-        _ang.update { it.copy(guide = guide) }
+        angRepo.markWatched(item.key)
+        _ang.update { it.copy(guide = buildAngGuide()) }
         toast("${item.title}: marked as watched")
     }
 

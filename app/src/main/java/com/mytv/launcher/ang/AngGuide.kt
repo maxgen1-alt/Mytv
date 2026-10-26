@@ -4,7 +4,8 @@ import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
 data class AngItem(
-    val showId: Long,
+    /** "tvmaze:123" or "tmdb:456": unique per show, used for rows and "Mark as watched". */
+    val key: String,
     val title: String,
     /** e.g. "Season 3 · Prime Video" */
     val detail: String,
@@ -14,12 +15,14 @@ data class AngItem(
     val date: LocalDate?,
     /** Small label on the poster: "New season", "New show"... */
     val badge: String?,
+    /** For ordering discovered shows. */
+    val popularity: Double = 0.0,
 )
 
 data class AngGuide(
     /** Her shows with something to watch right now. */
     val watchNow: List<AngItem> = emptyList(),
-    /** Newly premiered shows of the same kind she might like. */
+    /** Shows of the same kind she might like, on apps you have. */
     val newShows: List<AngItem> = emptyList(),
     /** Dated premieres coming soon, soonest first. */
     val upcoming: List<AngItem> = emptyList(),
@@ -28,14 +31,17 @@ data class AngGuide(
 object AngGuideBuilder {
 
     /**
-     * [watched]: show id → date she marked it watched on the TV (long-press),
-     * on top of each show's built-in [CuratedShow.caughtUpAsOf].
+     * [watched]: item key → date she marked it watched (long-press).
+     * [isAvailable]: whether a network / service name is on an app you have.
+     * [discovered]: candidate "new shows" (from [AngDiscovery]).
      */
     fun build(
         today: LocalDate,
         curated: List<Pair<CuratedShow, TvShow>>,
         premieres: List<Premiere>,
-        watched: Map<Long, LocalDate> = emptyMap(),
+        watched: Map<String, LocalDate> = emptyMap(),
+        isAvailable: (String?) -> Boolean = { true },
+        discovered: List<AngItem> = emptyList(),
     ): AngGuide {
         val watchNow = mutableListOf<Pair<AngItem, LocalDate?>>()
         val upcoming = mutableListOf<AngItem>()
@@ -44,7 +50,7 @@ object AngGuideBuilder {
             val latest = show.seasons
                 .filter { it.premiere != null && !it.premiere.isAfter(today) }
                 .maxByOrNull { it.premiere!! }
-            val caughtUp = listOfNotNull(spec.caughtUpAsOf, watched[show.id]).maxOrNull()
+            val caughtUp = listOfNotNull(spec.caughtUpAsOf, watched[keyOf(show)]).maxOrNull()
             val isNew = latest?.premiere?.let { premiere ->
                 ChronoUnit.DAYS.between(premiere, today) <= AngShows.NEW_SEASON_DAYS &&
                     (caughtUp == null || premiere.isAfter(caughtUp))
@@ -59,26 +65,30 @@ object AngGuideBuilder {
             }
         }
 
-        val curatedIds = curated.map { it.second.id }.toSet()
-        val herKind = premieres
-            .filter { it.show.id !in curatedIds && AngShows.isHerKindOfShow(it.show) }
-            .filter { !it.date.isBefore(today.minusDays(AngShows.DISCOVER_PAST_DAYS)) }
+        val curatedNames = curated.flatMap { listOf(normalize(it.first.query), normalize(it.second.name)) }.toSet()
+        fun isCurated(title: String) = normalize(title) in curatedNames
 
-        val newShows = herKind.filter { !it.date.isAfter(today) }
-            .sortedByDescending { it.date }
-            .distinctBy { it.show.id }
-            .map { item(it.show, it.season, it.date, newLabel(it.season)) }
+        val newShows = discovered
+            .filter { !isCurated(it.title) && it.key !in watched && isAvailable(it.service) }
+            .sortedByDescending { it.popularity }
+            .distinctBy { normalize(it.title) }
 
-        upcoming += herKind.filter { it.date.isAfter(today) }
+        upcoming += premieres
+            .filter { it.date.isAfter(today) && AngShows.isHerKindOfShow(it.show) && isAvailable(it.show.service) }
+            .filter { !isCurated(it.show.name) }
             .map { item(it.show, it.season, it.date, newLabel(it.season)) }
 
         return AngGuide(
-            // Rows are keyed by show id, so never list a show twice in one row.
-            watchNow = watchNow.sortedByDescending { it.second ?: LocalDate.MIN }.map { it.first }.distinctBy { it.showId },
-            newShows = newShows.distinctBy { it.showId },
-            upcoming = upcoming.sortedBy { it.date }.distinctBy { it.showId },
+            // Rows are keyed by show, so never list a show twice in one row.
+            watchNow = watchNow.sortedByDescending { it.second ?: LocalDate.MIN }.map { it.first }.distinctBy { it.key },
+            newShows = newShows.distinctBy { it.key },
+            upcoming = upcoming.sortedBy { it.date }.distinctBy { it.key },
         )
     }
+
+    fun keyOf(show: TvShow) = "tvmaze:${show.id}"
+
+    fun normalize(s: String) = s.lowercase().replace(Regex("[^a-z0-9]"), "")
 
     /** Next season premiere after today: from the season list, or a scheduled episode 1. */
     private fun nextPremiere(show: TvShow, today: LocalDate): Pair<Int, LocalDate>? {
@@ -94,7 +104,7 @@ object AngGuideBuilder {
     private fun newLabel(season: Int) = if (season <= 1) "New show" else "New season"
 
     private fun item(show: TvShow, season: Int?, date: LocalDate?, badge: String?) = AngItem(
-        showId = show.id,
+        key = keyOf(show),
         title = show.name,
         detail = listOfNotNull(season?.let { "Season $it" }, show.service).joinToString(" · "),
         imageUrl = show.imageUrl,

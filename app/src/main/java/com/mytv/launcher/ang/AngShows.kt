@@ -43,9 +43,9 @@ object AngShows {
     /** A season counts as "new" for this many days after it premieres. */
     const val NEW_SEASON_DAYS = 60L
 
-    /** How far back / ahead we scan streaming premieres for new shows of the same kind. */
-    const val DISCOVER_PAST_DAYS = 21L
+    /** How far ahead we scan streaming premieres for "Coming soon". */
     const val DISCOVER_FUTURE_DAYS = 45L
+
 
     /** English-language shows from the US, Canada or UK (null = a global streamer like Netflix). */
     private val englishCountries = setOf("US", "GB", "CA")
@@ -55,7 +55,7 @@ object AngShows {
         "perfect match", "ex on", "ultimatum", "match", "villa", "romance",
     )
     private val notHerGenres = setOf(
-        "horror", "crime", "thriller", "anime", "science-fiction", "war", "espionage", "children",
+        "horror", "crime", "thriller", "anime", "science-fiction", "war", "espionage", "children", "adult",
     )
 
     fun isEnglish(show: TvShow): Boolean =

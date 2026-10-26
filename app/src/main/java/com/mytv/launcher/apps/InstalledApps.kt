@@ -4,13 +4,17 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.drawable.toBitmap
 
 data class TvApp(
     val packageName: String,
     val label: String,
-    /** Wide 16:9 TV banner if the app ships one, otherwise null. */
-    val banner: Drawable?,
-    val icon: Drawable?,
+    /** Wide 16:9 TV banner if the app ships one, pre-rendered small (320x180). */
+    val banner: ImageBitmap?,
+    /** Square icon, only rendered when there's no banner. */
+    val icon: ImageBitmap?,
 )
 
 /**
@@ -22,7 +26,14 @@ class InstalledApps(private val context: Context) {
     private val prefs = context.getSharedPreferences("apps", Context.MODE_PRIVATE)
     private val pm: PackageManager = context.packageManager
 
-    /** All launchable TV apps except this launcher, in the user's order. */
+    /** Rendered apps by "package@lastUpdateTime", so unchanged apps are never re-drawn. */
+    private val rendered = HashMap<String, TvApp>()
+
+    /**
+     * All launchable TV apps except this launcher, in the user's order.
+     * Slow (loads and draws every banner): call it off the main thread.
+     */
+    @Synchronized
     fun load(): List<TvApp> {
         val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER)
         val found = pm.queryIntentActivities(intent, 0)
@@ -30,15 +41,22 @@ class InstalledApps(private val context: Context) {
             .filter { it.packageName != context.packageName }
             .distinctBy { it.packageName }
             .map { info ->
-                TvApp(
-                    packageName = info.packageName,
-                    label = info.loadLabel(pm).toString(),
-                    banner = info.loadBanner(pm) ?: info.applicationInfo.loadBanner(pm),
-                    icon = info.loadIcon(pm),
-                )
+                val updated = runCatching { pm.getPackageInfo(info.packageName, 0).lastUpdateTime }.getOrDefault(0L)
+                rendered.getOrPut("${info.packageName}@$updated") {
+                    val banner = (info.loadBanner(pm) ?: info.applicationInfo.loadBanner(pm))?.render(320, 180)
+                    TvApp(
+                        packageName = info.packageName,
+                        label = info.loadLabel(pm).toString(),
+                        banner = banner,
+                        icon = if (banner == null) info.loadIcon(pm)?.render(96, 96) else null,
+                    )
+                }
             }
         return sort(found)
     }
+
+    private fun Drawable.render(w: Int, h: Int): ImageBitmap? =
+        runCatching { toBitmap(w, h).asImageBitmap().also { it.prepareToDraw() } }.getOrNull()
 
     fun visible(all: List<TvApp>): List<TvApp> {
         val hidden = hiddenPackages()

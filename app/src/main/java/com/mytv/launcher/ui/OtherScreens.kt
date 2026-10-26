@@ -27,14 +27,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.graphics.drawable.toBitmap
 import androidx.tv.material3.Button
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
@@ -86,9 +84,7 @@ fun EditAppsScreen(
                             .size(150.dp, 84.dp)
                             .let { if (app == apps.first()) it.focusRequester(first) else it },
                     ) {
-                        val bmp = remember(app.packageName) {
-                            runCatching { (app.banner ?: app.icon)?.toBitmap()?.asImageBitmap() }.getOrNull()
-                        }
+                        val bmp = app.banner ?: app.icon
                         Box(Modifier.fillMaxSize().alpha(if (isHidden) 0.3f else 1f), contentAlignment = Alignment.Center) {
                             if (bmp != null) {
                                 Image(

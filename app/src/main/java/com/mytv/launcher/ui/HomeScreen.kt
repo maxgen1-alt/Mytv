@@ -27,7 +27,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -36,9 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -46,7 +43,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.core.graphics.drawable.toBitmap
 import androidx.tv.material3.Button
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
@@ -74,10 +70,8 @@ fun HomeScreen(
     watching: WatchState,
     busy: String?,
     updateReady: Boolean,
-    topTen: Map<TopTenService, List<TopTitle>>,
     popular: List<Pair<TopTenService, TopTitle>>,
     onPopular: (TopTenService, TopTitle) -> Unit,
-    topTenConfigured: Boolean,
     onUpdate: () -> Unit,
     onApp: (TvApp) -> Unit,
     onMoveApp: (TvApp, Int) -> Unit,
@@ -93,11 +87,6 @@ fun HomeScreen(
     val firstApp = remember { FocusRequester() }
     var menuFor by remember { mutableStateOf<TvApp?>(null) }
     val scroll = rememberScrollState()
-    var focusedApp by remember { mutableStateOf<TvApp?>(null) }
-    var appFocusTick by remember { mutableIntStateOf(0) }
-
-    // Landing on the apps row always brings the Top 10 back into view.
-    LaunchedEffect(appFocusTick) { if (appFocusTick > 0) scroll.animateScrollTo(0) }
 
     LaunchedEffect(apps.isNotEmpty()) {
         if (apps.isNotEmpty()) runCatching { firstApp.requestFocus() }
@@ -111,15 +100,7 @@ fun HomeScreen(
                 .padding(vertical = 28.dp),
         ) {
             TopBar(updateReady, onUpdate)
-            Spacer(Modifier.height(8.dp))
-
-            // Above the apps: Top 10 for whichever app is focused (not focusable, just visual).
-            val focusedService = focusedApp?.let { TopTenService.forApp(it.packageName, it.label) }
-            TopTenHero(
-                service = focusedService,
-                titles = focusedService?.let { topTen[it] }.orEmpty(),
-                configured = topTenConfigured,
-            )
+            Spacer(Modifier.height(18.dp))
 
             // Row 1: streaming apps
             LazyRow(
@@ -131,13 +112,7 @@ fun HomeScreen(
                 items(apps, key = { it.packageName }) { app ->
                     AppTile(
                         app = app,
-                        modifier = (if (app == apps.first()) Modifier.focusRequester(firstApp) else Modifier)
-                            .onFocusChanged {
-                                if (it.hasFocus || it.isFocused) {
-                                    focusedApp = app
-                                    appFocusTick++
-                                }
-                            },
+                        modifier = if (app == apps.first()) Modifier.focusRequester(firstApp) else Modifier,
                         onClick = { onApp(app) },
                         onLongClick = { menuFor = app },
                     )
@@ -258,10 +233,8 @@ private fun AppTile(app: TvApp, modifier: Modifier, onClick: () -> Unit, onLongC
         onLongClick = onLongClick,
         modifier = modifier.size(TileWidth, TileHeight),
     ) {
-        val banner = remember(app.packageName) { runCatching { app.banner?.toBitmap()?.asImageBitmap() }.getOrNull() }
-        val icon = remember(app.packageName) {
-            if (banner == null) runCatching { app.icon?.toBitmap(96, 96)?.asImageBitmap() }.getOrNull() else null
-        }
+        val banner = app.banner
+        val icon = app.icon
         when {
             banner != null -> Image(banner, app.label, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             else -> Column(

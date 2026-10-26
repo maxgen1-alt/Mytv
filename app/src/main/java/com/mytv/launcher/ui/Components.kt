@@ -52,9 +52,8 @@ fun FocusCard(
         border = ClickableSurfaceDefaults.border(
             focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape),
         ),
-        glow = ClickableSurfaceDefaults.glow(
-            focusedGlow = Glow(elevationColor = Color.White.copy(alpha = 0.25f), elevation = 18.dp),
-        ),
+        // No glow: blurred shadows are expensive on a Chromecast's GPU. Scale + border is enough.
+        glow = ClickableSurfaceDefaults.glow(glow = Glow.None, focusedGlow = Glow.None),
         content = content,
     )
 }

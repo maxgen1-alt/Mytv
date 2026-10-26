@@ -52,7 +52,9 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8 optimizes Compose a lot (smaller, faster code); our code uses no reflection.
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName(if (keystore.exists()) "mytv" else "debug")
         }
     }
@@ -84,6 +86,9 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("io.coil-kt:coil-compose:2.7.0")
+    // Installs the baseline profiles Compose ships with, so the TV pre-compiles the
+    // hot UI code instead of interpreting it: much smoother scrolling and startup.
+    implementation("androidx.profileinstaller:profileinstaller:1.4.1")
 
     testImplementation("junit:junit:4.13.2")
     // Android's org.json is stubbed in local unit tests; use the real one.

@@ -49,7 +49,7 @@ class AngGuideTest {
             today,
             listOf(CuratedShow("Sterling Point", Follow.NEW_SEASONS) to sp),
             emptyList(),
-            watched = mapOf(7L to today),
+            watched = mapOf("tvmaze:7" to today),
         )
         assertTrue(g.watchNow.isEmpty())
 
@@ -100,20 +100,56 @@ class AngGuideTest {
     }
 
     @Test
-    fun discoversRomanceAndNetflixDatingShowsOnly() {
+    fun comingSoonOnlyHerKindOnAppsWeHave() {
         val premieres = listOf(
-            Premiere(show(10, "New Teen Romance"), 1, today.minusDays(3)),
-            Premiere(show(11, "Crime Thing", genres = listOf("Crime", "Drama")), 1, today.minusDays(2)),
-            Premiere(show(12, "Perfect Match", type = "Reality", genres = emptyList(), service = "Netflix"), 3, today.plusDays(10)),
-            Premiere(show(13, "Lyubov Show", language = "Russian"), 1, today.plusDays(5)),
-            Premiere(show(14, "Way Old Romance"), 1, today.minusDays(60)),
+            Premiere(show(10, "New Teen Romance", service = "Netflix"), 1, today.plusDays(3)),
+            Premiere(show(11, "Crime Thing", genres = listOf("Crime", "Drama"), service = "Netflix"), 1, today.plusDays(2)),
+            Premiere(show(12, "ITVX Romance", service = "ITVX"), 1, today.plusDays(4)),
+            Premiere(show(13, "Lyubov Show", language = "Russian", service = "Netflix"), 1, today.plusDays(5)),
+            Premiere(show(14, "Steamy", genres = listOf("Romance", "Adult"), service = "Netflix"), 1, today.plusDays(6)),
+            Premiere(show(15, "Already Aired", service = "Netflix"), 1, today.minusDays(1)),
         )
-        val g = AngGuideBuilder.build(today, emptyList(), premieres)
-        assertEquals(listOf("New Teen Romance"), g.newShows.map { it.title })
-        assertEquals(listOf("Perfect Match"), g.upcoming.map { it.title })
-        // Romantic reality on any service counts now, not just Netflix.
-        val hulu = Premiere(show(15, "Love Shack", type = "Reality", genres = emptyList(), service = "Hulu"), 1, today.plusDays(5))
-        assertEquals(listOf("Love Shack", "Perfect Match"), AngGuideBuilder.build(today, emptyList(), premieres + hulu).upcoming.map { it.title })
+        val available = { s: String? -> com.mytv.launcher.ang.WhereToWatch.servicesFor(s).isNotEmpty() }
+        val g = AngGuideBuilder.build(today, emptyList(), premieres, isAvailable = available)
+        assertEquals(listOf("New Teen Romance"), g.upcoming.map { it.title })
+    }
+
+    @Test
+    fun newShowsFromDiscoverySkipWatchedCuratedAndUnavailable() {
+        fun d(key: String, title: String, service: String, pop: Double) =
+            AngItem(key, title, "", null, service, null, null, pop)
+        val discovered = listOf(
+            d("tmdb:1", "Fresh Romance", "Netflix", 50.0),
+            d("tmdb:2", "Big Rom Com", "Hulu", 90.0),
+            d("tmdb:3", "Seen It", "Netflix", 70.0),
+            d("tmdb:4", "Off Campus", "Prime Video", 80.0),
+            d("tmdb:5", "Flix Only", "Passionflix", 99.0),
+        )
+        val curated = listOf(CuratedShow("Off Campus", Follow.NEW_SEASONS) to show(4, "Off Campus"))
+        val available = { s: String? -> com.mytv.launcher.ang.WhereToWatch.servicesFor(s).isNotEmpty() }
+        val g = AngGuideBuilder.build(
+            today, curated, emptyList(),
+            watched = mapOf("tmdb:3" to today),
+            isAvailable = available,
+            discovered = discovered,
+        )
+        assertEquals(listOf("Big Rom Com", "Fresh Romance"), g.newShows.map { it.title })
+    }
+
+    @Test
+    fun parsesTmdbDiscovery() {
+        val json = """{"results":[
+            {"id":1,"name":"Rom","original_language":"en","origin_country":["US"],"genre_ids":[18],"first_air_date":"2026-10-01","poster_path":"/p.jpg","popularity":12.5},
+            {"id":2,"name":"Toon Love","original_language":"en","origin_country":["US"],"genre_ids":[16]},
+            {"id":3,"name":"Aussie Love","original_language":"en","origin_country":["AU"],"genre_ids":[10764]},
+            {"id":4,"name":"Amor","original_language":"es","origin_country":["US"]},
+            {"id":5,"name":"Racy","original_language":"en","adult":true}]}"""
+        val items = AngDiscovery.parseDiscover(json, "Netflix", today)
+        assertEquals(listOf("Rom"), items.map { it.title })
+        assertEquals("tmdb:1", items[0].key)
+        assertEquals("New show", items[0].badge)
+        assertEquals("2026 · Netflix", items[0].detail)
+        assertEquals(42, AngDiscovery.parseKeywordId("""{"results":[{"id":7,"name":"romance novel"},{"id":42,"name":"Romance"}]}""", "romance"))
     }
 
     @Test

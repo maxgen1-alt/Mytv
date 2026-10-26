@@ -67,7 +67,7 @@ fun AngScreen(
     val first = remember { FocusRequester() }
     val guide = state.guide
     val firstKey = state.continueWatching.firstOrNull()?.key
-        ?: (guide.watchNow + guide.newShows + guide.upcoming).firstOrNull()?.showId?.toString()
+        ?: (guide.watchNow + guide.newShows + guide.upcoming).firstOrNull()?.key
     LaunchedEffect(firstKey) { if (firstKey != null) runCatching { first.requestFocus() } }
 
     Box(Modifier.fillMaxSize().background(AngPalette.Background)) {
@@ -101,12 +101,12 @@ fun AngScreen(
 
             ContinueShelf(state.continueWatching, onResume, ::firstFocus)
             Shelf("Watch now", guide.watchNow, onShow, ::firstFocus, onLongClick = onMarkWatched) { it.badge }
-            Shelf("New shows you might like", guide.newShows, onShow, ::firstFocus) { it.date?.let { d -> "Since ${dateFormat.format(d)}" } }
+            Shelf("New shows you might like", guide.newShows, onShow, ::firstFocus, onLongClick = onMarkWatched) { it.badge }
             Shelf("Coming soon", guide.upcoming, onShow, ::firstFocus, dated = true) { it.date?.let(::comingLabel) }
 
-            if (guide.watchNow.isNotEmpty()) {
+            if (guide.watchNow.isNotEmpty() || guide.newShows.isNotEmpty()) {
                 Text(
-                    "Tip: hold select on a show in Watch now to mark it as watched.",
+                    "Tip: hold select on a show to mark it as watched.",
                     color = Color.White.copy(alpha = 0.7f),
                     fontSize = 12.sp,
                     modifier = Modifier.padding(horizontal = 48.dp, vertical = 4.dp),
@@ -160,7 +160,7 @@ private fun Shelf(
         modifier = Modifier.height(268.dp),
         verticalAlignment = Alignment.Top,
     ) {
-        items(items, key = { it.showId }) { item ->
+        items(items, key = { it.key }) { item ->
             PosterCard(
                 item = item,
                 label = label(item),

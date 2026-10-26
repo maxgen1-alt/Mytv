@@ -67,12 +67,14 @@ class EspnClient(
         // Note: standings live under /apis/v2, not /apis/site/v2.
         val url = "https://site.api.espn.com/apis/v2/sports/${league.sport}/${league.code}/standings"
         val body = get(url) ?: return null
-        return runCatching { EspnParser.parseStandings(body, league, team.espnId) }.getOrNull()
+        return withContext(Dispatchers.Default) {
+            runCatching { EspnParser.parseStandings(body, league, team.espnId) }.getOrNull()
+        }
     }
 
-    private suspend fun fetchGames(url: String, league: League): List<Game> {
-        val body = get(url) ?: return emptyList()
-        return runCatching { EspnParser.parseEvents(body, league) }.getOrDefault(emptyList())
+    private suspend fun fetchGames(url: String, league: League): List<Game> = withContext(Dispatchers.IO) {
+        val body = get(url) ?: return@withContext emptyList()
+        runCatching { EspnParser.parseEvents(body, league) }.getOrDefault(emptyList())
     }
 
     private suspend fun get(url: String): String? = withContext(Dispatchers.IO) {
