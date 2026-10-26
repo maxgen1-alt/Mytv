@@ -7,6 +7,12 @@ on:
 permissions:
   contents: write
 
+# One build at a time, in push order, so an older build can never finish
+# last and replace a newer release.
+concurrency:
+  group: build-apk
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -56,6 +62,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # Belt and braces: never replace a newer release with an older build.
+          current=$(curl -sfL "https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/version.json" | sed -n 's/.*"versionCode": *\([0-9]*\).*/\1/p')
+          if [ -n "$current" ] && [ "$current" -gt "$GITHUB_RUN_NUMBER" ]; then
+            echo "Release already has newer build $current; not publishing $GITHUB_RUN_NUMBER."
+            exit 0
+          fi
           gh release delete latest --yes --cleanup-tag || true
           gh release create latest MyTV.apk version.json \
             --target "$GITHUB_SHA" \
