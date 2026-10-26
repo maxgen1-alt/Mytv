@@ -47,8 +47,8 @@ object AngShows {
     const val DISCOVER_PAST_DAYS = 21L
     const val DISCOVER_FUTURE_DAYS = 45L
 
-    /** English-language shows from English-speaking countries (null = a global streamer like Netflix). */
-    private val englishCountries = setOf("US", "GB", "CA", "AU", "IE", "NZ")
+    /** English-language shows from the US, Canada or UK (null = a global streamer like Netflix). */
+    private val englishCountries = setOf("US", "GB", "CA")
 
     private val datingWords = listOf(
         "love", "dating", "bachelor", "married", "marry", "single", "temptation",

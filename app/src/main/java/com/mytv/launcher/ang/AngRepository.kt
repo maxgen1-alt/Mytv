@@ -85,7 +85,7 @@ class AngRepository(context: Context) {
     suspend fun isHers(title: String, guideTitles: Set<String>): Boolean {
         val norm = normalize(title)
         if (norm in guideTitles.map(::normalize)) return true
-        val key = "hers:$norm"
+        val key = "hers2:$norm" // v2: answers from before the US/CA/UK-only rule are ignored
         if (prefs.contains(key)) return prefs.getBoolean(key, false)
         val url = "$api/singlesearch/shows".toHttpUrl().newBuilder().addQueryParameter("q", title).build().toString()
         val body = get(url) ?: return false // unknown for now; ask again next time

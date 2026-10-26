@@ -68,6 +68,8 @@ class AngGuideTest {
         assertFalse(AngShows.isHerKindOfShow(show(1, "Lyubov", language = "Russian")))
         assertFalse(AngShows.isHerKindOfShow(show(1, "Lyubov", language = "English", country = "RU")))
         assertFalse(AngShows.isHerKindOfShow(show(1, "Unknown Lang", language = null)))
+        for (c in listOf("AU", "NZ", "IE")) assertFalse(AngShows.isHerKindOfShow(show(1, "Elsewhere", country = c)))
+        for (c in listOf("US", "CA", "GB")) assertTrue(AngShows.isHerKindOfShow(show(1, "Here", country = c)))
         assertTrue(AngShows.isHerKindOfShow(show(1, "Rom Com", genres = listOf("Comedy", "Romance"), country = "US")))
         assertTrue(AngShows.isHerKindOfShow(show(1, "Pure Romance", genres = listOf("Romance"), country = "GB")))
         assertTrue(
