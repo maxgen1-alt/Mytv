@@ -84,6 +84,7 @@ class MainActivity : ComponentActivity() {
                             onAng = { vm.navigate(Screen.Ang) },
                             onWatchItem = vm::playWatchItem,
                             onAllowWatchNext = ::requestWatchNext,
+                            onTurnOnTracking = vm::allowTracking,
                             onLinkTrakt = { vm.navigate(Screen.TraktLink) },
                         )
                     }
@@ -106,6 +107,9 @@ class MainActivity : ComponentActivity() {
                             watchStatus = watchState.status,
                             needsWatchAccess = watchState.needsPermission,
                             onAllowWatchAccess = ::requestWatchNext,
+                            trackStatus = watchState.trackStatus,
+                            tracking = watchState.tracking,
+                            onTurnOnTracking = vm::allowTracking,
                             onToggle = vm::setHidden,
                         )
                     }

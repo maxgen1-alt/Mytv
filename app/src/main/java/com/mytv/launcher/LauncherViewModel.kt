@@ -42,6 +42,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -94,6 +95,9 @@ data class MyState(
 data class WatchState(
     /** Why Continue Watching shows what it shows (on the apps screen). */
     val status: String = "",
+    /** MyTV noting what plays in each app (needs Notification access). */
+    val tracking: Boolean = false,
+    val trackStatus: String = "",
     val items: List<WatchItem> = emptyList(),
     val loading: Boolean = true,
     /** Watch Next needs the TV listings permission and we don't have it yet. */
@@ -121,6 +125,8 @@ sealed interface LinkState {
 
 /** Continue Watching cards that came from "Watching now" (hold select to change them). */
 const val MANUAL_PREFIX = "manual:"
+/** Continue Watching cards for shows MyTV saw playing. */
+const val NOTED_PREFIX = "noted:"
 
 class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -135,6 +141,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     init {
         com.mytv.launcher.ratings.Ratings.init(app)
         com.mytv.launcher.ratings.DeepLinks.init(app)
+        // Something new played (or its picture arrived): update Continue Watching.
+        viewModelScope.launch {
+            com.mytv.launcher.watching.PlayHistory.entries(app).drop(1).collect { refreshWatching() }
+        }
     }
     private val taste = com.mytv.launcher.ang.TasteStore(app)
     private val angTaste = com.mytv.launcher.ang.TasteRepository(
@@ -728,8 +738,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             val local = async { watchNext.load() }
             val remote = async { if (trakt.isConfigured && trakt.isLinked) trakt.continueWatching() else emptyList() }
             val fromApps = local.await()
-            val seen = fromApps.map { it.title.lowercase() }.toSet()
-            val merged = (fromApps + remote.await().filter { it.title.lowercase() !in seen })
+            val noted = com.mytv.launcher.watching.PlayHistory.entries(context).value
+            val tracked = noted.mapNotNull(::notedItem)
+            val seen = HashSet<String>()
+            val merged = (fromApps + tracked + remote.await()).filter { seen.add(it.title.lowercase()) }
                 .sortedByDescending { it.lastWatchedMillis }
                 .take(25)
             _watching.value = WatchState(
@@ -740,6 +752,13 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                     else -> "Continue Watching: ${fromApps.size} in progress from " +
                         fromApps.map { it.source }.distinct().joinToString(", ")
                 },
+                tracking = com.mytv.launcher.watching.PlayingListener.isEnabled(context),
+                trackStatus = when {
+                    !com.mytv.launcher.watching.PlayingListener.isEnabled(context) ->
+                        "Watch tracking: off. Turn it on so MyTV notes what you play in each app."
+                    noted.isEmpty() -> "Watch tracking: on. Play something in any app and it shows up in Continue Watching."
+                    else -> "Watch tracking: on · ${noted.size} noted · last: ${noted.first().app}: ${noted.first().raw}"
+                },
                 items = merged,
                 loading = false,
                 needsPermission = !watchNext.hasPermission(),
@@ -749,7 +768,51 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** A show MyTV saw playing → a Continue Watching card (finished movies drop off). */
+    private fun notedItem(e: com.mytv.launcher.watching.PlayHistory.Entry): WatchItem? {
+        val progress = if (e.durationMillis > 0) (e.positionMillis.toFloat() / e.durationMillis).coerceIn(0f, 1f) else null
+        if (e.season == null && e.episodeTitle == null && (progress ?: 0f) > 0.95f) return null
+        return WatchItem(
+            key = NOTED_PREFIX + e.id,
+            title = e.show,
+            subtitle = listOfNotNull(e.app, e.season?.let { "S$it" }, e.episode?.let { "E$it" }, e.episodeTitle).joinToString(" · "),
+            imageUrl = e.imageUrl,
+            progress = progress,
+            lastWatchedMillis = e.at,
+            searchQuery = e.show,
+            source = e.app,
+            packageName = e.packageName,
+        )
+    }
+
+    /** Opens the screen where you turn on watch tracking (Notification access for MyTV). */
+    fun allowTracking() {
+        val me = com.mytv.launcher.watching.PlayingListener.component(context)
+        val tries = buildList {
+            if (android.os.Build.VERSION.SDK_INT >= 30) add(
+                android.content.Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
+                    .putExtra(android.provider.Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, me.flattenToString()),
+            )
+            add(android.content.Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+            add(android.content.Intent("android.settings.NOTIFICATION_LISTENER_SETTINGS"))
+        }
+        val opened = tries.any { i ->
+            i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            i.resolveActivity(context.packageManager) != null && runCatching { context.startActivity(i) }.isSuccess
+        }
+        if (!opened) toast("This TV hides that setting. Turn it on with: adb shell cmd notification allow_listener ${me.flattenToString()}")
+    }
+
     fun playWatchItem(item: WatchItem) {
+        if (item.key.startsWith(NOTED_PREFIX)) {
+            openAngShow(
+                com.mytv.launcher.ang.AngItem(
+                    key = item.key, title = item.title, detail = "", imageUrl = item.imageUrl,
+                    service = item.source, date = null, badge = null,
+                ),
+            )
+            return
+        }
         // "Watching now" cards: open the title itself (its page in the app).
         if (item.key.startsWith(MANUAL_PREFIX)) {
             val key = item.key.removePrefix(MANUAL_PREFIX)

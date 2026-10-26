@@ -93,6 +93,7 @@ fun HomeScreen(
     onAng: () -> Unit,
     onWatchItem: (WatchItem) -> Unit,
     onAllowWatchNext: () -> Unit,
+    onTurnOnTracking: () -> Unit,
     onLinkTrakt: () -> Unit,
 ) {
     val firstApp = remember { FocusRequester() }
@@ -157,7 +158,7 @@ fun HomeScreen(
 
             // Row 3: continue watching
             SectionTitle("Continue Watching", Modifier.padding(start = 48.dp))
-            ContinueWatchingRow(watching, onWatchItem, onAllowWatchNext, onLinkTrakt) { wi -> watchingNow[wi.key]?.let { rateFor = it } }
+            ContinueWatchingRow(watching, onWatchItem, onAllowWatchNext, onTurnOnTracking, onLinkTrakt) { wi -> watchingNow[wi.key]?.let { rateFor = it } }
             TitleRow("Watch Later", watchLater, onOpenTitle) { rateFor = it }
 
             // Row 4: what's hot across the apps you have. Row 5: picked from what you watched.
@@ -321,13 +322,14 @@ private fun ContinueWatchingRow(
     state: WatchState,
     onItem: (WatchItem) -> Unit,
     onAllow: () -> Unit,
+    onTrack: () -> Unit,
     onLink: () -> Unit,
     onHold: (WatchItem) -> Unit,
 ) {
     if (state.items.isEmpty()) {
         when {
             state.loading -> Hint("Loading…")
-            !state.needsPermission -> Hint("Nothing in progress right now. Start something in any app and it shows up here.")
+            !state.needsPermission && state.tracking -> Hint("Nothing in progress right now. Start something in any app and it shows up here.")
         }
     }
     LazyRow(
@@ -343,6 +345,11 @@ private fun ContinueWatchingRow(
         if (state.needsPermission) {
             item(key = "__allow") {
                 SetupTile("Turn on Continue Watching", "Show what you're in the middle of in every app.", onAllow)
+            }
+        }
+        if (!state.tracking && !state.loading) {
+            item(key = "__track") {
+                SetupTile("Turn on watch tracking", "MyTV notes what you play in each app, with episodes.", onTrack)
             }
         }
         if (state.traktConfigured) {

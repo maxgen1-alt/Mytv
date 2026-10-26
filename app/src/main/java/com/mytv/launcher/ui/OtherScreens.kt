@@ -50,6 +50,9 @@ fun EditAppsScreen(
     watchStatus: String,
     needsWatchAccess: Boolean,
     onAllowWatchAccess: () -> Unit,
+    trackStatus: String,
+    tracking: Boolean,
+    onTurnOnTracking: () -> Unit,
     onToggle: (TvApp, Boolean) -> Unit,
 ) {
     val first = remember { FocusRequester() }
@@ -78,6 +81,16 @@ fun EditAppsScreen(
                 if (needsWatchAccess) {
                     Spacer(Modifier.width(14.dp))
                     Button(onClick = onAllowWatchAccess) { Text("Allow access") }
+                }
+            }
+        }
+        if (trackStatus.isNotBlank()) {
+            Spacer(Modifier.height(10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(trackStatus, fontSize = 14.sp, color = Palette.Ink, maxLines = 2, modifier = Modifier.weight(1f, fill = false))
+                if (!tracking) {
+                    Spacer(Modifier.width(14.dp))
+                    Button(onClick = onTurnOnTracking) { Text("Turn on") }
                 }
             }
         }

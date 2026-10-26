@@ -70,7 +70,17 @@ It needs the **TV listings** permission, once:
   ```
   If that says "Unknown permission", run `adb shell pm list permissions | grep -i -E "tv|epg|watch"` and grant the one listed.
 
-What shows up depends on each app: only apps that publish to Watch Next appear. Most big streaming apps do, but not every one. If an app's shows appear on Google TV's stock row, they'll appear here.
+What shows up depends on each app: only apps that publish to Watch Next appear. Many big apps now share their list only with Google TV's own home screen, so this can be empty. The **+ Apps** screen says what MyTV can see.
+
+### Watch tracking
+
+For apps that don't share, MyTV can note what you play itself. Apps tell Android what's playing (show, episode, position) so the remote's play/pause works, and MyTV listens for that. It only knows what plays after it's turned on, and how much detail each card gets depends on the app.
+
+It needs **Notification access** for MyTV (it never reads your notifications). Select **Turn on watch tracking** at the end of the Continue Watching row, or **Turn on** on the + Apps screen. If the TV hides that setting, turn it on from a computer:
+```sh
+adb shell cmd notification allow_listener com.mytv.launcher/com.mytv.launcher.watching.PlayingListener
+```
+The + Apps screen shows the last thing it noted, exactly as the app reported it.
 
 ### Optional: Trakt
 
@@ -203,6 +213,6 @@ app/src/main/java/com/mytv/launcher/
   LauncherViewModel.kt     all app state + actions
   apps/                    installed apps, ordering/hiding, Google TV search
   sports/                  ESPN client + parser, broadcaster → app mapping, teams
-  watching/                Trakt login + Continue Watching
+  watching/                Continue Watching: Watch Next, watch tracking, Trakt
   ui/                      Compose for TV screens
 ```
