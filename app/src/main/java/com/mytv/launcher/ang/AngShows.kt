@@ -23,7 +23,7 @@ object AngShows {
         CuratedShow("The Summer I Turned Pretty", Follow.CAUGHT_UP, hint = "Prime"),
         CuratedShow("Sterling Point", Follow.CAUGHT_UP),
         CuratedShow("Off Campus", Follow.CAUGHT_UP),
-        CuratedShow("Crew Girl", Follow.CAUGHT_UP),
+        CuratedShow("Crew Girl", Follow.CAUGHT_UP, hint = "Netflix"),
 
         CuratedShow("Summer House", Follow.TRACK, hint = "Bravo"),
         CuratedShow("Love Island", Follow.TRACK, hint = "ITV"),
