@@ -23,18 +23,35 @@ android {
         applicationId = "com.mytv.launcher"
         minSdk = 28
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        // Every CI run gets a higher number, which is what the auto-updater compares.
+        val build = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+        versionCode = build
+        versionName = "1.0.$build"
 
         buildConfigField("String", "TRAKT_CLIENT_ID", "\"${secret("TRAKT_CLIENT_ID")}\"")
         buildConfigField("String", "TRAKT_CLIENT_SECRET", "\"${secret("TRAKT_CLIENT_SECRET")}\"")
+        // Where the auto-updater looks for new releases.
+        val repo = System.getenv("GITHUB_REPOSITORY") ?: "maxgen1-alt/Mytv"
+        buildConfigField("String", "UPDATE_REPO", "\"$repo\"")
+    }
+
+    // One fixed key for every build: Android only accepts an update signed
+    // with the same key as the installed app. CI writes it from the
+    // SIGNING_KEYSTORE_BASE64 secret; without it we fall back to the debug key.
+    val keystore = rootProject.file("signing/mytv.keystore")
+    signingConfigs {
+        create("mytv") {
+            storeFile = keystore
+            storePassword = "mytvlauncher"
+            keyAlias = "mytv"
+            keyPassword = "mytvlauncher"
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            // Signed with the debug key so the release APK can be sideloaded as-is.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName(if (keystore.exists()) "mytv" else "debug")
         }
     }
 

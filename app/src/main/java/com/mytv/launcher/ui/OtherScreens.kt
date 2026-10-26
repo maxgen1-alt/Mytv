@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -41,12 +42,16 @@ import com.mytv.launcher.apps.TvApp
 
 /** Pick which apps appear in the top row. Click toggles shown / hidden. */
 @Composable
-fun EditAppsScreen(apps: List<TvApp>, hidden: Set<String>, onToggle: (TvApp, Boolean) -> Unit) {
+fun EditAppsScreen(apps: List<TvApp>, hidden: Set<String>, version: String, onToggle: (TvApp, Boolean) -> Unit) {
     val first = remember { FocusRequester() }
     LaunchedEffect(apps.isNotEmpty()) { if (apps.isNotEmpty()) runCatching { first.requestFocus() } }
 
     Column(Modifier.fillMaxSize().background(Palette.Sky).padding(horizontal = 48.dp, vertical = 32.dp)) {
-        Text("Your apps", fontSize = 30.sp, fontWeight = FontWeight.Bold, color = Palette.Ink)
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text("Your apps", fontSize = 30.sp, fontWeight = FontWeight.Bold, color = Palette.Ink)
+            Spacer(Modifier.weight(1f))
+            Text("MyTV $version", fontSize = 12.sp, color = Palette.InkSoft)
+        }
         Text(
             "Select an app to show or hide it on the top row. Long-press an app on the home screen to move it.",
             fontSize = 14.sp,

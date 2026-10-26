@@ -1,6 +1,9 @@
 package com.mytv.launcher
 
 import android.app.Application
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -17,6 +20,7 @@ import com.mytv.launcher.sports.Teams
 import com.mytv.launcher.sports.WatchOption
 import com.mytv.launcher.watching.DeviceCode
 import com.mytv.launcher.watching.PollResult
+import com.mytv.launcher.update.Updater
 import com.mytv.launcher.watching.TraktClient
 import com.mytv.launcher.watching.WatchNext
 import com.mytv.launcher.watching.WatchItem
@@ -70,6 +74,12 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val espn = EspnClient()
     private val trakt = TraktClient(app)
     private val watchNext = WatchNext(app)
+    private val updater = Updater(app)
+
+    /** A newer version is downloaded and needs one click to install. */
+    private val _updateReady = MutableStateFlow(false)
+    val updateReady = _updateReady.asStateFlow()
+    private var updateJob: Job? = null
 
     private val _screen = MutableStateFlow<Screen>(Screen.Home)
     val screen = _screen.asStateFlow()
@@ -121,6 +131,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun onResume() {
         refreshApps()
         refreshWatching()
+        checkForUpdates()
         liveJob?.cancel()
         liveJob = viewModelScope.launch {
             while (isActive) {
@@ -136,6 +147,55 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun onPause() {
         liveJob?.cancel()
     }
+
+    /** MyTV went to the background: a good moment to update without interrupting anything. */
+    fun onStop() {
+        inForeground = false
+        installSilentlyIfReady()
+    }
+
+    private var inForeground = false
+
+    private fun installSilentlyIfReady() {
+        if (inForeground || !updater.canInstallSilently()) return
+        updater.pendingApk()?.let(updater::install)
+    }
+
+    // ---- Self-update ----
+
+    /**
+     * Checks now (throttled to every 30 min inside [Updater]) and then every
+     * few hours for as long as the process lives, even in the background.
+     */
+    private fun checkForUpdates() {
+        inForeground = true
+        updateJob?.cancel()
+        updateJob = viewModelScope.launch {
+            while (isActive) {
+                val apk = updater.checkAndDownload()
+                _updateReady.value = apk != null && !updater.canInstallSilently()
+                installSilentlyIfReady()
+                delay(3 * 3600_000L)
+            }
+        }
+    }
+
+    fun installUpdate() {
+        val apk = updater.pendingApk() ?: run { _updateReady.value = false; return }
+        if (!context.packageManager.canRequestPackageInstalls()) {
+            toast("Turn on MyTV here, then press Back and select Update again")
+            runCatching {
+                context.startActivity(
+                    Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}"))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                )
+            }
+            return
+        }
+        if (!updater.install(apk)) toast("Update failed. It will retry later.")
+    }
+
+    val versionName: String get() = BuildConfig.VERSION_NAME
 
     // ---- Apps ----
 

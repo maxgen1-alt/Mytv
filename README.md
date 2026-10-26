@@ -92,6 +92,18 @@ The networks-to-apps mapping lives in [`Broadcasters.kt`](app/src/main/java/com/
 
 **Honest limits:** streaming apps don't publish "play this live game" links, so MyTV opens the right app, and from there it's usually one click on the live game, which they put front and centre. ESPN's API is unofficial and could change.
 
+## Updates
+
+MyTV updates itself. Every push builds a new version and publishes it as this repo's `latest` release (`MyTV.apk` plus `version.json`). MyTV checks for one when you open it and every few hours after that, and downloads it in the background.
+
+- **First update:** an **Update ready** button appears in the top-right. Select it, then **Update** on Android's prompt. If Android says MyTV isn't allowed to install apps, turn MyTV on in the screen it opens, press Back and select **Update ready** again.
+- **After that** (Android 12+): updates install by themselves while MyTV is in the background, e.g. while you're in another app or the screensaver is on.
+- The version number is shown in the top-right of the **+ Apps** screen.
+
+The repo needs to be **public**, since the TV downloads updates without signing in to GitHub.
+
+Every build must be signed with the same key, because Android only accepts an update signed with the same key as the installed app. The key is kept out of the code, in a repository secret named `SIGNING_KEYSTORE_BASE64` (repo **Settings → Secrets and variables → Actions**). Until that secret exists, builds still run but no release is published. That way you can't install a build that would later refuse to update.
+
 ## Customising
 
 - **Colours:** [`ui/Theme.kt`](app/src/main/java/com/mytv/launcher/ui/Theme.kt) (`Palette.Sky` is the background).

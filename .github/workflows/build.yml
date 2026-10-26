@@ -19,6 +19,19 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Unit tests
         run: ./gradlew --no-daemon testDebugUnitTest
+      - name: Restore signing key
+        id: key
+        env:
+          SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$SIGNING_KEYSTORE_BASE64" ]; then
+            mkdir -p signing
+            echo "$SIGNING_KEYSTORE_BASE64" | base64 -d > signing/mytv.keystore
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::SIGNING_KEYSTORE_BASE64 secret not set: building with a throwaway key and not publishing a release (auto-updates need a stable key)."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Build APK
         env:
           # Optional: add these as repository secrets to enable Trakt.
@@ -27,18 +40,23 @@ jobs:
         run: |
           ./gradlew --no-daemon assembleRelease
           cp app/build/outputs/apk/release/app-release.apk MyTV.apk
+          # Read by the app's auto-updater.
+          echo "{\"versionCode\": ${GITHUB_RUN_NUMBER}, \"versionName\": \"1.0.${GITHUB_RUN_NUMBER}\", \"commit\": \"${GITHUB_SHA::7}\"}" > version.json
+          cat version.json
       - uses: actions/upload-artifact@v4
         with:
           name: MyTV-apk
           path: MyTV.apk
-      # Public download link for installing straight onto the TV:
+      # Public download link for installing straight onto the TV, and the
+      # feed the app's auto-updater reads:
       # https://github.com/<owner>/<repo>/releases/latest/download/MyTV.apk
       - name: Publish as latest release
+        if: steps.key.outputs.present == 'true' && (github.ref_name == 'claude/chromecast-app-launcher-v0ltwe' || github.ref_name == github.event.repository.default_branch)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest MyTV.apk \
+          gh release create latest MyTV.apk version.json \
             --target "$GITHUB_SHA" \
             --title "MyTV (latest build)" \
             --notes "Built from ${GITHUB_SHA::7} on ${GITHUB_REF_NAME}."

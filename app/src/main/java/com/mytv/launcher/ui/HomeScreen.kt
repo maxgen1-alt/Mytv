@@ -69,6 +69,8 @@ fun HomeScreen(
     liveGames: Map<String, Game>,
     watching: WatchState,
     busy: String?,
+    updateReady: Boolean,
+    onUpdate: () -> Unit,
     onApp: (TvApp) -> Unit,
     onMoveApp: (TvApp, Int) -> Unit,
     onHideApp: (TvApp) -> Unit,
@@ -93,7 +95,7 @@ fun HomeScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(vertical = 28.dp),
         ) {
-            TopBar()
+            TopBar(updateReady, onUpdate)
             Spacer(Modifier.height(18.dp))
 
             // Row 1: streaming apps
@@ -154,7 +156,7 @@ fun HomeScreen(
 }
 
 @Composable
-private fun TopBar() {
+private fun TopBar(updateReady: Boolean, onUpdate: () -> Unit) {
     val context = LocalContext.current
     var now by remember { mutableStateOf(Date()) }
     LaunchedEffect(Unit) {
@@ -168,6 +170,18 @@ private fun TopBar() {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Spacer(Modifier.weight(1f))
+        if (updateReady) {
+            FocusCard(onClick = onUpdate, corner = 18.dp, container = Palette.Ink, focusedScale = 1.06f, modifier = Modifier.height(36.dp)) {
+                Text(
+                    "Update ready",
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.align(Alignment.Center).padding(horizontal = 16.dp),
+                )
+            }
+            Spacer(Modifier.width(16.dp))
+        }
         Text(
             DateFormat.getTimeInstance(DateFormat.SHORT).format(now),
             color = Palette.Ink,

@@ -52,11 +52,14 @@ class MainActivity : ComponentActivity() {
                         val live by vm.liveGames.collectAsStateWithLifecycle()
                         val watching by vm.watching.collectAsStateWithLifecycle()
                         val busy by vm.busy.collectAsStateWithLifecycle()
+                        val updateReady by vm.updateReady.collectAsStateWithLifecycle()
                         HomeScreen(
                             apps = apps,
                             liveGames = live,
                             watching = watching,
                             busy = busy,
+                            updateReady = updateReady,
+                            onUpdate = vm::installUpdate,
                             onApp = vm::launchApp,
                             onMoveApp = vm::moveApp,
                             onHideApp = { vm.setHidden(it, true) },
@@ -76,7 +79,7 @@ class MainActivity : ComponentActivity() {
                     Screen.EditApps -> {
                         val all by vm.allApps.collectAsStateWithLifecycle()
                         val hidden by vm.hidden.collectAsStateWithLifecycle()
-                        EditAppsScreen(all, hidden, onToggle = vm::setHidden)
+                        EditAppsScreen(all, hidden, version = vm.versionName, onToggle = vm::setHidden)
                     }
                     Screen.TraktLink -> {
                         val link by vm.link.collectAsStateWithLifecycle()
@@ -95,6 +98,11 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         vm.onPause()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        vm.onStop()
     }
 
     /** Pressing Home while we're already in front: jump back to the main screen. */

@@ -6,3 +6,6 @@ local.properties
 .DS_Store
 captures/
 .kotlin/
+
+# Signing key lives in the SIGNING_KEYSTORE_BASE64 repo secret, never in git.
+signing/
