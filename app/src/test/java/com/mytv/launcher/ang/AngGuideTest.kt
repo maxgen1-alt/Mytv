@@ -223,6 +223,32 @@ class AngGuideTest {
     }
 
     @Test
+    fun announcedPremiereShowsInComingSoonThenWatchNow() {
+        val spec = AngShows.curated.first { it.query == "The Circle" }
+        // TVmaze knows the old Netflix seasons but not the revival's date.
+        val circle = show(60, "The Circle", listOf(season(6, "2023-12-13")), type = "Reality", service = "Netflix")
+        val before = build(curated = listOf(spec to circle))
+        assertEquals(listOf("The Circle"), before.upcoming.map { it.title })
+        assertEquals(LocalDate.of(2026, 11, 17), before.upcoming.single().date)
+        assertEquals("Season 7 · Hulu", before.upcoming.single().detail)
+
+        val after = AngGuideBuilder.build(
+            LocalDate.of(2026, 11, 20),
+            AngInputs(curated = listOf(spec to circle)),
+        )
+        assertEquals("New season", after.watchNow.single { it.title == "The Circle" }.badge)
+    }
+
+    @Test
+    fun announcedShowListedEvenIfNotFoundInDatabases() {
+        // No curated shows found at all, but The Circle has a known premiere.
+        val g = AngGuideBuilder.build(today, AngInputs(announced = AngShows.curated.filter { it.announced != null }))
+        val circle = g.upcoming.single { it.title == "The Circle" }
+        assertEquals("New season · Hulu", circle.detail)
+        assertEquals(LocalDate.of(2026, 11, 17), circle.date)
+    }
+
+    @Test
     fun likedSuggestionGetsHeartBadge() {
         val g = build(shows = listOf(cand(1, "Fave")), ratings = listOf(Rated("tmdb:tv:1", "Fave", Rating.LIKE, today, 1)))
         assertEquals("♥ Liked", g.newShows.single().badge)

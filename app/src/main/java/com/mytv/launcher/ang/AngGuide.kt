@@ -61,6 +61,8 @@ data class AngInputs(
     val upcomingShows: List<AngItem> = emptyList(),
     /** Sitcom candidates for Easy Watch. */
     val sitcoms: List<AngItem> = emptyList(),
+    /** Her hand-picked shows with a known premiere date (listed even if the databases can't find them). */
+    val announced: List<CuratedShow> = emptyList(),
     /** Candidate key → how many liked / disliked titles recommend it. */
     val likedRecs: Map<String, Int> = emptyMap(),
     val dislikedRecs: Map<String, Int> = emptyMap(),
@@ -83,16 +85,48 @@ object AngGuideBuilder {
         for ((spec, show) in inputs.curated) {
             val rating = ratingOf(keyOf(show), show.name)
             if (rating?.rating == Rating.DISLIKE || rating?.rating == Rating.WONT_WATCH) continue
-            val latest = show.seasons
+            val service = spec.service ?: show.service
+            val started = show.seasons
                 .filter { it.premiere != null && !it.premiere.isAfter(today) }
                 .maxByOrNull { it.premiere!! }
-            val caughtUp = listOfNotNull(spec.caughtUpAsOf, rating?.takeIf { it.rating == Rating.WATCHED }?.date).maxOrNull()
-            val isNew = latest?.premiere?.let { isNewSince(it, caughtUp, today) } == true
-            if (spec.follow == Follow.ALWAYS || isNew) {
-                watchNow += curatedItem(show, latest?.number, latest?.premiere, if (isNew) newLabel(latest!!.number) else null) to latest?.premiere
+            var latest: Pair<Int, LocalDate>? = started?.let { it.number to it.premiere!! }
+            var next = nextPremiere(show, today)
+            // A premiere date we know before the databases list it.
+            spec.announced?.let { day ->
+                val season = (show.seasons.maxOfOrNull { it.number } ?: 0).let { n -> if (latest?.second == day) latest!!.first else n + 1 }
+                if (!day.isAfter(today) && (latest == null || day.isAfter(latest!!.second))) latest = season to day
+                if (day.isAfter(today) && next?.second == null) next = season to day
             }
-            nextPremiere(show, today)?.let { (season, date) -> upcoming += curatedItem(show, season, date, newLabel(season)) }
+            val caughtUp = listOfNotNull(spec.caughtUpAsOf, rating?.takeIf { it.rating == Rating.WATCHED }?.date).maxOrNull()
+            val isNew = latest?.let { isNewSince(it.second, caughtUp, today) } == true
+            if (spec.follow == Follow.ALWAYS || isNew) {
+                watchNow += curatedItem(show, service, latest?.first, latest?.second, if (isNew) newLabel(latest!!.first) else null) to latest?.second
+            }
+            next?.let { (season, date) -> upcoming += curatedItem(show, service, season, date, newLabel(season)) }
             shown += normalize(show.name)
+            shown += normalize(spec.query)
+        }
+
+        // Announced shows the TV databases couldn't find yet: still list them by name.
+        for (spec in inputs.announced) {
+            val day = spec.announced ?: continue
+            if (normalize(spec.query) in shown) continue
+            val r = byTitle[normalize(spec.query)]
+            if (r?.rating == Rating.DISLIKE || r?.rating == Rating.WONT_WATCH) continue
+            val item = AngItem(
+                key = "announced:" + normalize(spec.query),
+                title = spec.query,
+                detail = listOfNotNull("New season", spec.service).joinToString(" · "),
+                imageUrl = null,
+                service = spec.service,
+                date = day,
+                badge = "New season",
+            )
+            if (day.isAfter(today)) upcoming += item
+            else if (isNewSince(day, listOfNotNull(spec.caughtUpAsOf, r?.takeIf { it.rating == Rating.WATCHED }?.date).maxOrNull(), today)) {
+                watchNow += item to day
+            }
+            shown += normalize(spec.query)
         }
 
         // Shows she liked: followed for new seasons.
@@ -183,12 +217,12 @@ object AngGuideBuilder {
     private fun seasonDetail(season: Int?, service: String?) =
         listOfNotNull(season?.let { "Season $it" }, service).joinToString(" · ")
 
-    private fun curatedItem(show: TvShow, season: Int?, date: LocalDate?, badge: String?) = AngItem(
+    private fun curatedItem(show: TvShow, service: String?, season: Int?, date: LocalDate?, badge: String?) = AngItem(
         key = keyOf(show),
         title = show.name,
-        detail = seasonDetail(season, show.service),
+        detail = seasonDetail(season, service),
         imageUrl = show.imageUrl,
-        service = show.service,
+        service = service,
         date = date,
         badge = badge,
         imdbId = show.imdbId,

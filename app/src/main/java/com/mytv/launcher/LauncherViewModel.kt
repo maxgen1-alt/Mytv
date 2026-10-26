@@ -527,7 +527,9 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---- Ang's guide ----
 
-    private var angInputs = com.mytv.launcher.ang.AngInputs()
+    private var angInputs = com.mytv.launcher.ang.AngInputs(
+        announced = com.mytv.launcher.ang.AngShows.curated.filter { it.announced != null },
+    )
     private var rateJob: Job? = null
 
     /** Streaming services you have installed: suggestions only come from these. */

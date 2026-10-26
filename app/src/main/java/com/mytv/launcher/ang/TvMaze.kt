@@ -65,7 +65,8 @@ object TvMazeParser {
     fun pickSearchResult(json: String, hint: String?): TvShow? {
         val shows = JSONArray(json).objects().mapNotNull { it.optJSONObject("show")?.let(::parseShow) }
         if (hint == null) return shows.firstOrNull()
-        return shows.firstOrNull { it.service?.contains(hint, ignoreCase = true) == true } ?: shows.firstOrNull()
+        return hint.split("|").firstNotNullOfOrNull { h -> shows.firstOrNull { it.service?.contains(h, ignoreCase = true) == true } }
+            ?: shows.firstOrNull()
     }
 
     /** /schedule/web (episodes with _embedded.show) or /schedule (episodes with show) → season premieres. */

@@ -13,14 +13,19 @@ enum class Follow {
 /**
  * [query] is a TVmaze search. [hint] picks the right result when several
  * shows share a name: matched against the network / streaming service.
+ * Several hints can be given as "Hulu|Netflix" (tried in order).
  * [caughtUpAsOf]: she's seen everything that premiered up to this date, so
  * only later seasons count as new.
+ * [announced]: a premiere date we know before the TV databases do; [service]:
+ * where it streams now, if that changed (e.g. a revival on another app).
  */
 data class CuratedShow(
     val query: String,
     val follow: Follow,
     val hint: String? = null,
     val caughtUpAsOf: LocalDate? = null,
+    val announced: LocalDate? = null,
+    val service: String? = null,
 )
 
 object AngShows {
@@ -38,6 +43,8 @@ object AngShows {
         CuratedShow("Summer House", Follow.NEW_SEASONS, hint = "Bravo"),
         CuratedShow("Love Island", Follow.NEW_SEASONS, hint = "ITV"),
         CuratedShow("Love Island USA", Follow.NEW_SEASONS),
+        // Revival hosted by Tinx: premieres Tue Nov 17 2026 on Hulu, finale Dec 18.
+        CuratedShow("The Circle", Follow.NEW_SEASONS, hint = "Hulu|Netflix", announced = LocalDate.of(2026, 11, 17), service = "Hulu"),
     )
 
     /** A season counts as "new" for this many days after it premieres. */
