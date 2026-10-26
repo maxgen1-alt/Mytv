@@ -4,87 +4,129 @@ import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
 data class AngItem(
-    /** "tvmaze:123" or "tmdb:456": unique per show, used for rows and "Mark as watched". */
+    /** "tvmaze:123", "tmdb:tv:456" or "tmdb:movie:789": unique per title. */
     val key: String,
     val title: String,
     /** e.g. "Season 3 · Prime Video" */
     val detail: String,
     val imageUrl: String?,
     val service: String?,
-    /** Premiere date of the season this item is about. */
+    /** Premiere / release date of what this item is about. */
     val date: LocalDate?,
-    /** Small label on the poster: "New season", "New show"... */
+    /** Small label on the poster: "New season", "New show", "♥"... */
     val badge: String?,
-    /** For ordering discovered shows. */
+    /** For ordering discovered titles. */
     val popularity: Double = 0.0,
+    /** TMDB id / type, when known (for "more like this" and following new seasons). */
+    val tmdbId: Long? = null,
+    val isMovie: Boolean = false,
+    /** TMDB average rating, 0-10. */
+    val voteAverage: Double = 0.0,
 )
 
 data class AngGuide(
-    /** Her shows with something to watch right now. */
+    /** Her shows (and liked shows) with something new to watch right now. */
     val watchNow: List<AngItem> = emptyList(),
-    /** Shows of the same kind she might like, on apps you have. */
+    /** Shows from the last year she might like. */
     val newShows: List<AngItem> = emptyList(),
-    /** Dated premieres coming soon, soonest first. */
+    /** Good shows from the last 10 years she might have missed. */
+    val missed: List<AngItem> = emptyList(),
+    /** Rom-coms / romance / romantic dramas from the last 10 years. */
+    val movies: List<AngItem> = emptyList(),
+    /** Next seasons of her shows and liked shows, soonest first. */
     val upcoming: List<AngItem> = emptyList(),
 )
 
-object AngGuideBuilder {
+/** Everything the guide is built from. */
+data class AngInputs(
+    val curated: List<Pair<CuratedShow, TvShow>> = emptyList(),
+    val ratings: List<Rated> = emptyList(),
+    /** Liked shows with their season dates. */
+    val followed: List<FollowedShow> = emptyList(),
+    /** Candidate shows / movies on your apps (discover + "more like what she liked"). */
+    val shows: List<AngItem> = emptyList(),
+    val movies: List<AngItem> = emptyList(),
+    /** Candidate key → how many liked / disliked titles recommend it. */
+    val likedRecs: Map<String, Int> = emptyMap(),
+    val dislikedRecs: Map<String, Int> = emptyMap(),
+)
 
-    /**
-     * [watched]: item key → date she marked it watched (long-press).
-     * [isAvailable]: whether a network / service name is on an app you have.
-     * [discovered]: candidate "new shows" (from [AngDiscovery]).
-     */
-    fun build(
-        today: LocalDate,
-        curated: List<Pair<CuratedShow, TvShow>>,
-        premieres: List<Premiere>,
-        watched: Map<String, LocalDate> = emptyMap(),
-        isAvailable: (String?) -> Boolean = { true },
-        discovered: List<AngItem> = emptyList(),
-    ): AngGuide {
+object AngGuideBuilder {
+    private const val ROW_SIZE = 20
+
+    /** [isAvailable]: whether a network / service name is on an app you have. */
+    fun build(today: LocalDate, inputs: AngInputs, isAvailable: (String?) -> Boolean = { true }): AngGuide {
+        val byKey = inputs.ratings.associateBy { it.key }
+        val byTitle = inputs.ratings.filter { it.title.isNotBlank() }.associateBy { normalize(it.title) }
+        fun ratingOf(key: String, title: String) = byKey[key] ?: byTitle[normalize(title)]
+
         val watchNow = mutableListOf<Pair<AngItem, LocalDate?>>()
         val upcoming = mutableListOf<AngItem>()
+        val shown = mutableSetOf<String>() // normalized titles already on a shelf
 
-        for ((spec, show) in curated) {
+        // Her hand-picked shows.
+        for ((spec, show) in inputs.curated) {
+            val rating = ratingOf(keyOf(show), show.name)
+            if (rating?.rating == Rating.DISLIKE || rating?.rating == Rating.WONT_WATCH) continue
             val latest = show.seasons
                 .filter { it.premiere != null && !it.premiere.isAfter(today) }
                 .maxByOrNull { it.premiere!! }
-            val caughtUp = listOfNotNull(spec.caughtUpAsOf, watched[keyOf(show)]).maxOrNull()
-            val isNew = latest?.premiere?.let { premiere ->
-                ChronoUnit.DAYS.between(premiere, today) <= AngShows.NEW_SEASON_DAYS &&
-                    (caughtUp == null || premiere.isAfter(caughtUp))
-            } == true
-
+            val caughtUp = listOfNotNull(spec.caughtUpAsOf, rating?.takeIf { it.rating == Rating.WATCHED }?.date).maxOrNull()
+            val isNew = latest?.premiere?.let { isNewSince(it, caughtUp, today) } == true
             if (spec.follow == Follow.ALWAYS || isNew) {
-                watchNow += item(show, latest?.number, latest?.premiere, if (isNew) newLabel(latest!!.number) else null) to latest?.premiere
+                watchNow += curatedItem(show, latest?.number, latest?.premiere, if (isNew) newLabel(latest!!.number) else null) to latest?.premiere
             }
-
-            nextPremiere(show, today)?.let { (season, date) ->
-                upcoming += item(show, season, date, newLabel(season))
-            }
+            nextPremiere(show, today)?.let { (season, date) -> upcoming += curatedItem(show, season, date, newLabel(season)) }
+            shown += normalize(show.name)
         }
 
-        val curatedNames = curated.flatMap { listOf(normalize(it.first.query), normalize(it.second.name)) }.toSet()
-        fun isCurated(title: String) = normalize(title) in curatedNames
+        // Shows she liked: followed for new seasons.
+        for (f in inputs.followed) {
+            val title = normalize(f.item.title)
+            if (title in shown) continue
+            val likedOn = ratingOf(f.item.key, f.item.title)?.date
+            f.latestSeason?.let { (n, date) ->
+                if (isNewSince(date, likedOn, today)) {
+                    watchNow += f.item.copy(detail = seasonDetail(n, f.item.service), date = date, badge = newLabel(n)) to date
+                }
+            }
+            f.nextSeason?.let { (n, date) ->
+                upcoming += f.item.copy(detail = seasonDetail(n, f.item.service), date = date, badge = newLabel(n))
+            }
+            shown += title
+        }
 
-        val newShows = discovered
-            .filter { !isCurated(it.title) && it.key !in watched && isAvailable(it.service) }
-            .sortedByDescending { it.popularity }
-            .distinctBy { normalize(it.title) }
+        // Suggestions: hide anything rated watched / disliked / won't watch, keep only your apps.
+        fun eligible(item: AngItem): Boolean {
+            val r = ratingOf(item.key, item.title)
+            return r?.rating?.hides != true && isAvailable(item.service) && normalize(item.title) !in shown
+        }
+        fun ranked(items: List<AngItem>) = items
+            .filter(::eligible)
+            .distinctBy { it.key }
+            .sortedByDescending { TasteRanker.score(it, inputs.likedRecs, inputs.dislikedRecs) }
+            .map { if (ratingOf(it.key, it.title)?.rating == Rating.LIKE) it.copy(badge = "♥ Liked") else it }
 
-        upcoming += premieres
-            .filter { it.date.isAfter(today) && AngShows.isHerKindOfShow(it.show) && isAvailable(it.show.service) }
-            .filter { !isCurated(it.show.name) }
-            .map { item(it.show, it.season, it.date, newLabel(it.season)) }
+        val yearAgo = today.minusYears(1)
+        val shows = ranked(inputs.shows)
+        val newShows = shows.filter { it.date != null && !it.date.isBefore(yearAgo) }.take(ROW_SIZE)
+        shown += newShows.map { normalize(it.title) }
+        val missed = shows.filter { (it.date == null || it.date.isBefore(yearAgo)) && normalize(it.title) !in shown }.take(ROW_SIZE)
+        val movies = ranked(inputs.movies).take(ROW_SIZE)
 
         return AngGuide(
-            // Rows are keyed by show, so never list a show twice in one row.
             watchNow = watchNow.sortedByDescending { it.second ?: LocalDate.MIN }.map { it.first }.distinctBy { it.key },
-            newShows = newShows.distinctBy { it.key },
+            newShows = newShows,
+            missed = missed,
+            movies = movies,
             upcoming = upcoming.sortedBy { it.date }.distinctBy { it.key },
         )
     }
+
+    /** A season counts as new for 60 days after it starts, if it started after [since]. */
+    private fun isNewSince(premiere: LocalDate, since: LocalDate?, today: LocalDate) =
+        ChronoUnit.DAYS.between(premiere, today) in 0..AngShows.NEW_SEASON_DAYS &&
+            (since == null || premiere.isAfter(since))
 
     fun keyOf(show: TvShow) = "tvmaze:${show.id}"
 
@@ -103,10 +145,13 @@ object AngGuideBuilder {
 
     private fun newLabel(season: Int) = if (season <= 1) "New show" else "New season"
 
-    private fun item(show: TvShow, season: Int?, date: LocalDate?, badge: String?) = AngItem(
+    private fun seasonDetail(season: Int?, service: String?) =
+        listOfNotNull(season?.let { "Season $it" }, service).joinToString(" · ")
+
+    private fun curatedItem(show: TvShow, season: Int?, date: LocalDate?, badge: String?) = AngItem(
         key = keyOf(show),
         title = show.name,
-        detail = listOfNotNull(season?.let { "Season $it" }, show.service).joinToString(" · "),
+        detail = seasonDetail(season, show.service),
         imageUrl = show.imageUrl,
         service = show.service,
         date = date,

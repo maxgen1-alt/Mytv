@@ -6,7 +6,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
@@ -21,8 +20,10 @@ import java.util.concurrent.TimeUnit
  * Everything behind Ang's TV. Built to open instantly: every source is cached
  * (in memory and on disk) and refreshed in the background.
  *  - her curated shows: TVmaze, refreshed every 6h
- *  - "New shows you might like": TMDB, on the apps you have, every 6h
- *  - "Coming soon" premieres: TVmaze's streaming schedule, daily
+ *  - suggestions (new shows, ones she missed, movies): TMDB, on the apps you
+ *    have, every 6h
+ *  - "more like what she liked": TMDB recommendations of her liked titles
+ *  - liked shows' season dates (Watch now / Coming soon): TMDB, every 12h
  */
 class AngRepository(context: Context) {
 
@@ -32,14 +33,20 @@ class AngRepository(context: Context) {
         .build()
     private val prefs = context.getSharedPreferences("ang", Context.MODE_PRIVATE)
     private val curatedFile = File(context.filesDir, "ang-curated.json")
-    // v3: future-only scan with availability filtering.
-    private val premiereFile = File(context.cacheDir, "ang-premieres-v3.json")
+    private val candidatesFile = File(context.cacheDir, "ang-candidates-v1.json")
     private val api = "https://api.tvmaze.com"
 
     @Volatile private var curatedMem: List<Pair<CuratedShow, TvShow>>? = null
-    @Volatile private var premieresMem: List<Premiere>? = null
-    @Volatile private var discoveredMem: Pair<Set<String>, List<AngItem>>? = null
-    @Volatile private var discoveredAt = 0L
+    @Volatile private var candidatesMem: Candidates? = null
+    @Volatile private var recsMem: Pair<String, Recs>? = null
+    @Volatile private var recsAt = 0L
+    private val followedMem = HashMap<Long, Pair<Long, String>>() // tmdb id -> (fetched at, json)
+
+    /** Suggestion pools from discover, for one set of installed providers. */
+    data class Candidates(val providers: Set<String>, val shows: List<AngItem>, val movies: List<AngItem>, val at: Long)
+
+    /** "More like this": candidates recommended by her liked titles, plus counts for ranking. */
+    data class Recs(val items: List<AngItem>, val liked: Map<String, Int>, val disliked: Map<String, Int>)
 
     // ---- Her curated shows ----
 
@@ -94,38 +101,89 @@ class AngRepository(context: Context) {
         return show.id
     }
 
-    // ---- New shows you might like (TMDB) ----
+    // ---- Suggestions (TMDB discover) ----
 
-    /** Cached result for these providers, if any. */
-    fun cachedDiscovered(providerNames: Set<String>): List<AngItem>? =
-        discoveredMem?.takeIf { it.first == providerNames }?.second
-
-    /** Romance / rom-com / coming-of-age / dating shows on [providers] (the apps you have). */
-    suspend fun discover(providers: List<WhereToWatch.Provider>): List<AngItem> {
+    /** Whatever we have saved for these providers, however old: for an instant first paint. */
+    suspend fun cachedCandidates(providers: List<WhereToWatch.Provider>): Candidates? {
         val names = providers.map { it.name }.toSet()
-        cachedDiscovered(names)?.takeIf { System.currentTimeMillis() - discoveredAt < 6 * 3600_000L }?.let { return it }
-        if (!Tmdb.isConfigured || providers.isEmpty()) return emptyList()
+        candidatesMem?.takeIf { it.providers == names }?.let { return it }
+        return withContext(Dispatchers.IO) { readCandidates() }?.takeIf { it.providers == names }?.also { candidatesMem = it }
+    }
 
+    /** New shows, older shows she might have missed, and romance movies, on [providers]. Refreshed every 6h. */
+    suspend fun candidates(providers: List<WhereToWatch.Provider>): Candidates? {
+        val names = providers.map { it.name }.toSet()
+        cachedCandidates(providers)?.takeIf { System.currentTimeMillis() - it.at < 6 * 3600_000L }?.let { return it }
+        if (!Tmdb.isConfigured || providers.isEmpty()) return null
         val wanted = AngDiscovery.wantedKeywords.mapNotNull { keywordId(it) }
-        if (wanted.isEmpty()) return cachedDiscovered(names).orEmpty()
+        if (wanted.isEmpty()) return candidatesMem
         val blocked = AngDiscovery.blockedKeywords.mapNotNull { keywordId(it) }
         val today = LocalDate.now()
 
-        val found = coroutineScope {
-            providers.map { p ->
-                async {
-                    Tmdb.get(AngDiscovery.discoverPath(today, p.tmdbIds, wanted, blocked)) {
-                        AngDiscovery.parseDiscover(it, p.name, today)
+        // A title on two of your apps is listed once, under the app where it's most popular.
+        fun merge(lists: List<List<AngItem>?>) =
+            lists.filterNotNull().flatten().sortedByDescending { it.popularity }.distinctBy { it.key }
+
+        val (shows, movies) = coroutineScope {
+            val shows = providers.flatMap { p ->
+                val paths = listOf(AngDiscovery.newShowsPath(today, p.tmdbIds, wanted, blocked)) +
+                    (1..2).map { page -> AngDiscovery.missedShowsPath(today, p.tmdbIds, wanted, blocked, page) }
+                paths.map { path -> async { Tmdb.get(path) { AngDiscovery.parseResults(it, false, p.name, today) } } }
+            }
+            val movies = providers.flatMap { p ->
+                (1..2).map { page ->
+                    async {
+                        Tmdb.get(AngDiscovery.moviesPath(today, p.tmdbIds, blocked, page)) {
+                            AngDiscovery.parseResults(it, true, p.name, today)
+                        }
                     }
                 }
-            }.awaitAll().filterNotNull().flatten()
+            }
+            merge(shows.awaitAll()) to merge(movies.awaitAll())
         }
-        // A show on two of your apps appears once, under the app where it's most popular.
-        val merged = found.sortedByDescending { it.popularity }.distinctBy { it.key }.take(30)
-        discoveredMem = names to merged
-        discoveredAt = System.currentTimeMillis()
-        return merged
+        if (shows.isEmpty() && movies.isEmpty()) return candidatesMem
+        val c = Candidates(names, shows, movies, System.currentTimeMillis())
+        candidatesMem = c
+        withContext(Dispatchers.IO) { writeCandidates(c) }
+        return c
     }
+
+    private fun writeCandidates(c: Candidates) = runCatching {
+        candidatesFile.writeText(
+            JSONObject()
+                .put("providers", JSONArray(c.providers.toList()))
+                .put("shows", JSONArray(c.shows.map(::encode)))
+                .put("movies", JSONArray(c.movies.map(::encode)))
+                .put("at", c.at)
+                .toString(),
+        )
+    }
+
+    private fun readCandidates(): Candidates? = runCatching {
+        val o = JSONObject(candidatesFile.readText())
+        fun list(name: String) = o.getJSONArray(name).let { a -> (0 until a.length()).map { decode(a.getJSONObject(it)) } }
+        val p = o.getJSONArray("providers").let { a -> (0 until a.length()).map { a.getString(it) }.toSet() }
+        Candidates(p, list("shows"), list("movies"), o.getLong("at"))
+    }.getOrNull()
+
+    private fun encode(i: AngItem) = JSONObject()
+        .put("key", i.key).put("title", i.title).put("detail", i.detail).put("image", i.imageUrl ?: "")
+        .put("service", i.service ?: "").put("date", i.date?.toString() ?: "").put("badge", i.badge ?: "")
+        .put("pop", i.popularity).put("tmdb", i.tmdbId ?: -1).put("movie", i.isMovie).put("vote", i.voteAverage)
+
+    private fun decode(o: JSONObject) = AngItem(
+        key = o.getString("key"),
+        title = o.getString("title"),
+        detail = o.optString("detail"),
+        imageUrl = o.optString("image").ifBlank { null },
+        service = o.optString("service").ifBlank { null },
+        date = o.optString("date").ifBlank { null }?.let { runCatching { LocalDate.parse(it) }.getOrNull() },
+        badge = o.optString("badge").ifBlank { null },
+        popularity = o.optDouble("pop", 0.0),
+        tmdbId = o.optLong("tmdb", -1).takeIf { it > 0 },
+        isMovie = o.optBoolean("movie"),
+        voteAverage = o.optDouble("vote", 0.0),
+    )
 
     private suspend fun keywordId(name: String): Int? {
         val key = "kw:$name"
@@ -136,84 +194,94 @@ class AngRepository(context: Context) {
         return id
     }
 
-    // ---- Coming soon (TVmaze streaming schedule) ----
+    // ---- Taste: "more like this" and following liked shows ----
 
-    /** Upcoming season premieres on streaming services (cached for 24h). */
-    suspend fun premieres(today: LocalDate = LocalDate.now()): List<Premiere> {
-        val fresh = System.currentTimeMillis() - prefs.getLong("premieres_v3_at", 0) < 24 * 3600_000L
-        premieresMem?.takeIf { fresh }?.let { return it }
-        if (fresh) withContext(Dispatchers.IO) { readPremieres() }?.let { premieresMem = it; return it }
+    /** Memory-only: whatever we computed last, for an instant first paint. */
+    fun cachedRecs(): Recs? = recsMem?.second
 
-        val all = mutableListOf<Premiere>()
-        var ok = 0
-        // TVmaze allows ~20 calls / 10s: go in small batches.
-        for (batch in (0..AngShows.DISCOVER_FUTURE_DAYS).map { today.plusDays(it) }.chunked(4)) {
-            coroutineScope {
-                batch.map { d ->
-                    async {
-                        withContext(Dispatchers.IO) {
-                            get("$api/schedule/web?date=$d")?.let { body ->
-                                runCatching { TvMazeParser.parsePremieres(body) }.getOrNull()
-                            }
-                        }
-                    }
-                }.awaitAll()
-            }.filterNotNull().forEach { ok++; all += it }
-            delay(2_200)
+    /**
+     * Titles TMDB recommends for what she liked (boosted, and added to her rows if
+     * they're on your apps) and for what she disliked (pushed down).
+     */
+    suspend fun recommendations(ratings: List<Rated>, providers: List<WhereToWatch.Provider>): Recs = coroutineScope {
+        val liked = ratings.filter { it.rating == Rating.LIKE }.sortedByDescending { it.date }.take(15)
+        val disliked = ratings.filter { it.rating == Rating.DISLIKE }.sortedByDescending { it.date }.take(10)
+        val sig = (liked + disliked).joinToString { it.key + it.rating } + "|" + providers.joinToString { it.name }
+        recsMem?.takeIf { it.first == sig && System.currentTimeMillis() - recsAt < 6 * 3600_000L }
+            ?.let { return@coroutineScope it.second }
+        if (!Tmdb.isConfigured || liked.isEmpty() && disliked.isEmpty()) return@coroutineScope Recs(emptyList(), emptyMap(), emptyMap())
+        val today = LocalDate.now()
+
+        suspend fun recsFor(r: Rated): List<AngItem> {
+            val id = tmdbIdOf(r) ?: return emptyList()
+            return Tmdb.get(AngDiscovery.recommendationsPath(id, r.isMovie)) {
+                AngDiscovery.parseResults(it, r.isMovie, null, today)
+            }.orEmpty()
         }
-        // Only keep what could ever be shown, so the cache stays small.
-        val relevant = all.filter { AngShows.isHerKindOfShow(it.show) }
-        if (ok > 0) withContext(Dispatchers.IO) { writePremieres(relevant) }
-        premieresMem = relevant
-        return relevant
-    }
+        val likedLists = liked.map { async { recsFor(it) } }.awaitAll()
+        val dislikedLists = disliked.map { async { recsFor(it) } }.awaitAll()
+        val likedCounts = likedLists.flatten().groupingBy { it.key }.eachCount()
+        val dislikedCounts = dislikedLists.flatten().groupingBy { it.key }.eachCount()
 
-    private fun writePremieres(list: List<Premiere>) {
-        // Same shape as TVmaze's schedule, so the same parser reads it back.
-        val arr = JSONArray()
-        list.forEach { p ->
-            arr.put(
-                JSONObject()
-                    .put("number", 1)
-                    .put("season", p.season)
-                    .put("airdate", p.date.toString())
-                    .put(
-                        "show",
-                        JSONObject()
-                            .put("id", p.show.id)
-                            .put("name", p.show.name)
-                            .put("type", p.show.type)
-                            .put("language", p.show.language)
-                            .put("genres", JSONArray(p.show.genres))
-                            .put(
-                                "webChannel",
-                                JSONObject()
-                                    .put("name", p.show.service)
-                                    .put("country", p.show.country?.let { JSONObject().put("code", it) }),
-                            )
-                            .put("image", JSONObject().put("medium", p.show.imageUrl)),
-                    ),
-            )
+        // The strongest "more like this" titles become candidates, if they stream on your apps.
+        val top = likedLists.flatten().distinctBy { it.key }
+            .sortedWith(compareByDescending<AngItem> { likedCounts[it.key] ?: 0 }.thenByDescending { it.popularity })
+            .take(30)
+        val onYourApps = top.map { item ->
+            async {
+                whereItStreams(item, providers)?.let { name ->
+                    item.copy(service = name, detail = listOfNotNull(item.date?.year?.toString(), name).joinToString(" · "))
+                }
+            }
+        }.awaitAll().filterNotNull()
+
+        Recs(onYourApps, likedCounts, dislikedCounts).also {
+            recsMem = sig to it
+            recsAt = System.currentTimeMillis()
         }
-        runCatching { premiereFile.writeText(arr.toString()) }
-        prefs.edit().putLong("premieres_v3_at", System.currentTimeMillis()).apply()
     }
 
-    private fun readPremieres(): List<Premiere>? =
-        runCatching { TvMazeParser.parsePremieres(premiereFile.readText()) }.getOrNull()
-
-    // ---- "Mark as watched" (long-press in Ang's TV) ----
-
-    fun markWatched(key: String, date: LocalDate = LocalDate.now()) {
-        prefs.edit().putLong("watched:$key", date.toEpochDay()).apply()
+    /** Which of your apps a TMDB title streams on (provider list cached for 3 days). */
+    private suspend fun whereItStreams(item: AngItem, providers: List<WhereToWatch.Provider>): String? {
+        val id = item.tmdbId ?: return null
+        val cacheKey = "prov:${item.key}"
+        val today = LocalDate.now().toEpochDay()
+        val cached = prefs.getString(cacheKey, null)?.split("|")
+            ?.takeIf { parts -> parts.firstOrNull()?.toLongOrNull()?.let { today - it < 3 } == true }
+            ?.drop(1)?.mapNotNull { it.toIntOrNull() }?.toSet()
+        val ids = cached ?: (Tmdb.get(AngDiscovery.providersPath(id, item.isMovie), AngDiscovery::parseProviders) ?: return null)
+            .also { prefs.edit().putString(cacheKey, (listOf(today.toString()) + it.map(Int::toString)).joinToString("|")).apply() }
+        return providers.firstOrNull { p -> p.tmdbIds.any { it in ids } }?.name
     }
 
-    fun watched(): Map<String, LocalDate> = prefs.all.mapNotNull { (k, v) ->
-        if (!k.startsWith("watched:") || v !is Long) return@mapNotNull null
-        val key = k.removePrefix("watched:")
-        // Marks saved by older versions used the bare TVmaze id.
-        (if (key.toLongOrNull() != null) "tvmaze:$key" else key) to LocalDate.ofEpochDay(v)
-    }.toMap()
+    /** TMDB id for a rated title: stored when she rated a TMDB item, else looked up by name once. */
+    private suspend fun tmdbIdOf(r: Rated): Long? {
+        r.tmdbId?.let { return it }
+        if (r.title.isBlank()) return null
+        val key = "tmdbid:${if (r.isMovie) "m" else "t"}:${AngGuideBuilder.normalize(r.title)}"
+        prefs.getLong(key, -1).takeIf { it > 0 }?.let { return it }
+        val id = Tmdb.get(AngDiscovery.searchPath(r.title, r.isMovie)) { AngDiscovery.parseSearchId(it, r.title, r.isMovie) }
+            ?: return null
+        prefs.edit().putLong(key, id).apply()
+        return id
+    }
+
+    /** Liked shows with their season dates (refreshed every 12h). */
+    suspend fun followed(ratings: List<Rated>): List<FollowedShow> = coroutineScope {
+        val today = LocalDate.now()
+        ratings.filter { it.rating == Rating.LIKE && !it.isMovie }.map { r ->
+            async {
+                val id = tmdbIdOf(r) ?: return@async null
+                val cached = synchronized(followedMem) { followedMem[id] }
+                val json = cached?.takeIf { System.currentTimeMillis() - it.first < 12 * 3600_000L }?.second
+                    ?: Tmdb.get(AngDiscovery.detailsPath(id)) { it }
+                        ?.also { synchronized(followedMem) { followedMem[id] = System.currentTimeMillis() to it } }
+                    ?: cached?.second
+                    ?: return@async null
+                withContext(Dispatchers.Default) { runCatching { AngDiscovery.parseFollowed(json, r, today) }.getOrNull() }
+            }
+        }.awaitAll().filterNotNull()
+    }
 
     // ---- Her Continue Watching ----
 

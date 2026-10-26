@@ -43,8 +43,6 @@ object AngShows {
     /** A season counts as "new" for this many days after it premieres. */
     const val NEW_SEASON_DAYS = 60L
 
-    /** How far ahead we scan streaming premieres for "Coming soon". */
-    const val DISCOVER_FUTURE_DAYS = 45L
 
 
     /** English-language shows from the US, Canada or UK (null = a global streamer like Netflix). */

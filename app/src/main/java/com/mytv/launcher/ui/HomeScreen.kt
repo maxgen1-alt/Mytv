@@ -431,6 +431,7 @@ private fun AppMenu(app: TvApp, onDismiss: () -> Unit, onMove: (Int) -> Unit, on
     Dialog(onDismissRequest = onDismiss) {
         Column(
             Modifier
+                .ignoreHeldSelect()
                 .background(Palette.Card, RoundedCornerShape(18.dp))
                 .padding(24.dp)
                 .width(280.dp),

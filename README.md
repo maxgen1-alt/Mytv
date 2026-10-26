@@ -78,6 +78,28 @@ To also include things you watched on other devices (phone, laptop), you can con
 2. Add the Client ID and Secret as repository secrets named `TRAKT_CLIENT_ID` and `TRAKT_CLIENT_SECRET` (or put them in `local.properties`), then rebuild.
 3. A **Connect Trakt** card appears at the end of the row. Select it and enter the code at trakt.tv/activate.
 
+## Ang's TV
+
+The **Ang** button, next to the team buttons, opens her own guide in Love Island colours (teal, pink and yellow):
+
+| Row | What's in it |
+| --- | --- |
+| **Continue watching** | What she's in the middle of, from the TV's Continue Watching, narrowed to her kind of shows. Select one to resume it. |
+| **Watch now** | The Kardashians, plus a new season of any of her shows or of anything she's liked |
+| **New shows you might like** | Romance, rom-com, coming-of-age and dating shows that started in the last year |
+| **Shows you might have missed** | Well-rated shows like that from the last 10 years |
+| **Movies for you** | Rom-coms, romance and romantic dramas from the last 10 years, new ones included |
+| **Coming soon** | Announced next seasons of her shows and liked shows |
+
+Every suggestion is English, from the US, Canada or UK, on a streaming app you have installed, and never adult or erotic.
+
+**Teaching it her taste:** hold select on any title.
+- **♥ Like it:** shows like it move up and get added to her rows, and it's followed for new seasons (Coming soon, then Watch now).
+- **✓ Already watched / Won't watch:** hides it.
+- **✕ Dislike:** hides it, and pushes shows like it down.
+
+Ratings are saved on the TV. Her hand-picked shows are in [`ang/AngShows.kt`](app/src/main/java/com/mytv/launcher/ang/AngShows.kt). Suggestions come from TMDB, so they need the `TMDB_API_KEY` secret.
+
 ## How the team buttons find the game
 
 Scores, schedules, standings and broadcaster info come from ESPN's free public API. No account or key is needed.

@@ -61,8 +61,10 @@ data class AngState(
     /** Her shows from the TV's Continue Watching list, to resume where she left off. */
     val continueWatching: List<WatchItem> = emptyList(),
     val loading: Boolean = true,
-    /** Still scanning streaming premieres for new shows. */
+    /** Still fetching suggestions. */
     val discovering: Boolean = false,
+    /** key → what she said about it (for the hold-select menu). */
+    val ratings: Map<String, com.mytv.launcher.ang.Rating> = emptyMap(),
 )
 
 data class WatchState(
@@ -100,6 +102,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val watchNext = WatchNext(app)
     private val updater = Updater(app)
     private val angRepo = AngRepository(app)
+    private val taste = com.mytv.launcher.ang.TasteStore(app)
     private val topTenRepo = TopTenRepository()
 
     /** Top 10 per streaming service, shown above the apps row. */
@@ -189,9 +192,12 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         // Warm Ang's TV in the background so it opens instantly (everything is cached).
         if (angJob?.isActive != true) angJob = viewModelScope.launch {
             _allApps.first { it.isNotEmpty() } // need the installed apps to know which services to search
+            val providers = installedProviders()
             angRepo.curatedShows()
-            angRepo.discover(installedProviders())
-            angRepo.premieres()
+            angRepo.candidates(providers)
+            val ratings = taste.all()
+            angRepo.recommendations(ratings, providers)
+            angRepo.followed(ratings)
         }
         liveJob?.cancel()
         liveJob = viewModelScope.launch {
@@ -383,11 +389,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---- Ang's guide ----
 
-    private var angCurated: List<Pair<com.mytv.launcher.ang.CuratedShow, com.mytv.launcher.ang.TvShow>> = emptyList()
-    private var angPremieres: List<com.mytv.launcher.ang.Premiere> = emptyList()
-    private var angDiscovered: List<AngItem> = emptyList()
+    private var angInputs = com.mytv.launcher.ang.AngInputs()
+    private var rateJob: Job? = null
 
-    /** Streaming services you have installed, for "New shows you might like". */
+    /** Streaming services you have installed: suggestions only come from these. */
     private fun installedProviders(): List<WhereToWatch.Provider> {
         val apps = _allApps.value
         return WhereToWatch.providers.filter { p -> apps.any { p.service.matches(it.packageName, it.label) } }
@@ -399,48 +404,89 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         return WhereToWatch.servicesFor(serviceName).any { s -> apps.any { s.matches(it.packageName, it.label) } }
     }
 
-    private fun buildAngGuide(): AngGuide = AngGuideBuilder.build(
-        today = java.time.LocalDate.now(),
-        curated = angCurated,
-        premieres = angPremieres,
-        watched = angRepo.watched(),
-        isAvailable = ::isAvailable,
-        discovered = angDiscovered,
-    )
+    /** Rebuilds the screen from what we have (fast, no network). */
+    private suspend fun publishAng(loading: Boolean? = null, discovering: Boolean? = null) {
+        val ratings = taste.all()
+        angInputs = angInputs.copy(ratings = ratings)
+        val inputs = angInputs
+        val guide = withContext(Dispatchers.Default) {
+            AngGuideBuilder.build(java.time.LocalDate.now(), inputs, ::isAvailable)
+        }
+        _ang.update {
+            it.copy(
+                guide = guide,
+                ratings = ratings.associate { r -> r.key to r.rating },
+                loading = loading ?: it.loading,
+                discovering = discovering ?: it.discovering,
+            )
+        }
+    }
 
     private fun loadAng() {
         angJob?.cancel()
         angJob = viewModelScope.launch {
+            _allApps.first { it.isNotEmpty() }
+            val providers = installedProviders()
+
             // 1. Instant: whatever is cached.
-            angRepo.cachedCurated()?.let { angCurated = it }
-            angRepo.cachedDiscovered(installedProviders().map { it.name }.toSet())?.let { angDiscovered = it }
-            val instant = withContext(Dispatchers.Default) { buildAngGuide() }
-            _ang.update { it.copy(guide = instant, loading = angCurated.isEmpty(), discovering = true) }
-            launch { _ang.update { it.copy(continueWatching = herContinueWatching(instant)) } }
+            angRepo.cachedCurated()?.let { angInputs = angInputs.copy(curated = it) }
+            angRepo.cachedCandidates(providers)?.let { angInputs = angInputs.copy(shows = it.shows, movies = it.movies) }
+            angRepo.cachedRecs()?.let { r ->
+                angInputs = angInputs.copy(
+                    shows = angInputs.shows + r.items.filter { !it.isMovie },
+                    movies = angInputs.movies + r.items.filter { it.isMovie },
+                    likedRecs = r.liked,
+                    dislikedRecs = r.disliked,
+                )
+            }
+            publishAng(loading = angInputs.curated.isEmpty(), discovering = true)
+            launch { _ang.update { it.copy(continueWatching = herContinueWatching()) } }
 
             // 2. Refresh anything stale, updating the screen as each part lands.
-            angCurated = angRepo.curatedShows()
-            angDiscovered = angRepo.discover(installedProviders())
-            _ang.update { it.copy(guide = buildAngGuide(), loading = false) }
-            angPremieres = angRepo.premieres()
-            val full = withContext(Dispatchers.Default) { buildAngGuide() }
-            _ang.update { it.copy(guide = full, discovering = false) }
-            _ang.update { it.copy(continueWatching = herContinueWatching(full)) }
+            angInputs = angInputs.copy(curated = angRepo.curatedShows())
+            publishAng(loading = false)
+            refreshAngTaste(providers)
+            publishAng(discovering = false)
         }
     }
 
+    /** Suggestions + "more like what she liked" + liked shows' seasons. */
+    private suspend fun refreshAngTaste(providers: List<WhereToWatch.Provider>) {
+        val ratings = taste.all()
+        val base = angRepo.candidates(providers)
+        val recs = angRepo.recommendations(ratings, providers)
+        val followed = angRepo.followed(ratings)
+        angInputs = angInputs.copy(
+            shows = base?.shows.orEmpty() + recs.items.filter { !it.isMovie },
+            movies = base?.movies.orEmpty() + recs.items.filter { it.isMovie },
+            likedRecs = recs.liked,
+            dislikedRecs = recs.disliked,
+            followed = followed,
+        )
+    }
+
     /** The TV's Continue Watching, narrowed to her kind of shows. */
-    private suspend fun herContinueWatching(guide: AngGuide): List<WatchItem> {
-        val titles = (angCurated.map { it.second.name } +
-            (guide.watchNow + guide.newShows + guide.upcoming).map { it.title }).toSet()
+    private suspend fun herContinueWatching(): List<WatchItem> {
+        val g = _ang.value.guide
+        val titles = (angInputs.curated.map { it.second.name } +
+            (g.watchNow + g.newShows + g.missed + g.movies + g.upcoming).map { it.title }).toSet()
         return watchNext.load().filter { angRepo.isHers(it.title, titles) }
     }
 
-    /** Long-press in Ang's TV: she's seen it. Curated shows come back for a newer season. */
-    fun angMarkWatched(item: AngItem) {
-        angRepo.markWatched(item.key)
-        _ang.update { it.copy(guide = buildAngGuide()) }
-        toast("${item.title}: marked as watched")
+    /** Hold select → Like / Already watched / Dislike / Won't watch (null clears it). */
+    fun angRate(item: AngItem, rating: com.mytv.launcher.ang.Rating?) {
+        taste.set(item, rating)
+        toast(rating?.let { "${item.title}: ${it.label.lowercase()}" } ?: "${item.title}: cleared")
+        rateJob?.cancel()
+        rateJob = viewModelScope.launch {
+            publishAng() // hide / badge it right away
+            // Likes and dislikes change the suggestions: recompute in the background.
+            if (rating == com.mytv.launcher.ang.Rating.LIKE || rating == com.mytv.launcher.ang.Rating.DISLIKE) {
+                _ang.update { it.copy(discovering = true) }
+                refreshAngTaste(installedProviders())
+                publishAng(discovering = false)
+            }
+        }
     }
 
     /** Opens the show's streaming app if it's installed, else asks Google TV where it plays. */

@@ -23,7 +23,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -41,6 +45,7 @@ import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.mytv.launcher.AngState
 import com.mytv.launcher.ang.AngItem
+import com.mytv.launcher.ang.Rating
 import com.mytv.launcher.watching.WatchItem
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -61,13 +66,14 @@ private val dateFormat = DateTimeFormatter.ofPattern("EEE, MMM d")
 fun AngScreen(
     state: AngState,
     onShow: (AngItem) -> Unit,
-    onMarkWatched: (AngItem) -> Unit,
+    onRate: (AngItem, Rating?) -> Unit,
     onResume: (WatchItem) -> Unit,
 ) {
     val first = remember { FocusRequester() }
     val guide = state.guide
-    val firstKey = state.continueWatching.firstOrNull()?.key
-        ?: (guide.watchNow + guide.newShows + guide.upcoming).firstOrNull()?.key
+    var menuFor by remember { mutableStateOf<AngItem?>(null) }
+    val all = guide.watchNow + guide.newShows + guide.missed + guide.movies + guide.upcoming
+    val firstKey = state.continueWatching.firstOrNull()?.key ?: all.firstOrNull()?.key
     LaunchedEffect(firstKey) { if (firstKey != null) runCatching { first.requestFocus() } }
 
     Box(Modifier.fillMaxSize().background(AngPalette.Background)) {
@@ -82,11 +88,19 @@ fun AngScreen(
                 Spacer(Modifier.width(12.dp))
                 Text("♥", fontSize = 28.sp, color = AngPalette.Pink, modifier = Modifier.padding(bottom = 2.dp))
                 Spacer(Modifier.weight(1f))
-                if (state.loading) Text("Updating…", fontSize = 13.sp, color = Color.White.copy(alpha = 0.8f))
+                Text(
+                    when {
+                        state.loading -> "Updating…"
+                        state.discovering -> "Finding shows for you…"
+                        else -> "Hold select on anything: like it, dislike it, or mark it watched"
+                    },
+                    fontSize = 13.sp,
+                    color = Color.White.copy(alpha = 0.85f),
+                )
             }
             Spacer(Modifier.height(20.dp))
 
-            if (!state.loading && state.continueWatching.isEmpty() && guide.watchNow.isEmpty() && guide.newShows.isEmpty() && guide.upcoming.isEmpty()) {
+            if (!state.loading && !state.discovering && state.continueWatching.isEmpty() && all.isEmpty()) {
                 Text(
                     "Couldn't load shows right now. Check the internet connection.",
                     color = Color.White,
@@ -98,29 +112,59 @@ fun AngScreen(
             var focusUsed = false
             fun firstFocus(): Modifier =
                 if (!focusUsed) { focusUsed = true; Modifier.focusRequester(first) } else Modifier
+            val hold: (AngItem) -> Unit = { menuFor = it }
 
             ContinueShelf(state.continueWatching, onResume, ::firstFocus)
-            Shelf("Watch now", guide.watchNow, onShow, ::firstFocus, onLongClick = onMarkWatched) { it.badge }
-            Shelf("New shows you might like", guide.newShows, onShow, ::firstFocus, onLongClick = onMarkWatched) { it.badge }
-            Shelf("Coming soon", guide.upcoming, onShow, ::firstFocus, dated = true) { it.date?.let(::comingLabel) }
+            Shelf("Watch now", guide.watchNow, onShow, ::firstFocus, onLongClick = hold) { it.badge }
+            Shelf("New shows you might like", guide.newShows, onShow, ::firstFocus, onLongClick = hold) { it.badge }
+            Shelf("Shows you might have missed", guide.missed, onShow, ::firstFocus, onLongClick = hold) { it.badge }
+            Shelf("Movies for you", guide.movies, onShow, ::firstFocus, onLongClick = hold) { it.badge }
+            Shelf("Coming soon", guide.upcoming, onShow, ::firstFocus, dated = true, onLongClick = hold) { it.date?.let(::comingLabel) }
+        }
+    }
 
-            if (guide.watchNow.isNotEmpty() || guide.newShows.isNotEmpty()) {
-                Text(
-                    "Tip: hold select on a show to mark it as watched.",
-                    color = Color.White.copy(alpha = 0.7f),
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(horizontal = 48.dp, vertical = 4.dp),
-                )
-            }
+    menuFor?.let { item ->
+        RateMenu(
+            item = item,
+            current = state.ratings[item.key],
+            onPick = { rating -> onRate(item, rating); menuFor = null },
+            onDismiss = { menuFor = null },
+        )
+    }
+}
 
-            if (state.discovering) {
-                Text(
-                    "Looking for new shows…",
-                    color = Color.White.copy(alpha = 0.8f),
-                    fontSize = 13.sp,
-                    modifier = Modifier.padding(horizontal = 48.dp, vertical = 8.dp),
-                )
-            }
+/** Hold select on a title: teach Ang's TV her taste. */
+@Composable
+private fun RateMenu(item: AngItem, current: Rating?, onPick: (Rating?) -> Unit, onDismiss: () -> Unit) {
+    val first = remember { FocusRequester() }
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            Modifier
+                .ignoreHeldSelect()
+                .width(320.dp)
+                .background(AngPalette.DeepTeal, RoundedCornerShape(20.dp))
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(item.title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 2)
+            current?.let { Text("Currently: ${it.label}", fontSize = 12.sp, color = AngPalette.Yellow) }
+            Spacer(Modifier.height(4.dp))
+            MenuButton("♥  Like it", "More like this, and new seasons", AngPalette.Pink, Modifier.focusRequester(first)) { onPick(Rating.LIKE) }
+            MenuButton("✓  Already watched", "Hide it", Color.White.copy(alpha = 0.18f)) { onPick(Rating.WATCHED) }
+            MenuButton("✕  Dislike", "Hide it, and less like this", Color.White.copy(alpha = 0.18f)) { onPick(Rating.DISLIKE) }
+            MenuButton("Won't watch", "Just hide it", Color.White.copy(alpha = 0.18f)) { onPick(Rating.WONT_WATCH) }
+            if (current != null) MenuButton("Clear", "Forget what I said", Color.Transparent) { onPick(null) }
+        }
+    }
+    LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
+}
+
+@Composable
+private fun MenuButton(title: String, hint: String, color: Color, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    FocusCard(onClick = onClick, container = color, corner = 12.dp, focusedScale = 1.04f, modifier = modifier.fillMaxWidth().height(52.dp)) {
+        Column(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.Center) {
+            Text(title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+            Text(hint, fontSize = 11.sp, color = Color.White.copy(alpha = 0.75f))
         }
     }
 }
