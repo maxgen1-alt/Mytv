@@ -32,8 +32,8 @@ class AngRepository(context: Context) {
         .build()
     private val prefs = context.getSharedPreferences("ang", Context.MODE_PRIVATE)
     private val curatedFile = File(context.filesDir, "ang-curated.json")
-    // v4: Coming soon also has upcoming shows on any service.
-    private val candidatesFile = File(context.cacheDir, "ang-candidates-v4.json")
+    // v5: 3 pages per row (deeper pool).
+    private val candidatesFile = File(context.cacheDir, "ang-candidates-v5.json")
     private val api = "https://api.tvmaze.com"
 
     @Volatile private var curatedMem: List<Pair<CuratedShow, TvShow>>? = null
@@ -106,6 +106,10 @@ class AngRepository(context: Context) {
 
     // ---- Suggestions (TMDB discover) ----
 
+    private companion object {
+        val PAGES = 1..3
+    }
+
     private data class Pools(val shows: List<AngItem>, val movies: List<AngItem>, val upcoming: List<AngItem>, val sitcoms: List<AngItem>)
 
     /** Whatever we have saved for these providers, however old: for an instant first paint. */
@@ -132,12 +136,14 @@ class AngRepository(context: Context) {
         val sitcomKeyword = keywordId("sitcom")
         val (shows, movies, upcoming, sitcoms) = coroutineScope {
             val shows = providers.flatMap { p ->
-                val paths = listOf(AngDiscovery.newShowsPath(today, p.tmdbIds, wanted, blocked)) +
-                    (1..2).map { page -> AngDiscovery.missedShowsPath(today, p.tmdbIds, wanted, blocked, page) }
+                // 3 pages per app and row: a deep bench, so when she likes or hides a show
+                // the next one slides in instead of the row shrinking.
+                val paths = PAGES.map { page -> AngDiscovery.newShowsPath(today, p.tmdbIds, wanted, blocked, page) } +
+                    PAGES.map { page -> AngDiscovery.missedShowsPath(today, p.tmdbIds, wanted, blocked, page) }
                 paths.map { path -> async { Tmdb.get(path) { AngDiscovery.parseResults(it, false, p.name, today) } } }
             }
             val movies = providers.flatMap { p ->
-                (1..2).map { page ->
+                PAGES.map { page ->
                     async {
                         Tmdb.get(AngDiscovery.moviesPath(today, p.tmdbIds, blocked, page)) {
                             AngDiscovery.parseResults(it, true, p.name, today)
@@ -153,7 +159,7 @@ class AngRepository(context: Context) {
                 }
             }
             val sitcoms = if (sitcomKeyword == null) emptyList() else providers.flatMap { p ->
-                (1..2).map { page ->
+                PAGES.map { page ->
                     async {
                         Tmdb.get(AngDiscovery.sitcomsPath(p.tmdbIds, sitcomKeyword, blocked, page)) {
                             AngDiscovery.parseResults(it, false, p.name, today, maxAgeYears = null)

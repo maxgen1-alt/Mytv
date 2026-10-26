@@ -51,9 +51,9 @@ object AngDiscovery {
             "&with_original_language=en&include_adult=false&language=en-US&sort_by=popularity.desc"
 
     /** Shows that started in the last year. */
-    fun newShowsPath(today: LocalDate, providerIds: List<Int>, wanted: List<Int>, blocked: List<Int>) =
+    fun newShowsPath(today: LocalDate, providerIds: List<Int>, wanted: List<Int>, blocked: List<Int>, page: Int = 1) =
         "/discover/tv?${common(providerIds, blocked)}&with_keywords=${wanted.joinToString("|")}" +
-            "&first_air_date.gte=${today.minusYears(1)}&first_air_date.lte=$today&page=1"
+            "&first_air_date.gte=${today.minusYears(1)}&first_air_date.lte=$today&page=$page"
 
     /** Well-rated shows from the last 10 years, older than a year. */
     fun missedShowsPath(today: LocalDate, providerIds: List<Int>, wanted: List<Int>, blocked: List<Int>, page: Int) =
