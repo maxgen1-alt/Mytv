@@ -4,6 +4,9 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -18,11 +21,24 @@ jobs:
         run: ./gradlew --no-daemon testDebugUnitTest
       - name: Build APK
         env:
-          # Optional: add these as repository secrets to enable Continue Watching.
+          # Optional: add these as repository secrets to enable Trakt.
           TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
           TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
-        run: ./gradlew --no-daemon assembleRelease
+        run: |
+          ./gradlew --no-daemon assembleRelease
+          cp app/build/outputs/apk/release/app-release.apk MyTV.apk
       - uses: actions/upload-artifact@v4
         with:
           name: MyTV-apk
-          path: app/build/outputs/apk/release/*.apk
+          path: MyTV.apk
+      # Public download link for installing straight onto the TV:
+      # https://github.com/<owner>/<repo>/releases/latest/download/MyTV.apk
+      - name: Publish as latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest MyTV.apk \
+            --target "$GITHUB_SHA" \
+            --title "MyTV (latest build)" \
+            --notes "Built from ${GITHUB_SHA::7} on ${GITHUB_REF_NAME}."
