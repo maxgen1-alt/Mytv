@@ -54,7 +54,7 @@ fun EditAppsScreen(
     val first = remember { FocusRequester() }
     LaunchedEffect(apps.isNotEmpty()) { if (apps.isNotEmpty()) runCatching { first.requestFocus() } }
 
-    Column(Modifier.fillMaxSize().background(Palette.Sky).padding(horizontal = 48.dp, vertical = 32.dp)) {
+    Column(Modifier.fillMaxSize().background(Palette.Background).padding(horizontal = 48.dp, vertical = 32.dp)) {
         Row(verticalAlignment = Alignment.Bottom) {
             Text("Your apps", fontSize = 30.sp, fontWeight = FontWeight.Bold, color = Palette.Ink)
             Spacer(Modifier.weight(1f))
@@ -120,7 +120,7 @@ fun EditAppsScreen(
 @Composable
 fun TraktLinkScreen(state: LinkState, linked: Boolean, onUnlink: () -> Unit) {
     val focus = remember { FocusRequester() }
-    Box(Modifier.fillMaxSize().background(Palette.Sky), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize().background(Palette.Background), contentAlignment = Alignment.Center) {
         Column(
             Modifier
                 .background(Palette.Card, RoundedCornerShape(24.dp))

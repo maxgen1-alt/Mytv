@@ -4,14 +4,14 @@
     android:height="180dp"
     android:viewportWidth="320"
     android:viewportHeight="180">
-    <path android:fillColor="#FFCFE6F7" android:pathData="M0,0h320v180h-320z" />
+    <path android:fillColor="#FF0B0B0E" android:pathData="M0,0h320v180h-320z" />
     <!-- Rounded TV outline -->
     <path
         android:fillColor="#00000000"
-        android:strokeColor="#FF1C3550"
+        android:strokeColor="#FFF5F5F7"
         android:strokeWidth="8"
         android:pathData="M92,48h136a12,12 0,0 1,12 12v52a12,12 0,0 1,-12 12h-136a12,12 0,0 1,-12 -12v-52a12,12 0,0 1,12 -12z" />
-    <path android:fillColor="#FF1C3550" android:pathData="M130,134h60v8h-60z" />
+    <path android:fillColor="#FFF5F5F7" android:pathData="M130,134h60v8h-60z" />
     <!-- Play triangle -->
-    <path android:fillColor="#FF1C3550" android:pathData="M148,70l26,16l-26,16z" />
+    <path android:fillColor="#FFF5F5F7" android:pathData="M148,70l26,16l-26,16z" />
 </vector>

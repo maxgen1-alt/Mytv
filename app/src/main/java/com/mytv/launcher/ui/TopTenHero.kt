@@ -22,6 +22,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
@@ -70,19 +74,28 @@ private fun TopTen(service: TopTenService, titles: List<TopTitle>) {
     Box(Modifier.fillMaxSize()) {
         // #1's artwork on the right, fading into the background.
         titles.first().backdropUrl?.let { url ->
-            Box(Modifier.align(Alignment.TopEnd).fillMaxHeight().fillMaxWidth(0.62f)) {
-                AsyncImage(url, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                Box(
-                    Modifier.fillMaxSize().background(
-                        Brush.horizontalGradient(listOf(Palette.Sky, Palette.Sky.copy(alpha = 0.55f), Color.Transparent)),
-                    ),
-                )
-                Box(
-                    Modifier.fillMaxSize().background(
-                        Brush.verticalGradient(0.6f to Color.Transparent, 1f to Palette.Sky),
-                    ),
-                )
-            }
+            // Fade the artwork itself out (alpha mask), so it melts into the gradient background.
+            AsyncImage(
+                url,
+                null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .fillMaxHeight()
+                    .fillMaxWidth(0.62f)
+                    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                    .drawWithContent {
+                        drawContent()
+                        drawRect(
+                            Brush.horizontalGradient(0f to Color.Transparent, 0.45f to Color.Black.copy(alpha = 0.6f), 1f to Color.Black),
+                            blendMode = BlendMode.DstIn,
+                        )
+                        drawRect(
+                            Brush.verticalGradient(0.55f to Color.Black, 1f to Color.Transparent),
+                            blendMode = BlendMode.DstIn,
+                        )
+                    },
+            )
         }
 
         Column(Modifier.padding(horizontal = 48.dp)) {
@@ -128,7 +141,7 @@ private fun RankedPoster(rank: Int, title: TopTitle) {
                 fontSize = 34.sp,
                 fontWeight = FontWeight.Black,
                 color = Color.White,
-                shadow = Shadow(color = Palette.Ink.copy(alpha = 0.8f), blurRadius = 8f),
+                shadow = Shadow(color = Color.Black.copy(alpha = 0.9f), blurRadius = 8f),
             ),
         )
     }

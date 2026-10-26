@@ -1,6 +1,6 @@
 # MyTV: a minimal home screen for Chromecast with Google TV
 
-A clean, Apple TV-style launcher on a light blue background:
+A clean, Apple TV-style launcher on a black-to-graphite gradient:
 
 | Row | What it does |
 | --- | --- |
@@ -116,7 +116,7 @@ Every build must be signed with the same key, because Android only accepts an up
 
 ## Customising
 
-- **Colours:** [`ui/Theme.kt`](app/src/main/java/com/mytv/launcher/ui/Theme.kt) (`Palette.Sky` is the background).
+- **Colours:** [`ui/Theme.kt`](app/src/main/java/com/mytv/launcher/ui/Theme.kt) (`Palette.Background` is the gradient).
 - **Add another team:** add a `Team(...)` in `Team.kt` and put it in `Teams.all`. You'll need its ESPN team ID: the number in the team's espn.com URL.
 
 ## Project layout

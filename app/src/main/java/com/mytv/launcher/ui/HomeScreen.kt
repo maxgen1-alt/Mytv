@@ -101,7 +101,7 @@ fun HomeScreen(
         if (apps.isNotEmpty()) runCatching { firstApp.requestFocus() }
     }
 
-    Box(Modifier.fillMaxSize().background(Palette.Sky)) {
+    Box(Modifier.fillMaxSize().background(Palette.Background)) {
         Column(
             Modifier
                 .fillMaxSize()
@@ -202,7 +202,7 @@ private fun TopBar(updateReady: Boolean, onUpdate: () -> Unit) {
             FocusCard(onClick = onUpdate, corner = 18.dp, container = Palette.Ink, focusedScale = 1.06f, modifier = Modifier.height(36.dp)) {
                 Text(
                     "Update ready",
-                    color = Color.White,
+                    color = Palette.Base,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.align(Alignment.Center).padding(horizontal = 16.dp),
@@ -412,7 +412,7 @@ private fun Hint(text: String) {
 
 @Composable
 private fun BusyOverlay(message: String) {
-    Box(Modifier.fillMaxSize().background(Palette.Sky.copy(alpha = 0.85f)), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize().background(Palette.Base.copy(alpha = 0.85f)), contentAlignment = Alignment.Center) {
         Text(message, fontSize = 24.sp, fontWeight = FontWeight.SemiBold, color = Palette.Ink)
     }
 }

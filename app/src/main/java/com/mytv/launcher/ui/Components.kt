@@ -53,7 +53,7 @@ fun FocusCard(
             focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape),
         ),
         glow = ClickableSurfaceDefaults.glow(
-            focusedGlow = Glow(elevationColor = Palette.Ink.copy(alpha = 0.35f), elevation = 18.dp),
+            focusedGlow = Glow(elevationColor = Color.White.copy(alpha = 0.25f), elevation = 18.dp),
         ),
         content = content,
     )

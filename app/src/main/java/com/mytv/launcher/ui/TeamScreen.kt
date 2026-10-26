@@ -60,7 +60,7 @@ fun TeamScreen(
     Row(
         Modifier
             .fillMaxSize()
-            .background(Palette.Sky)
+            .background(Palette.Background)
             .padding(horizontal = 48.dp, vertical = 32.dp),
         horizontalArrangement = Arrangement.spacedBy(36.dp),
     ) {
