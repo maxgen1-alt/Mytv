@@ -39,6 +39,18 @@ import androidx.tv.material3.Text
 import com.mytv.launcher.LinkState
 import com.mytv.launcher.apps.TvApp
 
+@Composable
+private fun StatusLine(text: String, modifier: Modifier = Modifier, soft: Boolean = false) {
+    Text(
+        text,
+        fontSize = 14.sp,
+        color = if (soft) Palette.InkSoft else Palette.Ink,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = modifier,
+    )
+}
+
 /** Pick which apps appear in the top row. Click toggles shown / hidden. */
 @Composable
 fun EditAppsScreen(
@@ -60,15 +72,9 @@ fun EditAppsScreen(
     LaunchedEffect(apps.isNotEmpty()) { if (apps.isNotEmpty()) runCatching { first.requestFocus() } }
 
     Column(Modifier.fillMaxSize().background(Palette.Background).padding(horizontal = 48.dp, vertical = 32.dp)) {
-        Row(verticalAlignment = Alignment.Bottom) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Your apps", fontSize = 30.sp, fontWeight = FontWeight.Bold, color = Palette.Ink)
             Spacer(Modifier.weight(1f))
-            Column(horizontalAlignment = Alignment.End) {
-                Text("MyTV $version", fontSize = 12.sp, color = Palette.InkSoft)
-                Text(syncStatus, fontSize = 12.sp, color = Palette.InkSoft)
-                if (updateStatus.isNotBlank()) Text(updateStatus, fontSize = 12.sp, color = Palette.Ink)
-            }
-            Spacer(Modifier.width(14.dp))
             Button(onClick = onCheckUpdates) { Text("Check for updates") }
         }
         Text(
@@ -76,10 +82,13 @@ fun EditAppsScreen(
             fontSize = 14.sp,
             color = Palette.InkSoft,
         )
+        Spacer(Modifier.height(10.dp))
+        // Status lines: each kept to the screen's width so a long message can't push the grid off.
+        StatusLine(listOf("MyTV $version", updateStatus, syncStatus).filter { it.isNotBlank() }.joinToString("  ·  "), soft = true)
         if (watchStatus.isNotBlank()) {
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(6.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(watchStatus, fontSize = 14.sp, color = Palette.Ink)
+                StatusLine(watchStatus, Modifier.weight(1f, fill = false))
                 if (needsWatchAccess) {
                     Spacer(Modifier.width(14.dp))
                     Button(onClick = onAllowWatchAccess) { Text("Allow access") }
@@ -87,9 +96,9 @@ fun EditAppsScreen(
             }
         }
         if (trackStatus.isNotBlank()) {
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(6.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(trackStatus, fontSize = 14.sp, color = Palette.Ink, maxLines = 2, modifier = Modifier.weight(1f, fill = false))
+                StatusLine(trackStatus, Modifier.weight(1f, fill = false))
                 if (!tracking) {
                     Spacer(Modifier.width(14.dp))
                     Button(onClick = onTurnOnTracking) { Text("Turn on") }

@@ -134,17 +134,28 @@ object CloudSync {
             .post(rows.toString().toRequestBody("application/json".toMediaType()))
             .build()
         http.newCall(req).execute().use { r ->
-            if (!r.isSuccessful) failure = "upload: HTTP ${r.code} ${r.body?.string().orEmpty().take(80)}"
+            if (!r.isSuccessful) failure = explain(r.code, r.body?.string())
             r.isSuccessful
         }
-    }.getOrElse { failure = "upload: ${it.javaClass.simpleName}"; false }
+    }.getOrElse { failure = "no connection"; false }
 
     private fun get(path: String): String? = runCatching {
         http.newCall(request(path).build()).execute().use { r ->
-            if (!r.isSuccessful) failure = "download: HTTP ${r.code} ${r.body?.string().orEmpty().take(80)}"
+            if (!r.isSuccessful) failure = explain(r.code, r.body?.string())
             if (r.isSuccessful) r.body?.string() else null
         }
-    }.getOrElse { failure = "download: ${it.javaClass.simpleName}"; null }
+    }.getOrElse { failure = "no connection"; null }
+
+    /** Supabase's error → a few plain words. */
+    private fun explain(code: Int, body: String?): String {
+        val pgrst = runCatching { JSONObject(body.orEmpty()).optString("code") }.getOrDefault("")
+        return when {
+            pgrst == "PGRST205" -> "table mytv_ratings missing: run the SQL from the README in Supabase"
+            code == 401 || code == 403 -> "Supabase refused the key (HTTP $code)"
+            code == 404 -> "wrong Supabase URL (HTTP 404)"
+            else -> "HTTP $code"
+        }
+    }
 
     private fun request(path: String) = Request.Builder()
         .url(url + path)
