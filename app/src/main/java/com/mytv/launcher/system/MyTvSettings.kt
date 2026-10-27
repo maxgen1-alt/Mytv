@@ -6,6 +6,11 @@ import android.content.Context
 class MyTvSettings(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences("mytv_settings", Context.MODE_PRIVATE)
 
+    /** MyTV opens whenever Google TV's home screen would (see HomeOverride). */
+    var homeOverride: Boolean
+        get() = prefs.getBoolean("home_override", false)
+        set(v) = prefs.edit().putBoolean("home_override", v).apply()
+
     /** Pop-ups over other apps when a game is about to start. */
     var kickoffAlerts: Boolean
         get() = prefs.getBoolean("kickoff_alerts", true)

@@ -59,7 +59,19 @@ fun SystemScreen(
             }
 
             Section("Home screen", if (state.isHome) "MyTV is your home screen: it's what you see when the TV turns on and when you press Home." else
-                "Make MyTV the only home screen. Google TV's home screen is switched off (not deleted); one button brings it back.")
+                "Make MyTV what you see when the TV turns on and when you press Home. Google TV stays installed; one button brings it back.")
+            state.phoneSetup?.let { cmd ->
+                Text("One-time step from your phone (Bugjaeger → Shell), then select the button below:", fontSize = 13.sp, color = Color(0xFFF5C518))
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    cmd,
+                    fontSize = 13.sp,
+                    color = Palette.Ink,
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                    modifier = Modifier.background(Color(0x33FFFFFF), RoundedCornerShape(8.dp)).padding(10.dp),
+                )
+                Spacer(Modifier.height(10.dp))
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (!state.isHome) Pill("Make MyTV my home screen", true, Modifier.focusRequester(first)) { if (!state.busy) onMakeHome() }
                 Pill(if (state.isHome) "Undo everything (back to Google TV)" else "Undo everything", false,

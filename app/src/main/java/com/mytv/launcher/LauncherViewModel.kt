@@ -1120,6 +1120,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         val sleepAfterEpisode: Boolean,
         val busy: Boolean = false,
         val message: String = "",
+        /** The one line to run from a phone before MyTV can switch things itself (null once done). */
+        val phoneSetup: String? = null,
     )
 
     private fun systemNow(busy: Boolean = false, message: String = _system.value.message) = SystemState(
@@ -1132,6 +1134,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         sleepAfterEpisode = settings.sleepAfterEpisode,
         busy = busy,
         message = message,
+        phoneSetup = if (homeSetup.canWriteSecure) null else com.mytv.launcher.system.HomeSetup.PHONE_COMMAND,
     )
 
     private val _system = MutableStateFlow(
