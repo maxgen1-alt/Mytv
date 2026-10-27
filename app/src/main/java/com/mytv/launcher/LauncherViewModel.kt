@@ -419,11 +419,24 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun moveApp(app: TvApp, delta: Int) {
         installed.move(_apps.value, app.packageName, delta)
         refreshApps()
+        pushLayout()
     }
 
     fun setHidden(app: TvApp, hidden: Boolean) {
         installed.setHidden(app.packageName, hidden)
         refreshApps()
+        pushLayout()
+    }
+
+    private var layoutJob: Job? = null
+
+    /** Sends the apps row to the other TVs (after a short pause, so a run of moves sends once). */
+    private fun pushLayout() {
+        layoutJob?.cancel()
+        layoutJob = viewModelScope.launch {
+            delay(1500)
+            com.mytv.launcher.sync.CloudSync.pushLayout(installed)
+        }
     }
 
     // ---- Teams ----
@@ -527,11 +540,17 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Pulls ratings made on your other TVs (and uploads ours), then refreshes what changed. */
+    private val _syncStatus = MutableStateFlow(com.mytv.launcher.sync.CloudSync.status)
+    val syncStatus = _syncStatus.asStateFlow()
+
     private fun syncRatings() {
         if (!com.mytv.launcher.sync.CloudSync.isConfigured) return
         viewModelScope.launch {
+            com.mytv.launcher.sync.CloudSync.begin()
+            if (com.mytv.launcher.sync.CloudSync.syncLayout(installed)) refreshApps()
             if (com.mytv.launcher.sync.CloudSync.sync(myStore, "me")) refreshMine()
             if (com.mytv.launcher.sync.CloudSync.sync(taste, "ang") && _screen.value == Screen.Ang) publishAng()
+            _syncStatus.value = com.mytv.launcher.sync.CloudSync.status
         }
     }
 

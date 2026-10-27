@@ -98,6 +98,7 @@ class MainActivity : ComponentActivity() {
                         val hidden by vm.hidden.collectAsStateWithLifecycle()
                         val updateStatus by vm.updateStatus.collectAsStateWithLifecycle()
                         val watchState by vm.watching.collectAsStateWithLifecycle()
+                        val syncStatus by vm.syncStatus.collectAsStateWithLifecycle()
                         EditAppsScreen(
                             all,
                             hidden,
@@ -110,6 +111,7 @@ class MainActivity : ComponentActivity() {
                             trackStatus = watchState.trackStatus,
                             tracking = watchState.tracking,
                             onTurnOnTracking = vm::allowTracking,
+                            syncStatus = syncStatus,
                             onToggle = vm::setHidden,
                         )
                     }

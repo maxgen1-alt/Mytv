@@ -2,6 +2,7 @@ package com.mytv.launcher.sync
 
 import com.mytv.launcher.BuildConfig
 import com.mytv.launcher.ang.TasteStore
+import com.mytv.launcher.apps.InstalledApps
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -24,6 +25,14 @@ object CloudSync {
     private val key = BuildConfig.SUPABASE_KEY
     private val household = BuildConfig.SYNC_HOUSEHOLD
     val isConfigured: Boolean get() = url.isNotBlank() && key.isNotBlank() && household.isNotBlank()
+
+    /** For the apps screen: how the last sync went. */
+    @Volatile var status: String = if (url.isBlank() || key.isBlank() || household.isBlank()) "Sync: not set up in this build" else "Sync: not run yet"
+        private set
+    @Volatile private var failure: String? = null
+
+    /** Starts a round of syncing: clears the last round's error. */
+    fun begin() { failure = null }
 
     private val http = OkHttpClient.Builder()
         .connectTimeout(8, TimeUnit.SECONDS)
@@ -48,7 +57,55 @@ object CloudSync {
             }
         }
         push(store, profile)
+        report()
         changed
+    }
+
+    /**
+     * The apps row (hidden apps + order), stored as one row (profile "apps")
+     * in the same table. Newest change wins. Returns true if this TV's row changed.
+     */
+    suspend fun syncLayout(apps: InstalledApps): Boolean = withContext(Dispatchers.IO) {
+        if (!isConfigured) return@withContext false
+        var local = apps.layout()
+        val body = get("/rest/v1/mytv_ratings?select=data,updated_at&profile=eq.apps&key=eq.layout") ?: run { report(); return@withContext false }
+        val row = runCatching { JSONArray(body).optJSONObject(0) }.getOrNull()
+        val remoteAt = row?.let { runCatching { Instant.parse(it.getString("updated_at")).toEpochMilli() }.getOrNull() } ?: 0L
+        val data = row?.optJSONObject("data")
+        var changed = false
+        // First sync: a row set up on this TV before syncing existed, and nothing online yet.
+        if (row == null && local.changedAt == 0L && (local.hidden.isNotEmpty() || local.order.isNotEmpty())) {
+            apps.markLayoutChanged()
+            local = apps.layout()
+        }
+        if (data != null && remoteAt > local.changedAt) {
+            fun list(name: String) = data.optJSONArray(name)?.let { a -> (0 until a.length()).map { a.getString(it) } }.orEmpty()
+            apps.applyLayout(InstalledApps.Layout(list("hidden").toSet(), list("order"), remoteAt))
+            changed = true
+        } else if (local.changedAt > remoteAt) {
+            pushLayout(apps)
+        }
+        report()
+        changed
+    }
+
+    /** Uploads the apps row right after it changes here. */
+    suspend fun pushLayout(apps: InstalledApps) = withContext(Dispatchers.IO) {
+        if (!isConfigured) return@withContext
+        val l = apps.layout()
+        if (l.changedAt == 0L) return@withContext
+        val row = JSONObject()
+            .put("household", household)
+            .put("profile", "apps")
+            .put("key", "layout")
+            .put("data", JSONObject().put("hidden", JSONArray(l.hidden.toList())).put("order", JSONArray(l.order)))
+            .put("updated_at", Instant.ofEpochMilli(l.changedAt).toString())
+        upsert(JSONArray().put(row))
+    }
+
+    private fun report() {
+        val time = java.time.LocalTime.now().withNano(0).withSecond(0)
+        status = failure?.let { "Sync: failed at $time ($it)" } ?: "Sync: OK at $time"
     }
 
     /** Uploads local changes (called right after rating something). */
@@ -67,19 +124,26 @@ object CloudSync {
                     .put("updated_at", Instant.ofEpochMilli(c.at).toString()),
             )
         }
-        val ok = runCatching {
-            val req = request("/rest/v1/mytv_ratings?on_conflict=household,profile,key")
-                .header("Prefer", "resolution=merge-duplicates,return=minimal")
-                .post(rows.toString().toRequestBody("application/json".toMediaType()))
-                .build()
-            http.newCall(req).execute().use { it.isSuccessful }
-        }.getOrDefault(false)
-        if (ok) store.markUploaded(pending.map { it.key })
+        if (upsert(rows)) store.markUploaded(pending.map { it.key })
     }
 
+    private fun upsert(rows: JSONArray): Boolean = runCatching {
+        val req = request("/rest/v1/mytv_ratings?on_conflict=household,profile,key")
+            .header("Prefer", "resolution=merge-duplicates,return=minimal")
+            .post(rows.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+        http.newCall(req).execute().use { r ->
+            if (!r.isSuccessful) failure = "upload: HTTP ${r.code} ${r.body?.string().orEmpty().take(80)}"
+            r.isSuccessful
+        }
+    }.getOrElse { failure = "upload: ${it.javaClass.simpleName}"; false }
+
     private fun get(path: String): String? = runCatching {
-        http.newCall(request(path).build()).execute().use { if (it.isSuccessful) it.body?.string() else null }
-    }.getOrNull()
+        http.newCall(request(path).build()).execute().use { r ->
+            if (!r.isSuccessful) failure = "download: HTTP ${r.code} ${r.body?.string().orEmpty().take(80)}"
+            if (r.isSuccessful) r.body?.string() else null
+        }
+    }.getOrElse { failure = "download: ${it.javaClass.simpleName}"; null }
 
     private fun request(path: String) = Request.Builder()
         .url(url + path)

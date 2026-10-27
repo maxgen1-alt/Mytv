@@ -53,6 +53,7 @@ fun EditAppsScreen(
     trackStatus: String,
     tracking: Boolean,
     onTurnOnTracking: () -> Unit,
+    syncStatus: String,
     onToggle: (TvApp, Boolean) -> Unit,
 ) {
     val first = remember { FocusRequester() }
@@ -64,6 +65,7 @@ fun EditAppsScreen(
             Spacer(Modifier.weight(1f))
             Column(horizontalAlignment = Alignment.End) {
                 Text("MyTV $version", fontSize = 12.sp, color = Palette.InkSoft)
+                Text(syncStatus, fontSize = 12.sp, color = Palette.InkSoft)
                 if (updateStatus.isNotBlank()) Text(updateStatus, fontSize = 12.sp, color = Palette.Ink)
             }
             Spacer(Modifier.width(14.dp))

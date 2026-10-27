@@ -165,7 +165,7 @@ Until the key is added, the tag shows TMDB's score instead (blue **TMDB 7.6**).
 
 ## Syncing between TVs (Supabase)
 
-Ratings (yours and Ang's: watched, watching, likes, dislikes) can sync across every TV through your own free Supabase project.
+Ratings (yours and Ang's: watched, watching, likes, dislikes) and the apps row (which apps are hidden, and their order) can sync across every TV through your own free Supabase project. The **+ Apps** screen shows whether the last sync worked.
 
 1. In Supabase, create a project (e.g. **mytv** in a personal organization).
 2. In its **SQL Editor**, run:

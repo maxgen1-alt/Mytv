@@ -68,7 +68,25 @@ class InstalledApps(private val context: Context) {
     fun setHidden(packageName: String, hidden: Boolean) {
         val set = hiddenPackages().toMutableSet()
         if (hidden) set.add(packageName) else set.remove(packageName)
-        prefs.edit().putStringSet(KEY_HIDDEN, set).apply()
+        prefs.edit().putStringSet(KEY_HIDDEN, set).putLong(KEY_CHANGED, System.currentTimeMillis()).apply()
+    }
+
+    /** The row's layout (hidden apps + order) and when it last changed here, for syncing between TVs. */
+    data class Layout(val hidden: Set<String>, val order: List<String>, val changedAt: Long)
+
+    /** Dates a layout set up before syncing existed, so it can be shared. */
+    fun markLayoutChanged() = prefs.edit().putLong(KEY_CHANGED, System.currentTimeMillis()).apply()
+
+    fun layout() = Layout(hiddenPackages(), savedOrder(), prefs.getLong(KEY_CHANGED, 0L))
+
+    /** Takes another TV's layout. Apps only this TV has keep their place after the shared ones. */
+    fun applyLayout(remote: Layout) {
+        val order = remote.order + savedOrder().filter { it !in remote.order }
+        prefs.edit()
+            .putStringSet(KEY_HIDDEN, remote.hidden)
+            .putString(KEY_ORDER, order.joinToString(","))
+            .putLong(KEY_CHANGED, remote.changedAt)
+            .apply()
     }
 
     /** Moves an app one slot left (-1) or right (+1) within the visible row. */
@@ -80,7 +98,7 @@ class InstalledApps(private val context: Context) {
         order.add(to, order.removeAt(from))
         // Keep hidden apps' saved positions after the visible ones.
         val rest = savedOrder().filter { it !in order }
-        prefs.edit().putString(KEY_ORDER, (order + rest).joinToString(",")).apply()
+        prefs.edit().putString(KEY_ORDER, (order + rest).joinToString(",")).putLong(KEY_CHANGED, System.currentTimeMillis()).apply()
     }
 
     fun launch(packageName: String): Boolean {
@@ -118,6 +136,7 @@ class InstalledApps(private val context: Context) {
     companion object {
         private const val KEY_HIDDEN = "hidden"
         private const val KEY_ORDER = "order"
+        private const val KEY_CHANGED = "layout_changed_at"
 
         /** Keywords (matched against package name + label) for the out-of-the-box order. */
         private val DEFAULT_ORDER = listOf(
