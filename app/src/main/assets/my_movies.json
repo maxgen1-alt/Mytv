@@ -1,0 +1,2145 @@
+[
+{
+"title": "The Holdovers",
+"year": 2023,
+"kind": "movie",
+"list": "watched",
+"stars": 9,
+"rated": "2024-01-30"
+},
+{
+"title": "Barbie",
+"year": 2023,
+"kind": "movie",
+"list": "watched",
+"stars": 3,
+"rated": "2024-01-30"
+},
+{
+"title": "Oppenheimer",
+"year": 2023,
+"kind": "movie",
+"list": "watched",
+"stars": 10,
+"rated": "2024-01-30"
+},
+{
+"title": "Dune",
+"year": 2021,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2024-01-30"
+},
+{
+"title": "Lady Bird",
+"year": 2017,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2024-01-30"
+},
+{
+"title": "Beautiful Boy",
+"year": 2018,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2024-01-30"
+},
+{
+"title": "Dunkirk",
+"year": 2017,
+"kind": "movie",
+"list": "watched",
+"stars": 9,
+"rated": "2024-01-30"
+},
+{
+"title": "Slumdog Millionaire",
+"year": 2008,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2024-02-05"
+},
+{
+"title": "Spider-Man: Across the Spider-Verse",
+"year": 2023,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-11-10"
+},
+{
+"title": "Dune: Part Two",
+"year": 2024,
+"kind": "movie",
+"list": "watched",
+"stars": 9,
+"rated": "2024-09-19"
+},
+{
+"title": "The Dark Knight",
+"year": 2008,
+"kind": "movie",
+"list": "watched",
+"stars": 10,
+"rated": "2024-09-19"
+},
+{
+"title": "The Dark Knight Rises",
+"year": 2012,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2024-09-19"
+},
+{
+"title": "Batman Begins",
+"year": 2005,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2024-09-19"
+},
+{
+"title": "Challengers",
+"year": 2024,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-01-25"
+},
+{
+"title": "Carry-On",
+"year": 2024,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2025-01-25"
+},
+{
+"title": "It Ends with Us",
+"year": 2024,
+"kind": "movie",
+"list": "watched",
+"stars": 4,
+"rated": "2025-01-25"
+},
+{
+"title": "A Real Pain",
+"year": 2024,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-01-25"
+},
+{
+"title": "Birdman or (The Unexpected Virtue of Ignorance)",
+"year": 2014,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-01-25"
+},
+{
+"title": "The Theory of Everything",
+"year": 2014,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-01-25"
+},
+{
+"title": "Interstellar",
+"year": 2014,
+"kind": "movie",
+"list": "watched",
+"stars": 9,
+"rated": "2025-01-25"
+},
+{
+"title": "The Shawshank Redemption",
+"year": 1994,
+"kind": "movie",
+"list": "watched",
+"stars": 10,
+"rated": "2025-01-25"
+},
+{
+"title": "GoodFellas",
+"year": 1990,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-01-25"
+},
+{
+"title": "Apocalypse Now",
+"year": 1979,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-01-25"
+},
+{
+"title": "Dallas Buyers Club",
+"year": 2013,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-01-25"
+},
+{
+"title": "Angels in the Outfield",
+"year": 1994,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2025-01-25"
+},
+{
+"title": "La La Land",
+"year": 2016,
+"kind": "movie",
+"list": "watched",
+"stars": 9,
+"rated": "2026-01-06"
+},
+{
+"title": "Fight Club",
+"year": 1999,
+"kind": "movie",
+"list": "watched",
+"stars": 9,
+"rated": "2025-01-25"
+},
+{
+"title": "Whiplash",
+"year": 2014,
+"kind": "movie",
+"list": "watched",
+"stars": 10,
+"rated": "2025-09-07"
+},
+{
+"title": "Joker",
+"year": 2019,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-01-25"
+},
+{
+"title": "The Batman",
+"year": 2022,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-12-01"
+},
+{
+"title": "Eternal Sunshine of the Spotless Mind",
+"year": 2004,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2025-01-25"
+},
+{
+"title": "American Psycho",
+"year": 2000,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-01-25"
+},
+{
+"title": "The Wolf of Wall Street",
+"year": 2013,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-01-25"
+},
+{
+"title": "The Grand Budapest Hotel",
+"year": 2014,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-01-25"
+},
+{
+"title": "The Menu",
+"year": 2022,
+"kind": "movie",
+"list": "watched",
+"stars": 5,
+"rated": "2025-01-25"
+},
+{
+"title": "10 Things I Hate About You",
+"year": 1999,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-01-25"
+},
+{
+"title": "Forrest Gump",
+"year": 1994,
+"kind": "movie",
+"list": "watched",
+"stars": 9,
+"rated": "2025-01-25"
+},
+{
+"title": "Se7en",
+"year": 1995,
+"kind": "movie",
+"list": "watched",
+"stars": 9,
+"rated": "2025-01-25"
+},
+{
+"title": "Once Upon a Time... in Hollywood",
+"year": 2019,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-01-25"
+},
+{
+"title": "Inglourious Basterds",
+"year": 2009,
+"kind": "movie",
+"list": "watched",
+"stars": 9,
+"rated": "2025-01-25"
+},
+{
+"title": "The Silence of the Lambs",
+"year": 1991,
+"kind": "movie",
+"list": "watched",
+"stars": 9,
+"rated": "2025-01-25"
+},
+{
+"title": "Shutter Island",
+"year": 2010,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-01-25"
+},
+{
+"title": "Baby Driver",
+"year": 2017,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-01-25"
+},
+{
+"title": "Good Will Hunting",
+"year": 1997,
+"kind": "movie",
+"list": "watched",
+"stars": 9,
+"rated": "2025-01-25"
+},
+{
+"title": "The Social Network",
+"year": 2010,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-01-25"
+},
+{
+"title": "Inside Out",
+"year": 2015,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-01-25"
+},
+{
+"title": "Jojo Rabbit",
+"year": 2019,
+"kind": "movie",
+"list": "watched",
+"stars": 10,
+"rated": "2025-01-25"
+},
+{
+"title": "Arrival",
+"year": 2016,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-01-25"
+},
+{
+"title": "Mad Max: Fury Road",
+"year": 2015,
+"kind": "movie",
+"list": "watched",
+"stars": 9,
+"rated": "2025-01-25"
+},
+{
+"title": "Drive",
+"year": 2011,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2025-01-25"
+},
+{
+"title": "Bullet Train",
+"year": 2022,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-01-25"
+},
+{
+"title": "No Country for Old Men",
+"year": 2007,
+"kind": "movie",
+"list": "watched",
+"stars": 9,
+"rated": "2025-01-25"
+},
+{
+"title": "Memento",
+"year": 2000,
+"kind": "movie",
+"list": "watched",
+"stars": 9,
+"rated": "2025-01-25"
+},
+{
+"title": "Catch Me If You Can",
+"year": 2002,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-01-25"
+},
+{
+"title": "Requiem for a Dream",
+"year": 2000,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-01-25"
+},
+{
+"title": "Uncut Gems",
+"year": 2019,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-01-25"
+},
+{
+"title": "Nightcrawler",
+"year": 2014,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-01-25"
+},
+{
+"title": "The Notebook",
+"year": 2004,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-01-25"
+},
+{
+"title": "Finding Nemo",
+"year": 2003,
+"kind": "movie",
+"list": "watched",
+"stars": 9,
+"rated": "2025-01-25"
+},
+{
+"title": "The Hunger Games: The Ballad of Songbirds & Snakes",
+"year": 2023,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2025-01-25"
+},
+{
+"title": "The Banshees of Inisherin",
+"year": 2022,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-01-25"
+},
+{
+"title": "The Prestige",
+"year": 2006,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-01-25"
+},
+{
+"title": "Marriage Story",
+"year": 2019,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-01-25"
+},
+{
+"title": "Split",
+"year": 2016,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2025-01-25"
+},
+{
+"title": "The Departed",
+"year": 2006,
+"kind": "movie",
+"list": "watched",
+"stars": 9,
+"rated": "2025-01-25"
+},
+{
+"title": "The Martian",
+"year": 2015,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-01-25"
+},
+{
+"title": "Logan",
+"year": 2017,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-01-25"
+},
+{
+"title": "No Hard Feelings",
+"year": 2023,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2025-01-25"
+},
+{
+"title": "Léon: The Professional",
+"year": 1994,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-01-25"
+},
+{
+"title": "I, Tonya",
+"year": 2017,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-01-25"
+},
+{
+"title": "Ferris Bueller's Day Off",
+"year": 1986,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2025-01-25"
+},
+{
+"title": "The Great Gatsby",
+"year": 2013,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2025-01-25"
+},
+{
+"title": "American Beauty",
+"year": 1999,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-01-25"
+},
+{
+"title": "The Revenant",
+"year": 2015,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-01-25"
+},
+{
+"title": "The Nice Guys",
+"year": 2016,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-01-25"
+},
+{
+"title": "The Hangover",
+"year": 2009,
+"kind": "movie",
+"list": "watched",
+"stars": 9,
+"rated": "2025-01-25"
+},
+{
+"title": "Crazy, Stupid, Love.",
+"year": 2011,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-01-25"
+},
+{
+"title": "Ocean's Eleven",
+"year": 2001,
+"kind": "movie",
+"list": "watched",
+"stars": 10,
+"rated": "2025-01-25"
+},
+{
+"title": "A Star Is Born",
+"year": 2018,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-01-25"
+},
+{
+"title": "Seven Psychopaths",
+"year": 2012,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-01-25"
+},
+{
+"title": "Inception",
+"year": 2010,
+"kind": "movie",
+"list": "watched",
+"stars": 9,
+"rated": "2025-01-25"
+},
+{
+"title": "What's Eating Gilbert Grape",
+"year": 1993,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-01-25"
+},
+{
+"title": "The Aviator",
+"year": 2004,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-01-25"
+},
+{
+"title": "Hustle",
+"year": 2022,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-01-25"
+},
+{
+"title": "Snatch",
+"year": 2000,
+"kind": "movie",
+"list": "watched",
+"stars": 9,
+"rated": "2025-01-25"
+},
+{
+"title": "RocknRolla",
+"year": 2008,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-01-25"
+},
+{
+"title": "American Hustle",
+"year": 2013,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-01-27"
+},
+{
+"title": "Black Mass",
+"year": 2015,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2025-01-27"
+},
+{
+"title": "Casino",
+"year": 1995,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-01-27"
+},
+{
+"title": "Public Enemies",
+"year": 2009,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2025-01-27"
+},
+{
+"title": "Ratatouille",
+"year": 2007,
+"kind": "movie",
+"list": "watched",
+"stars": 9,
+"rated": "2026-01-20"
+},
+{
+"title": "The Peanut Butter Falcon",
+"year": 2019,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-02-01"
+},
+{
+"title": "Black Swan",
+"year": 2010,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-02-04"
+},
+{
+"title": "Ocean's Twelve",
+"year": 2004,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-02-04"
+},
+{
+"title": "Ocean's Thirteen",
+"year": 2007,
+"kind": "movie",
+"list": "watched",
+"stars": 5,
+"rated": "2025-02-04"
+},
+{
+"title": "Mr. & Mrs. Smith",
+"year": 2005,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-02-04"
+},
+{
+"title": "The Curious Case of Benjamin Button",
+"year": 2008,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-02-04"
+},
+{
+"title": "The Big Short",
+"year": 2015,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-02-04"
+},
+{
+"title": "Moneyball",
+"year": 2011,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-02-04"
+},
+{
+"title": "Anora",
+"year": 2024,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2025-03-04"
+},
+{
+"title": "Minority Report",
+"year": 2002,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-03-04"
+},
+{
+"title": "Spotlight",
+"year": 2015,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-03-04"
+},
+{
+"title": "Bridge of Spies",
+"year": 2015,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-03-04"
+},
+{
+"title": "Juror #2",
+"year": 2024,
+"kind": "movie",
+"list": "watched",
+"stars": 5,
+"rated": "2025-03-15"
+},
+{
+"title": "Adolescence",
+"year": 2025,
+"kind": "movie",
+"list": "watched",
+"stars": 9,
+"rated": "2026-02-23"
+},
+{
+"title": "Borat: Cultural Learnings of America for Make Benefit Glorious Nation of Kazakhstan",
+"year": 2006,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-09-03"
+},
+{
+"title": "Gone Girl",
+"year": 2014,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-09-03"
+},
+{
+"title": "Glass Onion",
+"year": 2022,
+"kind": "movie",
+"list": "watched",
+"stars": 4,
+"rated": "2025-09-03"
+},
+{
+"title": "Bugonia",
+"year": 2025,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-11-10"
+},
+{
+"title": "Trap",
+"year": 2024,
+"kind": "movie",
+"list": "watched",
+"stars": 2,
+"rated": "2025-11-14"
+},
+{
+"title": "Raging Bull",
+"year": 1980,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-11-14"
+},
+{
+"title": "The Devil's Advocate",
+"year": 1997,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-11-14"
+},
+{
+"title": "Following",
+"year": 1998,
+"kind": "movie",
+"list": "watched",
+"stars": 5,
+"rated": "2025-11-14"
+},
+{
+"title": "War Dogs",
+"year": 2016,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-11-14"
+},
+{
+"title": "The Ladykillers",
+"year": 2004,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2025-11-14"
+},
+{
+"title": "The Perks of Being a Wallflower",
+"year": 2012,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-11-14"
+},
+{
+"title": "Jurassic Park",
+"year": 1993,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-11-14"
+},
+{
+"title": "The Rocky Horror Picture Show",
+"year": 1975,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-11-14"
+},
+{
+"title": "The Hunger Games",
+"year": 2012,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-11-14"
+},
+{
+"title": "Pan's Labyrinth",
+"year": 2006,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-11-14"
+},
+{
+"title": "One Flew Over the Cuckoo's Nest",
+"year": 1975,
+"kind": "movie",
+"list": "watched",
+"stars": 9,
+"rated": "2025-11-14"
+},
+{
+"title": "Good Time",
+"year": 2017,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-11-15"
+},
+{
+"title": "Deadpool & Wolverine",
+"year": 2024,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2025-11-28"
+},
+{
+"title": "Prisoners",
+"year": 2013,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-11-28"
+},
+{
+"title": "Parasite",
+"year": 2019,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-11-30"
+},
+{
+"title": "The Wonderful Story of Henry Sugar and Three More",
+"year": 2024,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-12-01"
+},
+{
+"title": "The Wonderful Story of Henry Sugar",
+"year": 2023,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-12-01"
+},
+{
+"title": "21 Grams",
+"year": 2003,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2025-12-01"
+},
+{
+"title": "All of You",
+"year": 2024,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2025-12-02"
+},
+{
+"title": "In Bruges",
+"year": 2008,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-12-03"
+},
+{
+"title": "Wake Up Dead Man",
+"year": 2025,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-12-15"
+},
+{
+"title": "O Brother, Where Art Thou?",
+"year": 2000,
+"kind": "movie",
+"list": "watched",
+"rated": "2025-12-25"
+},
+{
+"title": "F1",
+"year": 2025,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2026-01-06"
+},
+{
+"title": "Eternity",
+"year": 2025,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-12-26"
+},
+{
+"title": "A Rainy Day in New York",
+"year": 2019,
+"kind": "movie",
+"list": "watched",
+"stars": 5,
+"rated": "2025-12-26"
+},
+{
+"title": "American Sniper",
+"year": 2014,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-12-27"
+},
+{
+"title": "Air",
+"year": 2023,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-12-27"
+},
+{
+"title": "Hell or High Water",
+"year": 2016,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-12-27"
+},
+{
+"title": "The Tourist",
+"year": 2010,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2025-12-27"
+},
+{
+"title": "Anger Management",
+"year": 2003,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-12-27"
+},
+{
+"title": "The Iron Claw",
+"year": 2023,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-12-28"
+},
+{
+"title": "The Disaster Artist",
+"year": 2017,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2025-12-28"
+},
+{
+"title": "Neighbors",
+"year": 2014,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2025-12-28"
+},
+{
+"title": "Extremely Wicked, Shockingly Evil and Vile",
+"year": 2019,
+"kind": "movie",
+"list": "watched",
+"stars": 4,
+"rated": "2025-12-28"
+},
+{
+"title": "Philomena",
+"year": 2013,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2025-12-28"
+},
+{
+"title": "Sinners",
+"year": 2025,
+"kind": "movie",
+"list": "watched",
+"stars": 9,
+"rated": "2025-12-29"
+},
+{
+"title": "Train Dreams",
+"year": 2025,
+"kind": "movie",
+"list": "watched",
+"stars": 5,
+"rated": "2025-12-29"
+},
+{
+"title": "Silver Linings Playbook",
+"year": 2012,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2025-12-30"
+},
+{
+"title": "Marty Supreme",
+"year": 2025,
+"kind": "movie",
+"list": "watched",
+"stars": 10,
+"rated": "2025-12-30"
+},
+{
+"title": "Deadpool 2",
+"year": 2018,
+"kind": "movie",
+"list": "watched",
+"stars": 5,
+"rated": "2026-01-03"
+},
+{
+"title": "Interview with the Vampire",
+"year": 1994,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2026-01-03"
+},
+{
+"title": "Sweeney Todd: The Demon Barber of Fleet Street",
+"year": 2007,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2026-01-03"
+},
+{
+"title": "Sicario",
+"year": 2015,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2026-01-03"
+},
+{
+"title": "Avatar",
+"year": 2009,
+"kind": "movie",
+"list": "watched",
+"stars": 5,
+"rated": "2026-01-03"
+},
+{
+"title": "Anyone But You",
+"year": 2023,
+"kind": "movie",
+"list": "watched",
+"stars": 3,
+"rated": "2026-01-04"
+},
+{
+"title": "Hit Man",
+"year": 2023,
+"kind": "movie",
+"list": "watched",
+"stars": 5,
+"rated": "2026-01-04"
+},
+{
+"title": "Roma",
+"year": 2018,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2026-01-04"
+},
+{
+"title": "Regretting You",
+"year": 2025,
+"kind": "movie",
+"list": "watched",
+"stars": 3,
+"rated": "2026-01-04"
+},
+{
+"title": "Stuck in Love",
+"year": 2012,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2026-01-05"
+},
+{
+"title": "Captain America: The First Avenger",
+"year": 2011,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2026-01-05"
+},
+{
+"title": "Captain Marvel",
+"year": 2019,
+"kind": "movie",
+"list": "watched",
+"stars": 4,
+"rated": "2026-01-05"
+},
+{
+"title": "Iron Man",
+"year": 2008,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2026-01-05"
+},
+{
+"title": "The Incredible Hulk",
+"year": 2008,
+"kind": "movie",
+"list": "watched",
+"stars": 5,
+"rated": "2026-01-05"
+},
+{
+"title": "Iron Man 2",
+"year": 2010,
+"kind": "movie",
+"list": "watched",
+"stars": 5,
+"rated": "2026-01-05"
+},
+{
+"title": "Thor",
+"year": 2011,
+"kind": "movie",
+"list": "watched",
+"stars": 4,
+"rated": "2026-01-05"
+},
+{
+"title": "The Avengers",
+"year": 2012,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2026-01-05"
+},
+{
+"title": "Captain America: The Winter Soldier",
+"year": 2014,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2026-01-05"
+},
+{
+"title": "Guardians of the Galaxy",
+"year": 2014,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2026-01-05"
+},
+{
+"title": "Guardians of the Galaxy Vol. 2",
+"year": 2017,
+"kind": "movie",
+"list": "watched",
+"stars": 5,
+"rated": "2026-01-05"
+},
+{
+"title": "Avengers: Age of Ultron",
+"year": 2015,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2026-01-05"
+},
+{
+"title": "Captain America: Civil War",
+"year": 2016,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2026-01-05"
+},
+{
+"title": "Black Widow",
+"year": 2021,
+"kind": "movie",
+"list": "watched",
+"stars": 5,
+"rated": "2026-01-05"
+},
+{
+"title": "Spider-Man: Homecoming",
+"year": 2017,
+"kind": "movie",
+"list": "watched",
+"stars": 5,
+"rated": "2026-01-05"
+},
+{
+"title": "Doctor Strange",
+"year": 2016,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2026-01-05"
+},
+{
+"title": "Black Panther",
+"year": 2018,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2026-01-05"
+},
+{
+"title": "Thor: Ragnarok",
+"year": 2017,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2026-01-05"
+},
+{
+"title": "Avengers: Infinity War",
+"year": 2018,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2026-01-05"
+},
+{
+"title": "Avengers: Endgame",
+"year": 2019,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2026-01-05"
+},
+{
+"title": "Spider-Man: Far From Home",
+"year": 2019,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2026-01-05"
+},
+{
+"title": "Eternals",
+"year": 2021,
+"kind": "movie",
+"list": "watched",
+"stars": 5,
+"rated": "2026-01-05"
+},
+{
+"title": "Spider-Man: No Way Home",
+"year": 2021,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2026-01-05"
+},
+{
+"title": "Doctor Strange in the Multiverse of Madness",
+"year": 2022,
+"kind": "movie",
+"list": "watched",
+"stars": 4,
+"rated": "2026-01-05"
+},
+{
+"title": "Black Panther: Wakanda Forever",
+"year": 2022,
+"kind": "movie",
+"list": "watched",
+"stars": 5,
+"rated": "2026-01-05"
+},
+{
+"title": "Thor: Love and Thunder",
+"year": 2022,
+"kind": "movie",
+"list": "watched",
+"stars": 3,
+"rated": "2026-01-05"
+},
+{
+"title": "Wicked",
+"year": 2024,
+"kind": "movie",
+"list": "watched",
+"stars": 5,
+"rated": "2026-01-05"
+},
+{
+"title": "Toy Story",
+"year": 1995,
+"kind": "movie",
+"list": "watched",
+"stars": 9,
+"rated": "2026-01-05"
+},
+{
+"title": "Toy Story 3",
+"year": 2010,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2026-01-05"
+},
+{
+"title": "The Incredibles",
+"year": 2004,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2026-01-05"
+},
+{
+"title": "Finding Dory",
+"year": 2016,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2026-01-05"
+},
+{
+"title": "Monsters, Inc.",
+"year": 2001,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2026-01-05"
+},
+{
+"title": "Toy Story 2",
+"year": 1999,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2026-01-05"
+},
+{
+"title": "Cars",
+"year": 2006,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2026-01-05"
+},
+{
+"title": "A Bug's Life",
+"year": 1998,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2026-01-05"
+},
+{
+"title": "Antz",
+"year": 1998,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2026-01-05"
+},
+{
+"title": "House of Gucci",
+"year": 2021,
+"kind": "movie",
+"list": "watched",
+"stars": 4,
+"rated": "2026-01-06"
+},
+{
+"title": "People We Meet on Vacation",
+"year": 2026,
+"kind": "movie",
+"list": "watched",
+"stars": 5,
+"rated": "2026-01-11"
+},
+{
+"title": "He's Just Not That Into You",
+"year": 2009,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2026-01-24"
+},
+{
+"title": "Blue Valentine",
+"year": 2010,
+"kind": "movie",
+"list": "watched",
+"stars": 5,
+"rated": "2026-01-25"
+},
+{
+"title": "Now You See Me",
+"year": 2013,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2026-01-28"
+},
+{
+"title": "HIS & HERS",
+"year": 2026,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2026-01-30"
+},
+{
+"title": "Dìdi (弟弟)",
+"year": 2024,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2026-02-01"
+},
+{
+"title": "Good Boys",
+"year": 2019,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2026-02-01"
+},
+{
+"title": "Superman",
+"year": 2025,
+"kind": "movie",
+"list": "watched",
+"stars": 4,
+"rated": "2026-02-08"
+},
+{
+"title": "Crime 101",
+"year": 2026,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2026-02-21"
+},
+{
+"title": "One Battle After Another",
+"year": 2025,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2026-02-22"
+},
+{
+"title": "The Housemaid",
+"year": 2025,
+"kind": "movie",
+"list": "watched",
+"stars": 4,
+"rated": "2026-02-23"
+},
+{
+"title": "Solo Mio",
+"year": 2026,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2026-03-15"
+},
+{
+"title": "Is This Thing On?",
+"year": 2025,
+"kind": "movie",
+"list": "watched",
+"stars": 6,
+"rated": "2026-05-02"
+},
+{
+"title": "Spider-Man: Brand New Day",
+"year": 2026,
+"kind": "movie",
+"list": "watched",
+"stars": 8,
+"rated": "2026-08-10"
+},
+{
+"title": "X-Men",
+"year": 2000,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2026-09-11"
+},
+{
+"title": "X2",
+"year": 2003,
+"kind": "movie",
+"list": "watched",
+"stars": 5,
+"rated": "2026-09-11"
+},
+{
+"title": "X-Men: The Last Stand",
+"year": 2006,
+"kind": "movie",
+"list": "watched",
+"stars": 4,
+"rated": "2026-09-11"
+},
+{
+"title": "X-Men: First Class",
+"year": 2011,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2026-09-11"
+},
+{
+"title": "Good Fortune",
+"year": 2025,
+"kind": "movie",
+"list": "watched",
+"stars": 1,
+"rated": "2026-10-07"
+},
+{
+"title": "Now You See Me: Now You Don't",
+"year": 2025,
+"kind": "movie",
+"list": "watched",
+"stars": 4,
+"rated": "2026-10-07"
+},
+{
+"title": "The Life List",
+"year": 2025,
+"kind": "movie",
+"list": "watched",
+"stars": 5,
+"rated": "2026-10-11"
+},
+{
+"title": "Call Me by Your Name",
+"year": 2017,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2026-10-11"
+},
+{
+"title": "Thunderbolts*",
+"year": 2025,
+"kind": "movie",
+"list": "watched",
+"stars": 5,
+"rated": "2026-10-11"
+},
+{
+"title": "The Invite",
+"year": 2026,
+"kind": "movie",
+"list": "watched",
+"stars": 7,
+"rated": "2026-10-11"
+},
+{
+"title": "A Complete Unknown",
+"year": 2024,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-01-25"
+},
+{
+"title": "Conclave",
+"year": 2024,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-01-25"
+},
+{
+"title": "The Brutalist",
+"year": 2024,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-01-25"
+},
+{
+"title": "The Godfather Part II",
+"year": 1974,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-01-25"
+},
+{
+"title": "The Godfather",
+"year": 1972,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-01-25"
+},
+{
+"title": "Schindler's List",
+"year": 1993,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-01-25"
+},
+{
+"title": "Taxi Driver",
+"year": 1976,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-01-25"
+},
+{
+"title": "Donnie Darko",
+"year": 2001,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-01-25"
+},
+{
+"title": "Past Lives",
+"year": 2023,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-01-25"
+},
+{
+"title": "1917",
+"year": 2019,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-01-25"
+},
+{
+"title": "Tenet",
+"year": 2020,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-01-25"
+},
+{
+"title": "The Lobster",
+"year": 2015,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-01-25"
+},
+{
+"title": "The Hateful Eight",
+"year": 2015,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-01-25"
+},
+{
+"title": "All Quiet on the Western Front",
+"year": 2022,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-01-25"
+},
+{
+"title": "Twinless",
+"year": 2025,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-01-29"
+},
+{
+"title": "Everything Everywhere All at Once",
+"year": 2022,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-01-29"
+},
+{
+"title": "Pulp Fiction",
+"year": 1994,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-01-29"
+},
+{
+"title": "Little Women",
+"year": 2019,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-01-29"
+},
+{
+"title": "Kill Bill: Vol. 1",
+"year": 2003,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-01-29"
+},
+{
+"title": "Training Day",
+"year": 2001,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-11-14"
+},
+{
+"title": "The Pianist",
+"year": 2002,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-11-14"
+},
+{
+"title": "Oldboy",
+"year": 2003,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-11-14"
+},
+{
+"title": "Django Unchained",
+"year": 2012,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-11-14"
+},
+{
+"title": "(500) Days of Summer",
+"year": 2009,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-11-14"
+},
+{
+"title": "Babylon",
+"year": 2022,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-11-14"
+},
+{
+"title": "Reservoir Dogs",
+"year": 1992,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-11-14"
+},
+{
+"title": "Sing Sing",
+"year": 2023,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-12-01"
+},
+{
+"title": "Children of Men",
+"year": 2006,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-12-01"
+},
+{
+"title": "Heat",
+"year": 1995,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-12-01"
+},
+{
+"title": "Mary and Max",
+"year": 2009,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-12-01"
+},
+{
+"title": "Sentimental Value",
+"year": 2025,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-12-25"
+},
+{
+"title": "Hamnet",
+"year": 2025,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-12-25"
+},
+{
+"title": "A Most Violent Year",
+"year": 2014,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-12-27"
+},
+{
+"title": "Triangle of Sadness",
+"year": 2022,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2025-12-28"
+},
+{
+"title": "Johnny Suede",
+"year": 1991,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2026-01-03"
+},
+{
+"title": "The Lord of the Rings: The Fellowship of the Ring",
+"year": 2001,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2026-01-05"
+},
+{
+"title": "The Lord of the Rings: The Two Towers",
+"year": 2002,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2026-01-05"
+},
+{
+"title": "The Lord of the Rings: The Return of the King",
+"year": 2003,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2026-01-05"
+},
+{
+"title": "There Will Be Blood",
+"year": 2007,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2026-01-05"
+},
+{
+"title": "Dead Poets Society",
+"year": 1989,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2026-01-05"
+},
+{
+"title": "Life Is Beautiful",
+"year": 1997,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2026-01-05"
+},
+{
+"title": "50/50",
+"year": 2011,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2026-01-05"
+},
+{
+"title": "Mulholland Drive",
+"year": 2001,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2026-01-05"
+},
+{
+"title": "Scarface",
+"year": 1983,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2026-01-05"
+},
+{
+"title": "A Clockwork Orange",
+"year": 1971,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2026-01-05"
+},
+{
+"title": "Stand by Me",
+"year": 1986,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2026-01-05"
+},
+{
+"title": "Fury",
+"year": 2014,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2026-01-12"
+},
+{
+"title": "This Is England",
+"year": 2006,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2026-01-12"
+},
+{
+"title": "Heel",
+"year": 2025,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2026-01-22"
+},
+{
+"title": "The Kindergarten Teacher",
+"year": 2018,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2026-01-28"
+},
+{
+"title": "The Hurt Locker",
+"year": 2008,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2026-01-28"
+},
+{
+"title": "The Singers",
+"year": 2025,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2026-03-02"
+},
+{
+"title": "Peaky Blinders: The Immortal Man",
+"year": 2026,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2026-03-03"
+},
+{
+"title": "The Bride!",
+"year": 2026,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2026-03-03"
+},
+{
+"title": "Bones and All",
+"year": 2022,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2026-03-03"
+},
+{
+"title": "Tuner",
+"year": 2025,
+"kind": "movie",
+"list": "watchlist",
+"rated": "2026-10-11"
+}
+]

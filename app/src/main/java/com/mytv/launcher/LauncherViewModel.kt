@@ -95,7 +95,7 @@ data class MyState(
 ) {
     /** "Shows for you" shows on the home screen once you've rated a few titles. */
     val showForYouRow: Boolean
-        get() = (guide.newShows.isNotEmpty() || guide.missed.isNotEmpty()) &&
+        get() = (guide.newShows.isNotEmpty() || guide.missed.isNotEmpty() || guide.newMovies.isNotEmpty() || guide.missedMovies.isNotEmpty()) &&
             ratings.values.count { it != com.mytv.launcher.ang.Rating.WONT_WATCH } >= com.mytv.launcher.mine.MyGuide.MIN_RATINGS_FOR_HOME_ROW
 }
 
@@ -200,6 +200,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val history = com.mytv.launcher.mine.HistoryImport(app)
     private var myFresh: Pair<String, List<AngItem>>? = null
     private var myFreshAt = 0L
+    private var myFreshMovies: Pair<String, List<AngItem>>? = null
+    private var myFreshMoviesAt = 0L
     private val _my = MutableStateFlow(MyState())
     val my = _my.asStateFlow()
     private var myJob: Job? = null
@@ -614,9 +616,13 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 ?: myTaste.upcomingInGenres(providers, genres).also { myUpcoming = sig to it; myUpcomingAt = System.currentTimeMillis() }
             val fresh = myFresh?.takeIf { it.first == sig && System.currentTimeMillis() - myFreshAt < 6 * 3600_000L }?.second
                 ?: myTaste.newInGenres(providers, genres).also { myFresh = sig to it; myFreshAt = System.currentTimeMillis() }
+            val movieGenres = com.mytv.launcher.mine.MyGuideBuilder.topGenres(recs.items, recs.liked, movies = true)
+            val movieSig = movieGenres.joinToString() + providers.joinToString { it.name }
+            val freshMovies = myFreshMovies?.takeIf { it.first == movieSig && System.currentTimeMillis() - myFreshMoviesAt < 6 * 3600_000L }?.second
+                ?: myTaste.newMoviesInGenres(providers, movieGenres).also { myFreshMovies = movieSig to it; myFreshMoviesAt = System.currentTimeMillis() }
             val guide = withContext(Dispatchers.Default) {
                 com.mytv.launcher.mine.MyGuideBuilder.build(
-                    java.time.LocalDate.now(), ratings, recs.items, recs.liked, recs.disliked, followed, upcoming, ::isAvailable, fresh,
+                    java.time.LocalDate.now(), ratings, recs.items, recs.liked, recs.disliked, followed, upcoming, ::isAvailable, fresh, freshMovies,
                 )
             }
             _my.value = MyState(guide, ratings.associate { it.key to it.rating }, loading = false)
@@ -635,7 +641,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         if (history.isDone) return
         val added = history.run(myStore)
         if (added > 0) {
-            toast("Added $added shows you've watched to My Watchlist")
+            toast("Added $added shows and movies to My Watchlist")
             com.mytv.launcher.sync.CloudSync.push(myStore, "me")
             refreshMine()
         }

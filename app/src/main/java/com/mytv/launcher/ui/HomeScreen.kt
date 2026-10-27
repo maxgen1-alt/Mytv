@@ -79,6 +79,8 @@ fun HomeScreen(
     popular: List<AngItem>,
     newForYou: List<AngItem>,
     missedForYou: List<AngItem>,
+    newMovies: List<AngItem>,
+    missedMovies: List<AngItem>,
     watchLater: List<AngItem>,
     myRatings: Map<String, Rating>,
     /** Continue Watching key → the "Watching now" title it came from. */
@@ -168,6 +170,8 @@ fun HomeScreen(
             TitleRow("Popular on Your Apps", popular, onOpenTitle) { rateFor = it }
             TitleRow("New Shows for You", newForYou, onOpenTitle) { rateFor = it }
             TitleRow("Shows You Might Have Missed", missedForYou, onOpenTitle) { rateFor = it }
+            TitleRow("New Movies for You", newMovies, onOpenTitle) { rateFor = it }
+            TitleRow("Movies You Might Have Missed", missedMovies, onOpenTitle) { rateFor = it }
         }
 
         if (busy != null) BusyOverlay(busy)

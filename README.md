@@ -11,6 +11,7 @@ A clean, Apple TV-style launcher on a black-to-graphite gradient:
 | **4. Popular on Your Apps** | The Top 10s of your streaming apps (Paramount+ included, through Prime Video), merged into one ranking. Hold select to like, mark watched, dislike, or hide a title. |
 | **5. New Shows for You** | Shows from the last year, picked from what you watched and how you rated it (your 9s and 10s count most), on your apps. |
 | **6. Shows You Might Have Missed** | Older picks (2000 on, newer ones first), same taste. |
+| **7. New Movies for You / Movies You Might Have Missed** | The same for films, from your Letterboxd ratings. |
 
 A clock and a ⚙ settings button sit in the top-right.
 
@@ -166,7 +167,7 @@ Until the key is added, the tag shows TMDB's score instead (blue **TMDB 7.6**).
 
 ### Your watch history
 
-`app/src/main/assets/my_history.json` is your IMDb list (with your ratings) plus your Serialized history. Each TV imports it once into **My Watchlist → Watched**: 9s and 10s (and Serialized's top 20) as liked, everything else as watched. It never overwrites something already rated. Your scores weight the recommendations: a 10 counts five times a 6, and 5 or lower counts against similar shows.
+`app/src/main/assets/my_movies.json` is your Letterboxd export (watched films with ratings ×2, and your watchlist as Watch Later). `app/src/main/assets/my_history.json` is your IMDb list (with your ratings) plus your Serialized history. Each TV imports it once into **My Watchlist → Watched**: 9s and 10s (and Serialized's top 20) as liked, everything else as watched. It never overwrites something already rated. Your scores weight the recommendations: a 10 counts five times a 6, and 5 or lower counts against similar shows.
 
 ## Syncing between TVs (Supabase)
 

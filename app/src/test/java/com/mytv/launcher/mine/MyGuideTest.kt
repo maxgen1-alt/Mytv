@@ -45,6 +45,23 @@ class MyGuideTest {
     }
 
     @Test
+    fun moviesGetTheirOwnRows() {
+        val g = MyGuideBuilder.build(
+            today, emptyList(),
+            listOf(
+                item(71, "New Film", date = today.minusMonths(2), movie = true),
+                item(72, "Older Film", date = LocalDate.of(2012, 3, 1), movie = true),
+                item(73, "A Show", date = today.minusMonths(2)),
+            ),
+            emptyMap(), emptyMap(), emptyList(), emptyList(), available,
+            freshMovies = listOf(item(74, "Year's Best", date = today.minusMonths(5), movie = true)),
+        )
+        assertEquals(setOf("New Film", "Year's Best"), g.newMovies.map { it.title }.toSet())
+        assertEquals(listOf("Older Film"), g.missedMovies.map { it.title })
+        assertEquals(listOf("A Show"), g.newShows.map { it.title })
+    }
+
+    @Test
     fun missedPrefersNewerShows() {
         val g = build(recs = listOf(item(61, "2003 Show", date = LocalDate.of(2003, 1, 1)), item(62, "2022 Show", date = LocalDate.of(2022, 1, 1))))
         assertEquals(listOf("2022 Show", "2003 Show"), g.missed.map { it.title })

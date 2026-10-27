@@ -23,6 +23,10 @@ data class MyGuide(
     val newShows: List<AngItem> = emptyList(),
     /** Recommended older shows (2000 on, newer ones first). */
     val missed: List<AngItem> = emptyList(),
+    /** Recommended movies released in the last year. */
+    val newMovies: List<AngItem> = emptyList(),
+    /** Recommended older movies (2000 on, newer ones first). */
+    val missedMovies: List<AngItem> = emptyList(),
     /** New seasons, out now, of shows you watched or liked. */
     val newSeasons: List<AngItem> = emptyList(),
     /** Next seasons of your shows + upcoming new shows in your genres, soonest first. */
@@ -51,6 +55,8 @@ object MyGuideBuilder {
         isAvailable: (String?) -> Boolean,
         /** Shows from the last year in your genres, on your apps (for New Shows for You). */
         fresh: List<AngItem> = emptyList(),
+        /** Movies from the last year in your genres, on your apps (for New Movies for You). */
+        freshMovies: List<AngItem> = emptyList(),
     ): MyGuide {
         val rated = ratings.map { it.key }.toSet()
         val ratedTitles = ratings.filter { it.title.isNotBlank() }.map { AngGuideBuilder.normalize(it.title) }.toSet()
@@ -88,6 +94,17 @@ object MyGuideBuilder {
                 .sortedByDescending { TasteRanker.score(it, likedRecs, dislikedRecs) * recency(it) },
             perGenre = 4,
         ).take(30)
+        // Same two rows for movies.
+        val newMovies = varied(
+            (recs + freshMovies).filter { it.isMovie && isNew(it) && unseen(it) }.distinctBy { it.key }
+                .sortedByDescending { TasteRanker.score(it, likedRecs, dislikedRecs) * (1.0 + (likedRecs[it.key] ?: 0)) },
+            perGenre = 5,
+        ).take(30)
+        val missedMovies = varied(
+            ranked.filter { it.isMovie && it.date != null && it.date.year >= 2000 && it.date.isBefore(yearAgo) }
+                .sortedByDescending { TasteRanker.score(it, likedRecs, dislikedRecs) * recency(it) },
+            perGenre = 4,
+        ).take(30)
 
         val newSeasons = mutableListOf<AngItem>()
         val comingSoon = mutableListOf<AngItem>()
@@ -117,6 +134,8 @@ object MyGuideBuilder {
             forYou = forYou,
             newShows = newShows,
             missed = missed,
+            newMovies = newMovies,
+            missedMovies = missedMovies,
             newSeasons = newSeasons.sortedByDescending { it.date }.distinctBy { it.key },
             comingSoon = comingSoon.sortedWith(compareBy(nullsLast()) { it.date }).distinctBy { it.key },
         )
@@ -149,8 +168,8 @@ object MyGuideBuilder {
     }
 
     /** Your favourite TV genres, from what you watched / liked recommends (weighted). */
-    fun topGenres(recs: List<AngItem>, likedRecs: Map<String, Int>, n: Int = 3): List<Int> =
-        recs.filter { !it.isMovie }
+    fun topGenres(recs: List<AngItem>, likedRecs: Map<String, Int>, n: Int = 3, movies: Boolean = false): List<Int> =
+        recs.filter { it.isMovie == movies }
             .flatMap { item -> item.genres.map { it to (likedRecs[item.key] ?: 1) } }
             .groupBy({ it.first }, { it.second })
             .mapValues { it.value.sum() }

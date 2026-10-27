@@ -52,10 +52,10 @@ class TasteRepository(
      * they're on your apps) and for what she disliked (pushed down).
      */
     suspend fun recommendations(ratings: List<Rated>, providers: List<WhereToWatch.Provider>): Recs = coroutineScope {
-        // Best-rated first (your 10s and 9s), newest first among equals.
-        val liked = ratings.filter { it.rating in positive && !isDisliked(it) && weight(it) > 0 }
+        // Best-rated first (your 10s and 9s), newest first among equals; shows and movies each get their share.
+        val best = ratings.filter { it.rating in positive && !isDisliked(it) && weight(it) > 0 }
             .sortedWith(compareByDescending<Rated> { weight(it) }.thenByDescending { it.date })
-            .take(maxSeeds)
+        val liked = best.filter { !it.isMovie }.take(maxSeeds) + best.filter { it.isMovie }.take(maxSeeds)
         val disliked = ratings.filter(::isDisliked).sortedByDescending { it.date }.take(10)
         val sig = (liked + disliked).joinToString { it.key + it.rating } + "|" + providers.joinToString { it.name }
         recsMem?.takeIf { it.first == sig && System.currentTimeMillis() - recsAt < 6 * 3600_000L }
@@ -77,10 +77,10 @@ class TasteRepository(
         val seen = ratings.map { it.key }.toSet()
 
         // The strongest "more like this" titles become candidates, if they stream on your apps.
-        val top = likedLists.flatten().map { it.first }.distinctBy { it.key }
+        val ranked = likedLists.flatten().map { it.first }.distinctBy { it.key }
             .filter { it.key !in seen }
             .sortedWith(compareByDescending<AngItem> { likedCounts[it.key] ?: 0 }.thenByDescending { it.popularity })
-            .take(maxCandidates)
+        val top = ranked.filter { !it.isMovie }.take(maxCandidates) + ranked.filter { it.isMovie }.take(maxCandidates)
         val onYourApps = top.map { item ->
             async {
                 whereItStreams(item, providers)?.let { name ->
@@ -148,6 +148,21 @@ class TasteRepository(
                 (1..2).flatMap { page ->
                     Tmdb.get(AngDiscovery.newInGenresPath(today, p.tmdbIds, genres, page)) {
                         AngDiscovery.parseResults(it, false, p.name, today, strict)
+                    }.orEmpty()
+                }
+            }
+        }.awaitAll().flatten().sortedByDescending { it.popularity }.distinctBy { it.key }
+    }
+
+    /** Movies released in the last year in [genres], streaming on your apps. */
+    suspend fun newMoviesInGenres(providers: List<WhereToWatch.Provider>, genres: List<Int>): List<AngItem> = coroutineScope {
+        if (!Tmdb.isConfigured || providers.isEmpty()) return@coroutineScope emptyList()
+        val today = LocalDate.now()
+        providers.map { p ->
+            async {
+                (1..2).flatMap { page ->
+                    Tmdb.get(AngDiscovery.newMoviesInGenresPath(today, p.tmdbIds, genres, page)) {
+                        AngDiscovery.parseResults(it, true, p.name, today, strict)
                     }.orEmpty()
                 }
             }

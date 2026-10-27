@@ -74,6 +74,8 @@ class MainActivity : ComponentActivity() {
                         }
                         val newForYou = remember(my) { if (my.showForYouRow) my.guide.newShows.take(20) else emptyList() }
                         val missedForYou = remember(my) { if (my.showForYouRow) my.guide.missed.take(20) else emptyList() }
+                        val newMovies = remember(my) { if (my.showForYouRow) my.guide.newMovies.take(20) else emptyList() }
+                        val missedMovies = remember(my) { if (my.showForYouRow) my.guide.missedMovies.take(20) else emptyList() }
                         HomeScreen(
                             apps = apps,
                             teams = teams,
@@ -84,6 +86,8 @@ class MainActivity : ComponentActivity() {
                             popular = popularItems,
                             newForYou = newForYou,
                             missedForYou = missedForYou,
+                            newMovies = newMovies,
+                            missedMovies = missedMovies,
                             watchLater = my.guide.watchLater,
                             myRatings = my.ratings,
                             onOpenTitle = vm::openTitle,

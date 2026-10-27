@@ -69,6 +69,14 @@ object AngDiscovery {
             "&with_original_language=en&include_adult=false&language=en-US&sort_by=popularity.desc" +
             "&first_air_date.gte=${today.minusYears(1)}&first_air_date.lte=$today&vote_count.gte=10&page=$page"
 
+    /** Movies in [genres] (any of them) released in the last year, streaming on [providerIds]. */
+    fun newMoviesInGenresPath(today: LocalDate, providerIds: List<Int>, genres: List<Int>, page: Int) =
+        "/discover/movie?watch_region=US&with_watch_monetization_types=flatrate&with_watch_providers=${providerIds.joinToString("|")}" +
+            (if (genres.isNotEmpty()) "&with_genres=${genres.joinToString("|")}" else "") +
+            "&without_genres=99|10770" +
+            "&with_original_language=en&include_adult=false&language=en-US&sort_by=popularity.desc" +
+            "&primary_release_date.gte=${today.minusYears(1)}&primary_release_date.lte=$today&vote_count.gte=20&page=$page"
+
     /** New shows in [genres] (any of them) premiering in the next 6 months, made by [networkIds]. */
     fun upcomingByGenrePath(today: LocalDate, networkIds: List<Int>, genres: List<Int>) =
         "/discover/tv?with_networks=${networkIds.joinToString("|")}" +

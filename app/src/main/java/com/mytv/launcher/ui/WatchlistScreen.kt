@@ -103,22 +103,27 @@ private enum class Tab(val title: String, val empty: String) {
     COMING_SOON("Coming Soon", "Next seasons of your shows, and new shows in the genres you watch most."),
 }
 
+private enum class Kind(val title: String) { ALL("All"), SHOWS("Shows"), MOVIES("Movies") }
+
 /** My Watchlist: what you watched, what to watch next, and what's coming. */
 @Composable
 fun WatchlistScreen(state: MyState, onOpen: (AngItem) -> Unit, onRate: (AngItem, Rating?) -> Unit) {
     var tab by remember { mutableStateOf(Tab.WATCHING) }
+    var kind by remember { mutableStateOf(Kind.ALL) }
     var menuFor by remember { mutableStateOf<AngItem?>(null) }
     val firstTab = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { firstTab.requestFocus() } }
 
     val g = state.guide
-    val items = when (tab) {
-        Tab.WATCHING -> g.watching
-        Tab.LATER -> g.watchLater
-        Tab.WATCHED -> g.watched
-        Tab.FOR_YOU -> g.forYou
-        Tab.NEW_SEASONS -> g.newSeasons
-        Tab.COMING_SOON -> g.comingSoon
+    val items = remember(g, tab, kind) {
+        when (tab) {
+            Tab.WATCHING -> g.watching
+            Tab.LATER -> g.watchLater
+            Tab.WATCHED -> g.watched
+            Tab.FOR_YOU -> g.forYou + g.newMovies + g.missedMovies
+            Tab.NEW_SEASONS -> g.newSeasons
+            Tab.COMING_SOON -> g.comingSoon
+        }.filter { kind == Kind.ALL || it.isMovie == (kind == Kind.MOVIES) }.distinctBy { it.key }
     }
 
     Column(Modifier.fillMaxSize().background(LocalBackground.current).padding(horizontal = 48.dp, vertical = 28.dp)) {
@@ -153,6 +158,27 @@ fun WatchlistScreen(state: MyState, onOpen: (AngItem) -> Unit, onRate: (AngItem,
             }
         }
         Spacer(Modifier.height(10.dp))
+        // Shows / movies: Down from the tabs.
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Kind.entries.forEach { k ->
+                val selected = k == kind
+                FocusCard(
+                    onClick = { kind = k },
+                    container = if (selected) Palette.Ink else Palette.CardSoft,
+                    corner = 16.dp,
+                    focusedScale = 1.06f,
+                    modifier = Modifier.height(32.dp).onFocusChanged { if (it.isFocused || it.hasFocus) kind = k },
+                ) {
+                    Text(
+                        k.title,
+                        fontSize = 13.sp,
+                        color = if (selected) Palette.Base else Palette.Ink,
+                        modifier = Modifier.align(Alignment.Center).padding(horizontal = 16.dp),
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(6.dp))
 
         if (items.isEmpty()) {
             Text(
