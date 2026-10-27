@@ -1122,6 +1122,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         val message: String = "",
         /** The one line to run from a phone before MyTV can switch things itself (null once done). */
         val phoneSetup: String? = null,
+        val helper: String = "",
     )
 
     private fun systemNow(busy: Boolean = false, message: String = _system.value.message) = SystemState(
@@ -1135,6 +1136,11 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         busy = busy,
         message = message,
         phoneSetup = if (homeSetup.canWriteSecure) null else com.mytv.launcher.system.HomeSetup.PHONE_COMMAND,
+        helper = when {
+            !settings.homeOverride -> ""
+            homeSetup.helperRunning -> "Home helper: running"
+            else -> "Home helper: switched on but Android hasn't started it (blocked as a restricted setting?)"
+        },
     )
 
     private val _system = MutableStateFlow(

@@ -60,6 +60,10 @@ fun SystemScreen(
 
             Section("Home screen", if (state.isHome) "MyTV is your home screen: it's what you see when the TV turns on and when you press Home." else
                 "Make MyTV what you see when the TV turns on and when you press Home. Google TV stays installed; one button brings it back.")
+            if (state.helper.isNotBlank()) {
+                Text(state.helper, fontSize = 13.sp, color = if (state.helper.endsWith("running")) Color(0xFF7CD992) else Color(0xFFFF8A80))
+                Spacer(Modifier.height(8.dp))
+            }
             state.phoneSetup?.let { cmd ->
                 Text("One-time step from your phone (Bugjaeger → Shell), then select the button below:", fontSize = 13.sp, color = Color(0xFFF5C518))
                 Spacer(Modifier.height(4.dp))

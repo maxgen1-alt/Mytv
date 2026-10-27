@@ -32,9 +32,9 @@ class HomeOverride : AccessibilityService() {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         if (event.packageName?.toString() != HomeSetup.GOOGLE_TV_HOME) return
         if (!settings.homeOverride) return
-        val cls = event.className?.toString() ?: return
-        val home = homeClass ?: googleHomeClass().also { homeClass = it }
-        if (cls != home && !cls.contains("home", ignoreCase = true)) return
+        // Any Google TV home window except its search screens (voice search results stay put).
+        val cls = event.className?.toString().orEmpty()
+        if (cls.contains("search", ignoreCase = true) || cls.contains("voice", ignoreCase = true)) return
         val now = SystemClock.uptimeMillis()
         if (now - lastLaunch < 800) return
         lastLaunch = now

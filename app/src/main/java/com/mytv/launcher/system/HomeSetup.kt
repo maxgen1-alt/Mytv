@@ -40,6 +40,14 @@ class HomeSetup(private val context: Context) {
 
     private fun overrideServiceOn(): Boolean = secureList(ACCESSIBILITY).any { it.equals(HomeOverride.component, ignoreCase = true) }
 
+    /** The home helper is switched on in the system and Android has actually started it. */
+    val helperRunning: Boolean
+        get() = runCatching {
+            context.getSystemService(android.view.accessibility.AccessibilityManager::class.java)
+                .getEnabledAccessibilityServiceList(android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
+                .any { it.resolveInfo.serviceInfo.packageName == me }
+        }.getOrDefault(false)
+
     /** MyTV is the home screen: its home helper is on, or Google TV's home screen is switched off. */
     val isOn: Boolean get() = googleHomeOff || (settings.homeOverride && overrideServiceOn())
 
@@ -178,7 +186,7 @@ class HomeSetup(private val context: Context) {
 
         /** Run once from a phone (Bugjaeger's Shell): MyTV can then do the rest itself, undo included. */
         const val PHONE_COMMAND =
-            "pm grant com.mytv.launcher android.permission.WRITE_SECURE_SETTINGS; appops set com.mytv.launcher SYSTEM_ALERT_WINDOW allow"
+            "pm grant com.mytv.launcher android.permission.WRITE_SECURE_SETTINGS; appops set com.mytv.launcher SYSTEM_ALERT_WINDOW allow; appops set com.mytv.launcher ACCESS_RESTRICTED_SETTINGS allow"
 
         /**
          * Switched off (never uninstalled) by the debugging-connection fallback:
