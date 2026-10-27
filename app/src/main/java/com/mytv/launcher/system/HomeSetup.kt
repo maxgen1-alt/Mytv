@@ -19,7 +19,16 @@ class HomeSetup(private val context: Context) {
     private val adb = AdbShell(java.io.File(context.filesDir, "adb"))
     private val me = context.packageName
 
-    val isOn: Boolean get() = prefs.getBoolean("on", false)
+    /** True when Google TV's home screen is switched off (by MyTV, or from your phone). */
+    val isOn: Boolean get() = runCatching {
+        context.packageManager.getApplicationEnabledSetting(GOOGLE_TV_HOME).let {
+            it == android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER ||
+                it == android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+        }
+    }.getOrDefault(prefs.getBoolean("on", false))
+
+    /** Why the last connection failed, in a few words (shown on the settings screen). */
+    @Volatile private var lastError: String = ""
 
     /** What we switched off, so undo turns exactly that back on. */
     private val disabled: Set<String> get() = prefs.getStringSet("disabled", emptySet()) ?: emptySet()
@@ -31,7 +40,18 @@ class HomeSetup(private val context: Context) {
     }
 
     /** Runs [cmd]; null if MyTV can't reach the TV's shell. */
-    suspend fun shell(cmd: String): String? = withContext(Dispatchers.IO) { runCatching { adb.run(cmd) }.getOrNull() }
+    suspend fun shell(cmd: String): String? = withContext(Dispatchers.IO) {
+        runCatching { adb.run(cmd) }
+            .onFailure { e ->
+                lastError = when {
+                    e is java.net.ConnectException -> "refused"
+                    e is java.net.SocketTimeoutException -> "timeout"
+                    e.message == "tls" -> "tls"
+                    else -> e.javaClass.simpleName + ": " + e.message
+                }
+            }
+            .getOrNull()
+    }
 
     suspend fun takeOver(): Result = withContext(Dispatchers.IO) {
         val enabled = shell("pm list packages -e") ?: return@withContext noAccess()
@@ -101,8 +121,13 @@ class HomeSetup(private val context: Context) {
     }
 
     private fun noAccess() = Result.NoAccess(
-        "MyTV couldn't get access. On the TV: Settings → System → Developer options → turn on USB debugging. " +
-            "Then try again, and when the TV asks \"Allow USB debugging?\", tick Always allow and choose OK.",
+        when (lastError) {
+            "refused" -> "The TV isn't accepting debugging connections (port 5555 is closed). " +
+                "Use the phone setup instead (see the setup steps), or turn USB debugging off and on again and retry."
+            "timeout" -> "The TV didn't answer in time. Try again: when it asks \"Allow USB debugging?\", tick Always allow and choose OK."
+            "tls" -> "This TV only allows Wireless debugging, which MyTV can't use itself. Use the phone setup instead."
+            else -> "MyTV couldn't get access ($lastError). Check Settings → System → Developer options → USB debugging is on, then try again."
+        },
     )
 
     companion object {

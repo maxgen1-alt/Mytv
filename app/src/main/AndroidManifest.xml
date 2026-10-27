@@ -23,6 +23,7 @@
         <intent>
             <action android:name="android.search.action.GLOBAL_SEARCH" />
         </intent>
+        <package android:name="com.google.android.apps.tv.launcherx" />
         <!-- Finding Google TV's home screen again, for "Undo everything". -->
         <intent>
             <action android:name="android.intent.action.MAIN" />

@@ -53,7 +53,7 @@ class AdbShell(private val keyDir: File, private val host: String = "127.0.0.1",
             when (m.command) {
                 CNXN -> return
                 AUTH -> {
-                    if (m.arg0 != AUTH_TOKEN) throw AdbException("Unexpected auth message")
+                    if (m.arg0 != AUTH_TOKEN) throw AdbException("unexpected auth message")
                     if (!sentSignature) {
                         write(out, AUTH, AUTH_SIGNATURE, 0, sign(keys, m.data))
                         sentSignature = true
@@ -62,7 +62,9 @@ class AdbShell(private val keyDir: File, private val host: String = "127.0.0.1",
                         write(out, AUTH, AUTH_RSAPUBLICKEY, 0, publicKeyBytes(keys.public as RSAPublicKey))
                     }
                 }
-                else -> throw AdbException("Unexpected reply while connecting")
+                // Wireless-debugging-only TVs want TLS (pairing), which MyTV can't do.
+                STLS -> throw AdbException("tls")
+                else -> throw AdbException("unexpected reply while connecting")
             }
         }
     }
@@ -123,6 +125,7 @@ class AdbShell(private val keyDir: File, private val host: String = "127.0.0.1",
         private const val OKAY = 0x59414b4f
         private const val CLSE = 0x45534c43
         private const val WRTE = 0x45545257
+        private const val STLS = 0x534c5453
         private const val VERSION = 0x01000000
         private const val MAX_DATA = 256 * 1024
         private const val AUTH_TOKEN = 1
