@@ -193,7 +193,10 @@ fun HomeScreen(
             SectionTitle("Continue Watching", Modifier.padding(start = 48.dp))
             ContinueWatchingRow(watching, onWatchItem, onAllowWatchNext, onTurnOnTracking, onLinkTrakt) { wi -> watchingNow[wi.key]?.let { rateFor = it } }
             TitleRow("Tonight", tonight, onOpenTitle, onTitleFocus) { rateFor = it }
-            TitleRow("Watch Later", watchLater, onOpenTitle, onTitleFocus) { rateFor = it }
+            // Watch Later, shows and movies apart (tidier with a long list).
+            val (laterMovies, laterShows) = remember(watchLater) { watchLater.partition { it.isMovie } }
+            TitleRow("Watch Later · Shows", laterShows, onOpenTitle, onTitleFocus) { rateFor = it }
+            TitleRow("Watch Later · Movies", laterMovies, onOpenTitle, onTitleFocus) { rateFor = it }
 
             // What's hot across the apps you have, then picks from what you watched and rated.
             TitleRow("Popular on Your Apps", popular, onOpenTitle, onTitleFocus) { rateFor = it }
