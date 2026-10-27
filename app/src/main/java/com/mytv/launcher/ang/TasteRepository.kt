@@ -41,6 +41,8 @@ class TasteRepository(
     @Volatile private var recsMem: Pair<String, Recs>? = null
     @Volatile private var recsAt = 0L
     private val followedMem = HashMap<Long, Pair<Long, String>>() // tmdb id -> (fetched at, json)
+    // Parsed results, so a Home press doesn't re-parse every followed show's JSON: (json, rating, day) -> show.
+    private val parsedMem = HashMap<Long, Triple<String, Pair<Rated, LocalDate>, FollowedShow?>>()
 
     /** Memory-only: whatever we computed last, for an instant first paint. */
     fun cachedRecs(): Recs? = recsMem?.second
@@ -130,7 +132,9 @@ class TasteRepository(
                         ?.also { synchronized(followedMem) { followedMem[id] = System.currentTimeMillis() to it } }
                     ?: cached?.second
                     ?: return@async null
+                synchronized(parsedMem) { parsedMem[id] }?.takeIf { it.first === json && it.second == (r to today) }?.let { return@async it.third }
                 withContext(Dispatchers.Default) { runCatching { AngDiscovery.parseFollowed(json, r, today) }.getOrNull() }
+                    .also { synchronized(parsedMem) { parsedMem[id] = Triple(json, r to today, it) } }
             }
         }.awaitAll().filterNotNull()
     }

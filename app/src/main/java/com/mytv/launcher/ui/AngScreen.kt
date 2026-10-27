@@ -77,9 +77,17 @@ fun AngScreen(
     val first = remember { FocusRequester() }
     val guide = state.guide
     var menuFor by remember { mutableStateOf<AngItem?>(null) }
-    val all = guide.watchNow + guide.easyWatch + guide.newShows + guide.missed + guide.movies + guide.upcoming
-    val firstKey = continueWatching.firstOrNull()?.key ?: all.firstOrNull()?.key
-    LaunchedEffect(firstKey) { if (firstKey != null) runCatching { first.requestFocus() } }
+    val all = remember(guide) { guide.watchNow + guide.easyWatch + guide.newShows + guide.missed + guide.movies + guide.upcoming }
+    val hasContent = continueWatching.isNotEmpty() || all.isNotEmpty() || state.watchLater.isNotEmpty()
+    // Focus the first card once, when the screen first has something: later updates
+    // (Continue watching arriving, rows re-sorting) must not pull focus away from where you are.
+    var focusedOnce by remember { mutableStateOf(false) }
+    LaunchedEffect(hasContent) {
+        if (hasContent && !focusedOnce) {
+            kotlinx.coroutines.yield()
+            focusedOnce = runCatching { first.requestFocus() }.isSuccess
+        }
+    }
 
     Box(Modifier.fillMaxSize().background(AngPalette.Background)) {
         Column(

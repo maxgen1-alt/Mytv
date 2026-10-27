@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mytv.launcher.sports.Teams
 import com.mytv.launcher.ui.AngListScreen
@@ -59,18 +60,30 @@ class MainActivity : ComponentActivity() {
                         val updateReady by vm.updateReady.collectAsStateWithLifecycle()
                         val popular by vm.popular.collectAsStateWithLifecycle()
                         val my by vm.my.collectAsStateWithLifecycle()
-                        fun badged(item: com.mytv.launcher.ang.AngItem) =
-                            if (my.ratings[item.key] == com.mytv.launcher.ang.Rating.LIKE) item.copy(badge = "♥ Liked") else item
+                        // Derived lists are remembered: rebuilding them on every update would
+                        // hand every row new lists and redraw the whole Home screen.
+                        val homeWatching = remember(watching, my.guide.watching) {
+                            watching.copy(items = vm.withWatchingNow(watching.items, my.guide.watching))
+                        }
+                        val watchingNow = remember(my.guide.watching) { my.guide.watching.associateBy { MANUAL_PREFIX + it.key } }
+                        val popularItems = remember(popular, my.ratings) {
+                            popular.map { (service, t) ->
+                                val item = vm.popularItem(service, t)
+                                if (my.ratings[item.key] == com.mytv.launcher.ang.Rating.LIKE) item.copy(badge = "♥ Liked") else item
+                            }
+                        }
+                        val newForYou = remember(my) { if (my.showForYouRow) my.guide.newShows.take(20) else emptyList() }
+                        val missedForYou = remember(my) { if (my.showForYouRow) my.guide.missed.take(20) else emptyList() }
                         HomeScreen(
                             apps = apps,
                             teams = teams,
-                            watching = watching.copy(items = vm.withWatchingNow(watching.items, my.guide.watching)),
-                            watchingNow = my.guide.watching.associateBy { MANUAL_PREFIX + it.key },
+                            watching = homeWatching,
+                            watchingNow = watchingNow,
                             busy = busy,
                             updateReady = updateReady,
-                            popular = popular.map { (service, t) -> badged(vm.popularItem(service, t)) },
-                            newForYou = if (my.showForYouRow) my.guide.newShows.take(20) else emptyList(),
-                            missedForYou = if (my.showForYouRow) my.guide.missed.take(20) else emptyList(),
+                            popular = popularItems,
+                            newForYou = newForYou,
+                            missedForYou = missedForYou,
                             watchLater = my.guide.watchLater,
                             myRatings = my.ratings,
                             onOpenTitle = vm::openTitle,

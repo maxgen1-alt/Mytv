@@ -250,9 +250,10 @@ class AngRepository(context: Context) {
      * Is this Continue Watching title one of hers? Yes if it's in her guide,
      * otherwise we look it up on TVmaze once and remember the answer.
      */
+    /** [guideTitles]: already normalized ([AngGuideBuilder.normalize]). */
     suspend fun isHers(title: String, guideTitles: Set<String>): Boolean {
         val norm = AngGuideBuilder.normalize(title)
-        if (norm in guideTitles.map(AngGuideBuilder::normalize)) return true
+        if (norm in guideTitles) return true
         val key = "hers2:$norm" // v2: answers from before the US/CA/UK-only rule are ignored
         if (prefs.contains(key)) return prefs.getBoolean(key, false)
         val url = "$api/singlesearch/shows".toHttpUrl().newBuilder().addQueryParameter("q", title).build().toString()

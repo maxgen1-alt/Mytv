@@ -36,13 +36,14 @@ class InstalledApps(private val context: Context) {
     @Synchronized
     fun load(): List<TvApp> {
         val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER)
+        val current = HashSet<String>()
         val found = pm.queryIntentActivities(intent, 0)
             .map { it.activityInfo }
             .filter { it.packageName != context.packageName }
             .distinctBy { it.packageName }
             .map { info ->
                 val updated = runCatching { pm.getPackageInfo(info.packageName, 0).lastUpdateTime }.getOrDefault(0L)
-                rendered.getOrPut("${info.packageName}@$updated") {
+                rendered.getOrPut("${info.packageName}@$updated".also(current::add)) {
                     val banner = (info.loadBanner(pm) ?: info.applicationInfo.loadBanner(pm))?.render(320, 180)
                     TvApp(
                         packageName = info.packageName,
@@ -52,6 +53,8 @@ class InstalledApps(private val context: Context) {
                     )
                 }
             }
+        // Drop banners of uninstalled apps and old versions of updated ones.
+        rendered.keys.retainAll(current)
         return sort(found)
     }
 

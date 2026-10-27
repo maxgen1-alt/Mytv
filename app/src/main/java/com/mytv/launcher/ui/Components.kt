@@ -130,7 +130,7 @@ fun Modifier.livePulse(color: Color, scale: Float = 1f): Modifier = composed {
     val alpha = t.animateFloat(
         initialValue = 0.25f,
         targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(900, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        animationSpec = infiniteRepeatable(tween(1400, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "pulseAlpha",
     )
     drawWithContent {

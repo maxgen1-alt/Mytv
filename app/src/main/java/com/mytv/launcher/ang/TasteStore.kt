@@ -15,7 +15,12 @@ class TasteStore(context: Context, name: String = "taste") {
     private val sync = context.getSharedPreferences("${name}_sync", Context.MODE_PRIVATE)
     private val legacy = context.getSharedPreferences(if (name == "taste") "ang" else "unused_legacy", Context.MODE_PRIVATE)
 
-    fun all(): List<Rated> {
+    /** Decoded ratings, kept in memory (read many times per Home press); dropped on every change. */
+    @Volatile private var cache: List<Rated>? = null
+
+    fun all(): List<Rated> = cache ?: load().also { cache = it }
+
+    private fun load(): List<Rated> {
         val rated = prefs.all.values.mapNotNull { v -> (v as? String)?.let { runCatching { decode(JSONObject(it)) }.getOrNull() } }
         // "Mark as watched" from older versions.
         val old = legacy.all.mapNotNull { (k, v) ->
@@ -34,6 +39,7 @@ class TasteStore(context: Context, name: String = "taste") {
     }
 
     fun set(item: AngItem, rating: Rating?, today: LocalDate = LocalDate.now()) {
+        cache = null
         legacy.edit().remove("watched:${item.key}").apply()
         if (rating == null) {
             prefs.edit().remove(item.key).apply()
@@ -42,14 +48,17 @@ class TasteStore(context: Context, name: String = "taste") {
             prefs.edit().putString(item.key, encode(r).toString()).apply()
         }
         sync.edit().putLong("at:${item.key}", System.currentTimeMillis()).putBoolean("dirty:${item.key}", true).apply()
+        cache = null
     }
 
     fun has(key: String): Boolean = prefs.contains(key)
 
     /** Saves a rating as is (imports), queued for syncing like any other. */
     fun put(r: Rated) {
+        cache = null
         prefs.edit().putString(r.key, encode(r).toString()).apply()
         sync.edit().putLong("at:${r.key}", System.currentTimeMillis()).putBoolean("dirty:${r.key}", true).apply()
+        cache = null
     }
 
     // ---- Sync support ----
@@ -86,9 +95,11 @@ class TasteStore(context: Context, name: String = "taste") {
     /** Applies a change from the other TV if it's newer than ours. Returns true if something changed. */
     fun applyRemote(change: Change): Boolean {
         if (change.at <= sync.getLong("at:${change.key}", 0)) return false
+        cache = null
         if (change.json == null) prefs.edit().remove(change.key).apply()
         else prefs.edit().putString(change.key, change.json).apply()
         sync.edit().putLong("at:${change.key}", change.at).remove("dirty:${change.key}").apply()
+        cache = null
         return true
     }
 

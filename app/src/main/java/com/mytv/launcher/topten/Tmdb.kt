@@ -2,6 +2,8 @@ package com.mytv.launcher.topten
 
 import com.mytv.launcher.BuildConfig
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -18,7 +20,10 @@ object Tmdb {
         .build()
 
     /** GETs [path] (e.g. "/discover/tv?...") and runs [parse] on the result, all on a background thread. */
-    suspend fun <T> get(path: String, parse: (String) -> T): T? = withContext(Dispatchers.IO) {
+    // At most 4 requests at once: hundreds in parallel starve the UI on a Chromecast.
+    private val gate = Semaphore(4)
+
+    suspend fun <T> get(path: String, parse: (String) -> T): T? = gate.withPermit { withContext(Dispatchers.IO) {
         runCatching {
             // Either kind of TMDB credential works: the short v3 "API key" or the long v4 token.
             val bearer = key.length > 40
@@ -28,5 +33,5 @@ object Tmdb {
             http.newCall(req).execute().use { r -> if (r.isSuccessful) r.body?.string() else null }
                 ?.let(parse)
         }.getOrNull()
-    }
+    } }
 }

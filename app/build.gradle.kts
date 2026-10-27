@@ -78,6 +78,12 @@ android {
     }
 }
 
+// java.time dates and Kotlin lists in our models are never mutated: tell Compose
+// they're stable, so rows skip redrawing when their data hasn't changed.
+composeCompiler {
+    stabilityConfigurationFile = rootProject.layout.projectDirectory.file("compose_stability.conf")
+}
+
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
     implementation(composeBom)

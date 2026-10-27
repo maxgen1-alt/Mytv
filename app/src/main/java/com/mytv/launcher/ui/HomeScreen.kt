@@ -358,11 +358,11 @@ private fun ContinueWatchingRow(
     onLink: () -> Unit,
     onHold: (WatchItem) -> Unit,
 ) {
-    if (state.items.isEmpty()) {
-        when {
-            state.loading -> Hint("Loading…")
-            !state.needsPermission && state.tracking -> Hint("Nothing in progress right now. Start something in any app and it shows up here.")
-        }
+    // The hint sits inside the row (same height), so nothing below jumps when shows arrive.
+    val hint = if (state.items.isNotEmpty()) null else when {
+        state.loading -> "Loading…"
+        !state.needsPermission && state.tracking -> "Nothing in progress right now. Start something in any app and it shows up here."
+        else -> null
     }
     LazyRow(
         contentPadding = RowPadding,
@@ -370,6 +370,13 @@ private fun ContinueWatchingRow(
         modifier = Modifier.height(190.dp),
         verticalAlignment = Alignment.Top,
     ) {
+        if (hint != null) {
+            item(key = "__hint") {
+                Box(Modifier.height(130.dp).padding(top = 8.dp), contentAlignment = Alignment.CenterStart) {
+                    Text(hint, color = Palette.InkSoft, fontSize = 14.sp)
+                }
+            }
+        }
         items(state.items, key = { it.key }) { item ->
             // Cards you added with "Watching now" can be changed with hold select.
             WatchCard(item, onClick = { onItem(item) }, onLongClick = if (item.key.startsWith(MANUAL_PREFIX)) ({ onHold(item) }) else null)
@@ -480,11 +487,6 @@ private fun WatchlistTile(onClick: () -> Unit) {
             Text("My Watchlist", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Palette.Ink)
         }
     }
-}
-
-@Composable
-private fun Hint(text: String) {
-    Text(text, color = Palette.InkSoft, fontSize = 14.sp, modifier = Modifier.padding(start = 48.dp, top = 4.dp))
 }
 
 @Composable

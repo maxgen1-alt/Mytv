@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.coroutines.FlowPreview::class)
+
 package com.mytv.launcher
 
 import android.app.Application
@@ -45,6 +47,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -77,8 +81,9 @@ data class AngState(
     val rated: List<com.mytv.launcher.ang.Rated> = emptyList(),
 ) {
     /** What she saved with "Watch later", newest first. */
-    val watchLater: List<AngItem>
-        get() = rated.filter { it.rating == com.mytv.launcher.ang.Rating.WANT }.sortedByDescending { it.date }.map { it.toItem() }
+    val watchLater: List<AngItem> by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        rated.filter { it.rating == com.mytv.launcher.ang.Rating.WANT }.sortedByDescending { it.date }.map { it.toItem() }
+    }
 }
 
 /** Your ratings and lists. */
@@ -144,8 +149,13 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         com.mytv.launcher.ratings.Ratings.init(app)
         com.mytv.launcher.ratings.DeepLinks.init(app)
         // Something new played (or its picture arrived): update Continue Watching.
+        // While you watch, the tracker updates every 30s: only refresh when MyTV is on screen
+        // (otherwise just once when you come back), and batch bursts of changes.
         viewModelScope.launch {
-            com.mytv.launcher.watching.PlayHistory.entries(app).drop(1).collect { refreshWatching() }
+            withContext(Dispatchers.IO) { com.mytv.launcher.watching.PlayHistory.entries(app) }
+                .drop(1)
+                .debounce(3_000)
+                .collect { if (inForeground) refreshWatching() else watchingDirty = true }
         }
     }
     private val taste = com.mytv.launcher.ang.TasteStore(app)
@@ -211,7 +221,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 // Hide what you've watched, disliked or won't watch.
                 .filter { (_, t) -> mine.ratings[popularItem(TopTenService.NETFLIX, t).key]?.hides != true }
                 .take(20)
-        }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, emptyList())
+        }.flowOn(Dispatchers.Default).stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, emptyList())
     }
 
     /** A Popular-row title as a ratable item. */
@@ -309,16 +319,50 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { publishAng() }
     }
 
-    /** Called every time the launcher comes to the front. */
+    @Volatile private var watchingDirty = true
+    private var deferredJob: Job? = null
+    private var deferredAt = 0L
+    private var angWarmAt = 0L
+    private var teamsAt = 0L
+
+    /**
+     * Called every time the launcher comes to the front (every Home press).
+     * What's on screen refreshes now; the heavy background work waits a few
+     * seconds, so moving around feels instant, and runs at most every 10 min.
+     */
     fun onResume() {
+        inForeground = true
         refreshApps()
-        refreshWatching()
+        refreshWatching() // one quick local query: what you just watched shows up right away
         checkForUpdates()
-        refreshTopTen()
-        refreshMine()
-        syncRatings()
-        // Warm Ang's TV in the background so it opens instantly (everything is cached).
-        if (angJob?.isActive != true) angJob = viewModelScope.launch {
+        if (liveJob?.isActive != true) liveJob = viewModelScope.launch {
+            while (isActive) {
+                if (System.currentTimeMillis() - teamsAt > 90_000L) {
+                    refreshTeams()
+                    teamsAt = System.currentTimeMillis()
+                }
+                delay(2 * 60_000L)
+            }
+        }
+        if (deferredJob?.isActive == true) return
+        val stale = System.currentTimeMillis() - deferredAt > 10 * 60_000L
+        deferredJob = viewModelScope.launch {
+            delay(if (deferredAt == 0L) 1_500 else 4_000)
+            refreshTopTen()
+            if (stale) {
+                deferredAt = System.currentTimeMillis()
+                refreshMine()
+                syncRatings()
+            }
+            warmAng()
+        }
+    }
+
+    /** Warms Ang's TV in the background so it opens instantly (everything is cached). Every 30 min at most. */
+    private fun warmAng() {
+        if (angJob?.isActive == true || System.currentTimeMillis() - angWarmAt < 30 * 60_000L) return
+        angWarmAt = System.currentTimeMillis()
+        angJob = viewModelScope.launch(Dispatchers.Default) {
             _allApps.first { it.isNotEmpty() } // need the installed apps to know which services to search
             val providers = installedProviders()
             angRepo.curatedShows()
@@ -326,13 +370,6 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             val ratings = taste.all()
             angTaste.recommendations(ratings, providers)
             angTaste.followed(ratings)
-        }
-        liveJob?.cancel()
-        liveJob = viewModelScope.launch {
-            while (isActive) {
-                refreshTeams()
-                delay(2 * 60_000L)
-            }
         }
     }
 
@@ -370,13 +407,13 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         _gameDay.value = com.mytv.launcher.sports.GameDay.theme(info, now)
     }
 
-    fun onPause() {
-        liveJob?.cancel()
-    }
+    fun onPause() {}
 
     /** MyTV went to the background: a good moment to update without interrupting anything. */
     fun onStop() {
         inForeground = false
+        // Scores aren't needed while you're in another app; picked up again on the next Home press.
+        liveJob?.cancel()
         installSilentlyIfReady()
     }
 
@@ -394,8 +431,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
      * few hours for as long as the process lives, even in the background.
      */
     private fun checkForUpdates() {
-        inForeground = true
-        updateJob?.cancel()
+        if (updateJob?.isActive == true) return // already checking every few hours
         updateJob = viewModelScope.launch {
             while (isActive) {
                 val apk = updater.checkAndDownload()
@@ -553,8 +589,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             _topTen.value = lists
             // Warm the image cache so the Popular row's posters are there instantly.
             val loader = context.imageLoader
-            lists.values.flatten().mapNotNull { it.posterUrl }.forEach { url ->
-                loader.enqueue(ImageRequest.Builder(context).data(url).build())
+            lists.values.flatMap { it.take(4) }.mapNotNull { it.posterUrl }.take(16).forEach { url ->
+                loader.enqueue(ImageRequest.Builder(context).data(url).size(252, 378).build())
             }
         }
     }
@@ -564,7 +600,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     /** Rebuilds your lists; the network parts are cached (recommendations 6h, seasons 12h). */
     fun refreshMine() {
         myJob?.cancel()
-        myJob = viewModelScope.launch {
+        myJob = viewModelScope.launch(Dispatchers.Default) {
             val ratings = myStore.all()
             // Instant: your ratings (Watched tab, Popular row filtering) before anything is fetched.
             _my.update { it.copy(ratings = ratings.associate { r -> r.key to r.rating }) }
@@ -748,7 +784,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
      * watch later, watched), her guide's shows, or her kind of show.
      * Anything she disliked or won't watch never shows.
      */
-    private suspend fun herContinueWatching(): List<WatchItem> {
+    private suspend fun herContinueWatching(): List<WatchItem> = withContext(Dispatchers.Default) {
         val g = _ang.value.guide
         val ratings = taste.all()
         val norm = AngGuideBuilder::normalize
@@ -756,9 +792,9 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             .map { norm(it.title) }.toSet()
         val titles = (ratings.filter { norm(it.title) !in no }.map { it.title } +
             angInputs.curated.map { it.second.name } +
-            (g.watchNow + g.easyWatch + g.newShows + g.missed + g.movies + g.upcoming).map { it.title }).toSet()
+            (g.watchNow + g.easyWatch + g.newShows + g.missed + g.movies + g.upcoming).map { it.title }).map(norm).toSet()
         val items = _watching.value.items.ifEmpty { watchNext.load() }
-        return items.filter { norm(it.title) !in no && angRepo.isHers(it.title, titles) }
+        items.filter { norm(it.title) !in no && angRepo.isHers(it.title, titles) }
     }
 
     /** Hold select → Like / Already watched / Dislike / Won't watch (null clears it). */
@@ -820,6 +856,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
      * plus, optionally, Trakt. Same title from both shows once, newest first.
      */
     fun refreshWatching() {
+        watchingDirty = false
         watchingJob?.cancel()
         watchingJob = viewModelScope.launch {
             _watching.update {

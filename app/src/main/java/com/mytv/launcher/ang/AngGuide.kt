@@ -197,7 +197,8 @@ object AngGuideBuilder {
 
     fun keyOf(show: TvShow) = "tvmaze:${show.id}"
 
-    fun normalize(s: String) = s.lowercase().replace(Regex("[^a-z0-9]"), "")
+    private val nonAlnum = Regex("[^a-z0-9]")
+    fun normalize(s: String) = s.lowercase().replace(nonAlnum, "")
 
     /**
      * Next season after today: from the season list, or a scheduled episode 1;

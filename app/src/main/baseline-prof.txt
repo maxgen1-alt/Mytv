@@ -1,0 +1,4 @@
+# Pre-compile all of MyTV's own code at install time (startup, Home, D-pad moves),
+# on top of the profiles Compose and the libraries ship with.
+HSPLcom/mytv/launcher/**->**(**)**
+Lcom/mytv/launcher/**;

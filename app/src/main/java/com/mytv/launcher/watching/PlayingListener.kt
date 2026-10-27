@@ -8,7 +8,7 @@ import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.os.Handler
-import android.os.Looper
+import android.os.HandlerThread
 import android.os.SystemClock
 import android.service.notification.NotificationListenerService
 import androidx.core.app.NotificationManagerCompat
@@ -30,7 +30,10 @@ import java.io.File
  */
 class PlayingListener : NotificationListenerService() {
 
-    private val main = Handler(Looper.getMainLooper())
+    // Its own thread: never the launcher's UI thread (picture saving, file writes).
+    private val worker = HandlerThread("mytv-playing").apply { start() }
+    private val main = Handler(worker.looper)
+    private val labels = HashMap<String, String>()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val watched = HashMap<String, Pair<MediaController, MediaController.Callback>>()
     private val lookedUp = HashSet<String>()
@@ -47,21 +50,26 @@ class PlayingListener : NotificationListenerService() {
     }
 
     override fun onListenerConnected() {
-        val m = getSystemService(MediaSessionManager::class.java) ?: return
-        sessions = m
-        val me = ComponentName(this, PlayingListener::class.java)
-        runCatching {
-            m.addOnActiveSessionsChangedListener(onSessions, me, main)
-            track(m.getActiveSessions(me))
+        main.post {
+            val m = getSystemService(MediaSessionManager::class.java) ?: return@post
+            sessions = m
+            val me = ComponentName(this, PlayingListener::class.java)
+            runCatching {
+                m.addOnActiveSessionsChangedListener(onSessions, me, main)
+                track(m.getActiveSessions(me))
+            }
+            main.removeCallbacks(tick)
+            main.postDelayed(tick, 30_000)
         }
-        main.removeCallbacks(tick)
-        main.postDelayed(tick, 30_000)
     }
 
-    override fun onListenerDisconnected() = stop()
+    override fun onListenerDisconnected() {
+        main.post { stop() }
+    }
 
     override fun onDestroy() {
-        stop()
+        main.post { stop() }
+        worker.quitSafely()
         scope.cancel()
         super.onDestroy()
     }
@@ -100,8 +108,10 @@ class PlayingListener : NotificationListenerService() {
         val duration = md.getLong(MediaMetadata.METADATA_KEY_DURATION).coerceAtLeast(0)
         if (NowPlaying.tooShort(duration)) return
 
-        val app = runCatching { packageManager.getApplicationLabel(packageManager.getApplicationInfo(c.packageName, 0)).toString() }
-            .getOrDefault(c.packageName)
+        val app = labels.getOrPut(c.packageName) {
+            runCatching { packageManager.getApplicationLabel(packageManager.getApplicationInfo(c.packageName, 0)).toString() }
+                .getOrDefault(c.packageName)
+        }
         val title = md.getString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE) ?: md.getString(MediaMetadata.METADATA_KEY_TITLE)
         val subtitle = md.getString(MediaMetadata.METADATA_KEY_DISPLAY_SUBTITLE)
             ?: md.getString(MediaMetadata.METADATA_KEY_ARTIST)
