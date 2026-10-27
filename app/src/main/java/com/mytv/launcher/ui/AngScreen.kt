@@ -58,6 +58,9 @@ object AngPalette {
     val DeepTeal = Color(0xFF0A8F9E)
     val Pink = Color(0xFFFF4FA3)
     val Yellow = Color(0xFFFFD447)
+    /** Text on the teal background: black reads far better than white. */
+    val Ink = Color(0xFF0D0D0D)
+    val InkSoft = Color(0xFF1F3A40)
     val Background = Brush.verticalGradient(listOf(Teal, DeepTeal))
     val Tile = Brush.linearGradient(listOf(Pink, Teal))
 }
@@ -97,7 +100,7 @@ fun AngScreen(
                 .padding(vertical = 32.dp),
         ) {
             Row(Modifier.padding(horizontal = 48.dp), verticalAlignment = Alignment.Bottom) {
-                Text("Ang's TV", fontSize = 34.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text("Ang's TV", fontSize = 34.sp, fontWeight = FontWeight.Bold, color = AngPalette.Ink)
                 Spacer(Modifier.width(12.dp))
                 Text("♥", fontSize = 28.sp, color = AngPalette.Pink, modifier = Modifier.padding(bottom = 2.dp))
                 Spacer(Modifier.weight(1f))
@@ -108,7 +111,7 @@ fun AngScreen(
                         else -> "Hold select on anything to like it, dislike it, or mark it watched"
                     },
                     fontSize = 13.sp,
-                    color = Color.White.copy(alpha = 0.85f),
+                    color = AngPalette.InkSoft,
                 )
                 Spacer(Modifier.width(16.dp))
                 FocusCard(onClick = onOpenList, container = AngPalette.Pink, corner = 18.dp, focusedScale = 1.06f, modifier = Modifier.height(36.dp)) {
@@ -126,7 +129,7 @@ fun AngScreen(
             if (!state.loading && !state.discovering && continueWatching.isEmpty() && all.isEmpty()) {
                 Text(
                     "Couldn't load shows right now. Check the internet connection.",
-                    color = Color.White,
+                    color = AngPalette.Ink,
                     fontSize = 16.sp,
                     modifier = Modifier.padding(horizontal = 48.dp),
                 )
@@ -187,7 +190,7 @@ private fun Shelf(
         title,
         fontSize = 19.sp,
         fontWeight = FontWeight.SemiBold,
-        color = Color.White,
+        color = AngPalette.Ink,
         modifier = Modifier.padding(start = 48.dp, bottom = 10.dp),
     )
     val focusFirst = firstFocus()
@@ -224,7 +227,7 @@ private fun ContinueShelf(
         "Continue watching",
         fontSize = 19.sp,
         fontWeight = FontWeight.SemiBold,
-        color = Color.White,
+        color = AngPalette.Ink,
         modifier = Modifier.padding(start = 48.dp, bottom = 10.dp),
     )
     val focusFirst = firstFocus()
@@ -272,8 +275,8 @@ private fun ContinueShelf(
                     }
                 }
                 Spacer(Modifier.height(8.dp))
-                Text(item.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(item.subtitle, fontSize = 11.sp, color = Color.White.copy(alpha = 0.8f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(item.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = AngPalette.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(item.subtitle, fontSize = 11.sp, color = AngPalette.InkSoft, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -329,7 +332,7 @@ private fun PosterCard(
             RatingTag(item.ratingRef, focused, Modifier.align(Alignment.TopEnd).padding(8.dp))
         }
         Spacer(Modifier.height(8.dp))
-        Text(item.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(item.detail, fontSize = 11.sp, color = Color.White.copy(alpha = 0.8f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(item.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = AngPalette.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(item.detail, fontSize = 11.sp, color = AngPalette.InkSoft, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }

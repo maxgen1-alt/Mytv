@@ -70,11 +70,11 @@ fun AngListScreen(state: AngState, onOpen: (AngItem) -> Unit, onRate: (AngItem, 
 
     Column(Modifier.fillMaxSize().background(AngPalette.Background).padding(horizontal = 48.dp, vertical = 28.dp)) {
         Row(verticalAlignment = Alignment.Bottom) {
-            Text("Her List", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Text("Her List", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = AngPalette.Ink)
             Spacer(Modifier.width(10.dp))
             Text("♥", fontSize = 26.sp, color = AngPalette.Pink)
             Spacer(Modifier.weight(1f))
-            Text("Hold select on a show to move it to another list", fontSize = 13.sp, color = Color.White.copy(alpha = 0.85f))
+            Text("Hold select on a show to move it to another list", fontSize = 13.sp, color = AngPalette.InkSoft)
         }
         Spacer(Modifier.height(14.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -104,7 +104,7 @@ fun AngListScreen(state: AngState, onOpen: (AngItem) -> Unit, onRate: (AngItem, 
         Spacer(Modifier.height(10.dp))
 
         if (items.isEmpty()) {
-            Text(tab.empty, fontSize = 15.sp, color = Color.White.copy(alpha = 0.85f), modifier = Modifier.padding(top = 24.dp))
+            Text(tab.empty, fontSize = 15.sp, color = AngPalette.InkSoft, modifier = Modifier.padding(top = 24.dp))
         } else {
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(126.dp),
@@ -156,7 +156,7 @@ private fun HerPoster(item: AngItem, onClick: () -> Unit, onHold: () -> Unit) {
             RatingTag(item.ratingRef, focused, Modifier.align(Alignment.TopEnd).padding(8.dp))
         }
         Spacer(Modifier.height(8.dp))
-        Text(item.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color.White)
-        Text(item.detail, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color.White.copy(alpha = 0.8f))
+        Text(item.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, color = AngPalette.Ink)
+        Text(item.detail, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = AngPalette.InkSoft)
     }
 }
