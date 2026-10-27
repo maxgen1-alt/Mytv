@@ -32,7 +32,9 @@ class Updater(private val context: Context) {
         .build()
     private val prefs = context.getSharedPreferences("updater", Context.MODE_PRIVATE)
     private val dir = File(context.filesDir, "updates")
-    private val base = "https://github.com/${BuildConfig.UPDATE_REPO}/releases/latest/download"
+    // "stable": only builds you release (Release to TVs); "latest": every test build.
+    private val base get() =
+        "https://github.com/${BuildConfig.UPDATE_REPO}/releases/download/${com.mytv.launcher.system.MyTvSettings(context).updateChannel}"
 
     /** versionCode of the latest release, from the last successful check (0 = never checked). */
     @Volatile var lastSeenVersion: Int = 0
@@ -84,6 +86,12 @@ class Updater(private val context: Context) {
             return@withContext null
         }
         target
+    }
+
+    /** Installs a downloaded update now if it can go in without a prompt. Returns true if it started. */
+    fun installIfQuiet(): Boolean {
+        if (!canInstallSilently()) return false
+        return pendingApk()?.let(::install) ?: false
     }
 
     /** True once updates can install without a prompt (Android 12+, and we installed ourselves). */

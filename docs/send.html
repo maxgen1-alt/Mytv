@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Send to TV</title>
+<style>
+  :root { --bg:#0b0b0e; --card:#1b1c21; --ink:#f5f5f7; --soft:#a1a1aa; --accent:#f5c518; --pink:#ff4fa3; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.4 -apple-system, system-ui, sans-serif; padding:16px; }
+  h1 { font-size:24px; margin:4px 0 12px; }
+  .who { display:flex; gap:8px; margin-bottom:12px; }
+  .who button, .acts button { flex:1; border:0; border-radius:12px; padding:10px; font-size:15px; background:var(--card); color:var(--ink); }
+  .who button.on { background:var(--ink); color:#000; font-weight:600; }
+  .who button.ang.on { background:var(--pink); color:#fff; }
+  input { width:100%; padding:14px; border-radius:14px; border:0; font-size:17px; background:var(--card); color:var(--ink); }
+  .item { display:flex; gap:12px; background:var(--card); border-radius:14px; padding:10px; margin-top:12px; }
+  .item img { width:70px; height:105px; object-fit:cover; border-radius:8px; background:#333; flex:none; }
+  .meta { flex:1; min-width:0; }
+  .title { font-weight:600; }
+  .sub { color:var(--soft); font-size:13px; }
+  .acts { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .acts button { flex:1 1 45%; padding:8px; font-size:13px; background:#2a2b31; }
+  .acts button.done { background:var(--accent); color:#000; }
+  .note { color:var(--soft); font-size:13px; margin-top:16px; }
+</style>
+</head>
+<body>
+<h1>Send to TV</h1>
+<div class="who">
+  <button id="me" class="on">For me</button>
+  <button id="ang" class="ang">For Ang ♥</button>
+</div>
+<input id="q" type="search" placeholder="Search a show or movie" autocomplete="off">
+<div id="list"></div>
+<p class="note" id="note">Pick a list and it shows up on both TVs within a couple of minutes (next time MyTV opens).</p>
+<script>
+// The TV's QR code puts this household's sync details after the #; keep them on this phone only.
+const KEY = "mytv-send-config";
+let cfg = null;
+try {
+  if (location.hash.length > 1) {
+    const b64 = location.hash.slice(1).replace(/-/g, "+").replace(/_/g, "/");
+    cfg = JSON.parse(decodeURIComponent(escape(atob(b64))));
+    localStorage.setItem(KEY, JSON.stringify(cfg));
+    history.replaceState(null, "", location.pathname);
+  } else {
+    cfg = JSON.parse(localStorage.getItem(KEY) || "null");
+  }
+} catch (e) { cfg = null; }
+const note = document.getElementById("note");
+if (!cfg) note.textContent = "Open this page by scanning the QR code in MyTV settings on your TV.";
+
+let profile = "me";
+for (const id of ["me", "ang"]) document.getElementById(id).onclick = () => {
+  profile = id;
+  document.getElementById("me").classList.toggle("on", id === "me");
+  document.getElementById("ang").classList.toggle("on", id === "ang");
+};
+
+function tmdb(path) {
+  const bearer = cfg.t.length > 40;
+  const sep = path.includes("?") ? "&" : "?";
+  return fetch("https://api.themoviedb.org/3" + path + (bearer ? "" : sep + "api_key=" + cfg.t),
+    bearer ? { headers: { Authorization: "Bearer " + cfg.t } } : {}).then(r => r.json());
+}
+
+let timer = null;
+document.getElementById("q").addEventListener("input", e => {
+  clearTimeout(timer);
+  const q = e.target.value.trim();
+  if (!cfg || q.length < 2) return;
+  timer = setTimeout(() => search(q), 300);
+});
+
+async function search(q) {
+  const data = await tmdb("/search/multi?language=en-US&include_adult=false&query=" + encodeURIComponent(q));
+  const list = document.getElementById("list");
+  list.innerHTML = "";
+  for (const r of (data.results || []).filter(r => r.media_type === "tv" || r.media_type === "movie").slice(0, 12)) {
+    const movie = r.media_type === "movie";
+    const title = movie ? r.title : r.name;
+    const year = (movie ? r.release_date : r.first_air_date || "").slice(0, 4);
+    const el = document.createElement("div");
+    el.className = "item";
+    el.innerHTML = `<img alt=""><div class="meta"><div class="title"></div><div class="sub"></div><div class="acts"></div></div>`;
+    if (r.poster_path) el.querySelector("img").src = "https://image.tmdb.org/t/p/w185" + r.poster_path;
+    el.querySelector(".title").textContent = title;
+    el.querySelector(".sub").textContent = [movie ? "Movie" : "Show", year].filter(Boolean).join(" · ");
+    const acts = el.querySelector(".acts");
+    for (const [rating, label] of [["WANT", "Watch later"], ["WATCHING", "Watching now"], ["WATCHED", "Already watched"], ["LIKE", "Liked it"]]) {
+      const b = document.createElement("button");
+      b.textContent = label;
+      b.onclick = async () => {
+        b.textContent = "Sending…";
+        const ok = await send(r, movie, title, rating);
+        b.textContent = ok ? "✓ " + label : "Couldn't send";
+        if (ok) b.classList.add("done");
+      };
+      acts.appendChild(b);
+    }
+    list.appendChild(el);
+  }
+}
+
+// Same row format MyTV uses to sync ratings between TVs.
+async function send(r, movie, title, rating) {
+  const key = "tmdb:" + (movie ? "movie" : "tv") + ":" + r.id;
+  const day = Math.floor(Date.now() / 86400000);
+  const data = { key, title, rating, date: day, tmdbId: r.id, movie,
+    image: r.poster_path ? "https://image.tmdb.org/t/p/w342" + r.poster_path : "", service: "" };
+  const headers = { apikey: cfg.k, "x-household": cfg.h, "Content-Type": "application/json",
+    Prefer: "resolution=merge-duplicates,return=minimal" };
+  if (cfg.k.startsWith("eyJ")) headers.Authorization = "Bearer " + cfg.k;
+  try {
+    const res = await fetch(cfg.u + "/rest/v1/mytv_ratings?on_conflict=household,profile,key", {
+      method: "POST", headers,
+      body: JSON.stringify([{ household: cfg.h, profile, key, data, updated_at: new Date().toISOString() }]),
+    });
+    return res.ok;
+  } catch (e) { return false; }
+}
+</script>
+</body>
+</html>

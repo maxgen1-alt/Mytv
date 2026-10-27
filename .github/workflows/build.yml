@@ -58,26 +58,33 @@ jobs:
         with:
           name: MyTV-apk
           path: MyTV.apk
-      # Public download link for installing straight onto the TV, and the
-      # feed the app's auto-updater reads:
-      # https://github.com/<owner>/<repo>/releases/latest/download/MyTV.apk
-      - name: Publish as latest release
+      # Two channels:
+      # - "latest": every build (test channel), marked as a pre-release;
+      # - "stable": only builds you release with the "Release to TVs" workflow
+      #   (Actions tab). TVs follow stable unless set to test builds in MyTV settings,
+      #   and https://github.com/<owner>/<repo>/releases/latest/download/MyTV.apk
+      #   (the install link) always points at stable.
+      - name: Publish to the test channel
         if: steps.key.outputs.present == 'true' && (github.ref_name == 'claude/chromecast-app-launcher-v0ltwe' || github.ref_name == github.event.repository.default_branch)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Belt and braces: never replace a newer release with an older build.
-          current=$(curl -sfL "https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/version.json" | sed -n 's/.*"versionCode": *\([0-9]*\).*/\1/p')
+          # Belt and braces: never replace a newer build with an older one.
+          current=$(curl -sfL "https://github.com/${GITHUB_REPOSITORY}/releases/download/latest/version.json" | sed -n 's/.*"versionCode": *\([0-9]*\).*/\1/p')
           if [ -n "$current" ] && [ "$current" -gt "$GITHUB_RUN_NUMBER" ]; then
-            echo "Release already has newer build $current; not publishing $GITHUB_RUN_NUMBER."
+            echo "Test channel already has newer build $current; not publishing $GITHUB_RUN_NUMBER."
             exit 0
           fi
-          # Update the existing release in place (never delete it), so the
-          # download link always works, even if this step fails halfway.
-          notes="Built from ${GITHUB_SHA::7} on ${GITHUB_REF_NAME}."
+          notes="Test build from ${GITHUB_SHA::7} on ${GITHUB_REF_NAME}."
+          # The first time, also start the stable channel with this build, so the
+          # install link and older TVs keep working.
+          if ! gh release view stable >/dev/null 2>&1; then
+            gh release create stable MyTV.apk version.json --target "$GITHUB_SHA" --title "MyTV" --notes "Stable release (1.0.${GITHUB_RUN_NUMBER})." --latest
+          fi
+          # Update in place (never delete), so links keep working even if this step fails halfway.
           if gh release view latest >/dev/null 2>&1; then
             gh release upload latest MyTV.apk version.json --clobber
-            gh release edit latest --notes "$notes"
+            gh release edit latest --notes "$notes" --prerelease
           else
-            gh release create latest MyTV.apk version.json --target "$GITHUB_SHA" --title "MyTV (latest build)" --notes "$notes"
+            gh release create latest MyTV.apk version.json --target "$GITHUB_SHA" --title "MyTV (test build)" --notes "$notes" --prerelease
           fi

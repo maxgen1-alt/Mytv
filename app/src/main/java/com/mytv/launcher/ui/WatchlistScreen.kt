@@ -58,13 +58,18 @@ fun TitleCard(
     modifier: Modifier = Modifier,
     alwaysShowRating: Boolean = false,
     dateLabel: String? = null,
+    onFocused: ((Boolean) -> Unit)? = null,
 ) {
     var focused by remember { mutableStateOf(false) }
     Column(Modifier.width(126.dp).padding(top = 8.dp)) {
         FocusCard(
             onClick = onClick,
             onLongClick = onLongClick,
-            modifier = modifier.size(126.dp, 189.dp).onFocusChanged { focused = it.isFocused || it.hasFocus },
+            modifier = modifier.size(126.dp, 189.dp).onFocusChanged {
+                val f = it.isFocused || it.hasFocus
+                if (f != focused) onFocused?.invoke(f)
+                focused = f
+            },
         ) {
             if (item.imageUrl != null) {
                 AsyncImage(item.imageUrl, item.title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)

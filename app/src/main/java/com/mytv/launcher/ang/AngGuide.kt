@@ -26,8 +26,10 @@ data class AngItem(
     val imdbId: String? = null,
     /** TMDB genre ids. */
     val genres: List<Int> = emptyList(),
-    /** TMDB description (only used to spot her kind of show; not saved). */
+    /** TMDB description (to spot her kind of show, and for the preview at the top of Home). */
     val overview: String = "",
+    /** Wide picture (TMDB backdrop) for the Home preview and the screensaver. */
+    val backdropUrl: String? = null,
 ) {
     val ratingRef: com.mytv.launcher.ratings.RatingRef
         get() = com.mytv.launcher.ratings.RatingRef(imdbId, tmdbId, isMovie, voteAverage)

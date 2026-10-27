@@ -64,6 +64,8 @@ sealed interface Screen {
     data object Watchlist : Screen
     /** Her List: everything she rated, inside Ang's TV. */
     data object AngList : Screen
+    /** MyTV settings: home screen + undo, screensaver, alerts, updates, Send to TV. */
+    data object SystemSetup : Screen
 }
 
 data class AngState(
@@ -79,6 +81,8 @@ data class AngState(
     val watchingNow: List<AngItem> = emptyList(),
     /** Everything she has rated (for Her List). */
     val rated: List<com.mytv.launcher.ang.Rated> = emptyList(),
+    /** Her shows with a new episode out today. */
+    val tonight: List<AngItem> = emptyList(),
 ) {
     /** What she saved with "Watch later", newest first. */
     val watchLater: List<AngItem> by lazy(LazyThreadSafetyMode.PUBLICATION) {
@@ -239,6 +243,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         tmdbId = t.id,
         isMovie = t.isMovie,
         voteAverage = t.voteAverage,
+        backdropUrl = t.backdropUrl,
     )
 
     private var topTenLoadedAt = 0L
@@ -299,6 +304,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             Screen.TraktLink -> startTraktLink()
             Screen.Ang -> loadAng()
             Screen.Watchlist -> refreshMine()
+            Screen.SystemSetup -> refreshSystem()
             else -> Unit
         }
     }
@@ -334,6 +340,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun onResume() {
         inForeground = true
+        profileOnResume()
         refreshApps()
         refreshWatching() // one quick local query: what you just watched shows up right away
         checkForUpdates()
@@ -351,9 +358,13 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         deferredJob = viewModelScope.launch {
             delay(if (deferredAt == 0L) 1_500 else 4_000)
             refreshTopTen()
+            refreshWeather()
             if (stale) {
                 deferredAt = System.currentTimeMillis()
                 refreshMine()
+                syncRatings()
+            } else if (System.currentTimeMillis() - syncedAt > 2 * 60_000L) {
+                // Light: picks up what you sent from your phone, or rated on the other TV.
                 syncRatings()
             }
             warmAng()
@@ -414,6 +425,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     /** MyTV went to the background: a good moment to update without interrupting anything. */
     fun onStop() {
         inForeground = false
+        profileOnStop()
         // Scores aren't needed while you're in another app; picked up again on the next Home press.
         liveJob?.cancel()
         installSilentlyIfReady()
@@ -422,7 +434,9 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private var inForeground = false
 
     private fun installSilentlyIfReady() {
-        if (inForeground || !updater.canInstallSilently()) return
+        // Only while the TV is off (screen off), never in the middle of watching something.
+        val screenOn = context.getSystemService(android.os.PowerManager::class.java)?.isInteractive ?: true
+        if (inForeground || screenOn || !updater.canInstallSilently()) return
         updater.pendingApk()?.let(updater::install)
     }
 
@@ -647,7 +661,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    private var syncedAt = 0L
+
     private fun syncRatings() {
+        syncedAt = System.currentTimeMillis()
         if (!com.mytv.launcher.sync.CloudSync.isConfigured) {
             viewModelScope.launch { importHistory() }
             return
@@ -732,6 +749,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 watchingNow = ratings.filter { r -> r.rating == com.mytv.launcher.ang.Rating.WATCHING }
                     .sortedByDescending { r -> r.date }.map { r -> r.toItem().copy(date = r.date) },
                 rated = ratings.filter { r -> r.title.isNotBlank() },
+                tonight = com.mytv.launcher.mine.Tonight.row(inputs.followed, java.time.LocalDate.now()),
                 loading = loading ?: it.loading,
                 discovering = discovering ?: it.discovering,
             )
@@ -1020,4 +1038,174 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun toast(msg: String) = Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+
+    // ---- Instant start: the Home screen as it last looked ----
+
+    private val snapshot = com.mytv.launcher.snapshot.HomeSnapshot(app.filesDir)
+
+    init {
+        viewModelScope.launch {
+            val (apps, snap, ratings) = withContext(Dispatchers.IO) {
+                Triple(installed.cached(), snapshot.load(), myStore.all())
+            }
+            // Only fills what hasn't loaded for real yet.
+            if (_apps.value.isEmpty() && apps.isNotEmpty()) _apps.value = apps
+            snap?.let { d ->
+                if (_watching.value.items.isEmpty() && d.watching.isNotEmpty()) _watching.update { it.copy(items = d.watching, loading = false) }
+                if (_my.value.loading && _my.value.guide == com.mytv.launcher.mine.MyGuide()) {
+                    _my.update { it.copy(guide = d.guide, ratings = ratings.associate { r -> r.key to r.rating }) }
+                }
+                if (_topTen.value.isEmpty()) _topTen.value = d.topTen
+            }
+            // Keep the saved copy up to date (a few seconds after things settle).
+            kotlinx.coroutines.flow.combine(_watching, _my, _topTen) { w, m, t ->
+                com.mytv.launcher.snapshot.HomeSnapshot.Data(w.items, m.guide, t)
+            }
+                .drop(1)
+                .debounce(5_000)
+                .collect { d ->
+                    if (d.watching.isEmpty() && d.guide == com.mytv.launcher.mine.MyGuide() && d.topTen.isEmpty()) return@collect
+                    withContext(Dispatchers.IO) { runCatching { snapshot.save(d) } }
+                }
+        }
+    }
+
+    // ---- Profiles: you, Ang, guest ----
+
+    private val settings = com.mytv.launcher.system.MyTvSettings(app)
+
+    enum class Profile(val key: String, val label: String) { ME("me", "Me"), ANG("ang", "Ang"), GUEST("guest", "Guest") }
+
+    private val _profile = MutableStateFlow(Profile.entries.firstOrNull { it.key == settings.profile } ?: Profile.ME)
+    val profile = _profile.asStateFlow()
+
+    /** "Who's watching?" shows when the TV comes back after a few hours, or from the profile button. */
+    private val _pickProfile = MutableStateFlow(false)
+    val pickProfile = _pickProfile.asStateFlow()
+    private var lastAway = 0L
+
+    fun openProfilePicker() { _pickProfile.value = true }
+    fun closeProfilePicker() { _pickProfile.value = false }
+
+    fun chooseProfile(p: Profile) {
+        settings.profile = p.key
+        _profile.value = p
+        _pickProfile.value = false
+        if (p == Profile.ANG) loadAng()
+        goHome()
+    }
+
+    /** Called from onResume / onStop to decide when to ask "Who's watching?". */
+    private fun profileOnResume() {
+        if (lastAway > 0 && System.currentTimeMillis() - lastAway > 3 * 3600_000L) _pickProfile.value = true
+        lastAway = 0
+        if (_profile.value == Profile.ANG && _ang.value.guide == com.mytv.launcher.ang.AngGuide()) loadAng()
+    }
+
+    private fun profileOnStop() {
+        lastAway = System.currentTimeMillis()
+    }
+
+    // ---- System: home screen, screensaver, alerts, sleep timer, updates ----
+
+    private val homeSetup = com.mytv.launcher.system.HomeSetup(app)
+
+    data class SystemState(
+        val isHome: Boolean,
+        val myScreensaver: Boolean,
+        val kickoffAlerts: Boolean,
+        val scoreAlerts: Boolean,
+        val channel: String,
+        val sleepAt: Long,
+        val sleepAfterEpisode: Boolean,
+        val busy: Boolean = false,
+        val message: String = "",
+    )
+
+    private fun systemNow(busy: Boolean = false, message: String = _system.value.message) = SystemState(
+        isHome = homeSetup.isOn,
+        myScreensaver = homeSetup.usesMyTvScreensaver,
+        kickoffAlerts = settings.kickoffAlerts,
+        scoreAlerts = settings.scoreAlerts,
+        channel = settings.updateChannel,
+        sleepAt = settings.sleepAt,
+        sleepAfterEpisode = settings.sleepAfterEpisode,
+        busy = busy,
+        message = message,
+    )
+
+    private val _system = MutableStateFlow(
+        SystemState(false, false, true, true, "stable", 0L, false),
+    )
+    val system = _system.asStateFlow()
+
+    fun refreshSystem() { _system.value = systemNow() }
+
+    private fun runSetup(waiting: String, action: suspend () -> com.mytv.launcher.system.HomeSetup.Result) {
+        if (_system.value.busy) return
+        _system.value = systemNow(busy = true, message = waiting)
+        viewModelScope.launch {
+            val r = action()
+            val msg = when (r) {
+                is com.mytv.launcher.system.HomeSetup.Result.Done -> r.message
+                is com.mytv.launcher.system.HomeSetup.Result.NoAccess -> r.message
+            }
+            _system.value = systemNow(busy = false, message = msg)
+        }
+    }
+
+    fun makeHome() = runSetup("Setting up… if the TV asks \"Allow USB debugging?\", tick Always allow and choose OK.") { homeSetup.takeOver() }
+    fun undoHome() = runSetup("Turning Google TV back on…") { homeSetup.undo() }
+    fun setMyScreensaver(on: Boolean) = runSetup("Changing the screensaver…") { homeSetup.setMyTvScreensaver(on) }
+
+    fun setKickoffAlerts(on: Boolean) { settings.kickoffAlerts = on; refreshSystem() }
+    fun setScoreAlerts(on: Boolean) { settings.scoreAlerts = on; refreshSystem() }
+    fun setUpdateChannel(channel: String) { settings.updateChannel = channel; refreshSystem() }
+
+    /** Sleep timer: [minutes] from now, -1 = at the end of this episode, 0 = off. */
+    fun setSleepTimer(minutes: Int) {
+        settings.sleepAfterEpisode = minutes == -1
+        settings.sleepAt = if (minutes > 0) System.currentTimeMillis() + minutes * 60_000L else 0L
+        refreshSystem()
+        toast(
+            when {
+                minutes > 0 -> "The TV will turn off in $minutes minutes"
+                minutes == -1 -> "The TV will turn off when this episode ends"
+                else -> "Sleep timer off"
+            },
+        )
+    }
+
+    // ---- Weather (top bar, screensaver) ----
+
+    private val _weather = MutableStateFlow<com.mytv.launcher.weather.Weather.Now?>(null)
+    val weather = _weather.asStateFlow()
+
+    private fun refreshWeather() {
+        viewModelScope.launch { com.mytv.launcher.weather.Weather.now()?.let { _weather.value = it } }
+    }
+
+    // ---- Send to TV (a page on your phone that adds to your lists through the sync) ----
+
+    /** The page's address, with this household's sync details after the # (never sent to any server but yours). */
+    val sendToTvUrl: String? by lazy {
+        if (BuildConfig.SUPABASE_URL.isBlank() || BuildConfig.SYNC_HOUSEHOLD.isBlank()) return@lazy null
+        val (owner, repo) = BuildConfig.UPDATE_REPO.split('/').let { it.getOrElse(0) { "" } to it.getOrElse(1) { "" } }
+        val cfg = org.json.JSONObject()
+            .put("u", BuildConfig.SUPABASE_URL.trim().trimEnd('/').removeSuffix("/rest/v1").trimEnd('/'))
+            .put("k", BuildConfig.SUPABASE_KEY)
+            .put("h", BuildConfig.SYNC_HOUSEHOLD)
+            .put("t", BuildConfig.TMDB_API_KEY)
+        val enc = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(cfg.toString().toByteArray())
+        "https://${owner.lowercase()}.github.io/$repo/send.html#$enc"
+    }
+
+    /** Remote shortcut from a kickoff alert: open that team's game. */
+    fun watchTeam(key: String) {
+        val team = Teams.byKey(key) ?: return
+        viewModelScope.launch {
+            _allApps.first { it.isNotEmpty() } // need the apps to know which one shows the game
+            onTeamPressed(team)
+        }
+    }
 }

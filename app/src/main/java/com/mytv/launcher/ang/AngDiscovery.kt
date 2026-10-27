@@ -12,7 +12,14 @@ data class FollowedShow(
     val latestSeason: Pair<Int, LocalDate>?,
     /** Next season once announced: number + premiere date (null = renewed, date not set yet). */
     val nextSeason: Pair<Int, LocalDate?>?,
+    /** The latest episode that has aired, and the next one scheduled (for "New episode tonight"). */
+    val lastEpisode: Episode? = null,
+    val nextEpisode: Episode? = null,
 )
+
+data class Episode(val season: Int, val number: Int, val date: LocalDate, val name: String) {
+    val code: String get() = "S$season E$number"
+}
 
 /**
  * TMDB queries and parsers behind Ang's TV. Everything is English, from the
@@ -194,6 +201,8 @@ object AngDiscovery {
                 voteAverage = o.optDouble("vote_average", 0.0),
                 genres = genres,
                 overview = o.optString("overview"),
+                backdropUrl = o.optString("backdrop_path").takeIf { it.isNotBlank() && it != "null" }
+                    ?.let { "https://image.tmdb.org/t/p/w780$it" },
             )
         }
 
@@ -241,9 +250,17 @@ object AngDiscovery {
             date = null,
             badge = null,
             tmdbId = o.optLong("id"),
+            overview = o.optString("overview"),
+            backdropUrl = o.optString("backdrop_path").takeIf { it.isNotBlank() && it != "null" }
+                ?.let { "https://image.tmdb.org/t/p/w780$it" },
         )
         val next: Pair<Int, LocalDate?>? = nextFromSeasons ?: nextFromEpisode ?: nextTba?.let { it.first to null }
-        return FollowedShow(item, latest, next)
+        fun episode(key: String) = o.optJSONObject(key)?.let { ep ->
+            runCatching { LocalDate.parse(ep.optString("air_date")) }.getOrNull()?.let { d ->
+                Episode(ep.optInt("season_number"), ep.optInt("episode_number"), d, ep.optString("name"))
+            }
+        }
+        return FollowedShow(item, latest, next, episode("last_episode_to_air"), episode("next_episode_to_air"))
     }
 
     private fun JSONArray.objects(): List<JSONObject> = (0 until length()).mapNotNull { optJSONObject(it) }

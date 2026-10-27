@@ -206,6 +206,35 @@ The repo needs to be **public**, since the TV downloads updates without signing 
 
 Every build must be signed with the same key, because Android only accepts an update signed with the same key as the installed app. The key is kept out of the code, in a repository secret named `SIGNING_KEYSTORE_BASE64` (repo **Settings → Secrets and variables → Actions**). Until that secret exists, builds still run but no release is published. That way you can't install a build that would later refuse to update.
 
+## Make MyTV your only home screen
+
+**MyTV settings** (the ▶ tile in the Settings row at the bottom of Home) → **Make MyTV my home screen**. MyTV uses the TV's own debugging connection (Settings → System → Developer options → **USB debugging** must be on) to:
+- switch off Google TV's home screen (`com.google.android.apps.tv.launcherx`) and a few unused extras (`HomeSetup.BLOAT`), so power-on and the Home button go to MyTV;
+- set MyTV as the home app;
+- turn on watch tracking and allow game pop-ups over other apps.
+
+The first time, the TV asks **Allow USB debugging?**: tick *Always allow* and choose OK. Nothing is uninstalled. **Undo everything** in the same screen turns each of those back on and gives Home back to Google TV.
+
+## Screensaver
+
+Google's Ambient mode (Google Photos) stays the default. **MyTV settings → Screensaver → MyTV** switches to MyTV's: pictures of what you're watching and your picks, the time, weather and the next Arsenal / Lakers game or live score. Switching back restores Google's exactly as it was.
+
+## Game alerts, sleep timer
+
+Pop-ups over any app 10 minutes before a game (OK opens it), plus goals and final scores (turn scores off for spoiler-free). They run in the watch-tracking service. **Sleep timer** (Settings row): 30 / 60 / 90 minutes or the end of the current episode, then the TV goes to sleep.
+
+## Profiles
+
+👤 in the top-left: **Me**, **Ang** (her TV becomes Home, with her apps on top) or **Guest** (apps and teams only). MyTV asks "Who's watching?" when the TV comes back after 3+ hours.
+
+## Send to TV
+
+A page for your phone ([docs/send.html](docs/send.html)) that searches TMDB and adds a show or movie to your lists or Ang's, through the same Supabase sync. Turn on GitHub Pages once (repo **Settings → Pages → Deploy from a branch →** this branch, `/docs`), then scan the QR code in **MyTV settings**. The QR code carries the sync details after the `#`, so they never sit on GitHub.
+
+## Update channels
+
+Every push builds a **test** build (release `latest`, a pre-release). TVs follow **stable** (release `stable`) unless switched to test builds in MyTV settings. To ship a build to the TVs: **Actions → Release to TVs → Run workflow**. Updates install while the TV is off.
+
 ## Customising
 
 - **Colours:** [`ui/Theme.kt`](app/src/main/java/com/mytv/launcher/ui/Theme.kt) (`Palette.Background` is the gradient).

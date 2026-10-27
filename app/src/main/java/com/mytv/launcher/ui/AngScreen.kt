@@ -76,6 +76,10 @@ fun AngScreen(
     onShow: (AngItem) -> Unit,
     onRate: (AngItem, Rating?) -> Unit,
     onResume: (WatchItem) -> Unit,
+    /** When her TV is the home screen (Ang's profile): her apps on top, and a way to switch profile. */
+    apps: List<com.mytv.launcher.apps.TvApp>? = null,
+    onApp: (com.mytv.launcher.apps.TvApp) -> Unit = {},
+    onSwitchProfile: (() -> Unit)? = null,
 ) {
     val first = remember { FocusRequester() }
     val guide = state.guide
@@ -123,8 +127,37 @@ fun AngScreen(
                         modifier = Modifier.align(Alignment.Center).padding(horizontal = 16.dp),
                     )
                 }
+                onSwitchProfile?.let { switch ->
+                    Spacer(Modifier.width(12.dp))
+                    FocusCard(onClick = switch, container = AngPalette.DeepTeal, corner = 18.dp, focusedScale = 1.06f, modifier = Modifier.height(36.dp)) {
+                        Text(
+                            "👤 Switch",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier.align(Alignment.Center).padding(horizontal = 16.dp),
+                        )
+                    }
+                }
             }
             Spacer(Modifier.height(20.dp))
+            if (!apps.isNullOrEmpty()) {
+                androidx.compose.foundation.lazy.LazyRow(
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 48.dp, vertical = 8.dp),
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(16.dp),
+                ) {
+                    items(apps.size, key = { apps[it].packageName }) { i ->
+                        val app = apps[i]
+                        FocusCard(onClick = { onApp(app) }, container = AngPalette.DeepTeal, modifier = Modifier.size(150.dp, 84.dp)) {
+                            val art = app.banner ?: app.icon
+                            if (art != null) androidx.compose.foundation.Image(art, app.label, Modifier.fillMaxSize(),
+                                contentScale = if (app.banner != null) androidx.compose.ui.layout.ContentScale.Crop else androidx.compose.ui.layout.ContentScale.Inside)
+                            else Text(app.label, color = Color.White, fontSize = 13.sp, modifier = Modifier.align(Alignment.Center))
+                        }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+            }
 
             if (!state.loading && !state.discovering && continueWatching.isEmpty() && all.isEmpty()) {
                 Text(
@@ -143,6 +176,7 @@ fun AngScreen(
             ContinueShelf(continueWatching, onResume, ::firstFocus) { wi ->
                 state.watchingNow.firstOrNull { MANUAL_PREFIX + it.key == wi.key }?.let { menuFor = it }
             }
+            Shelf("Tonight", state.tonight, onShow, ::firstFocus, onLongClick = hold) { it.badge }
             Shelf("Watch later", state.watchLater, onShow, ::firstFocus, onLongClick = hold) { null }
             Shelf("Watch now", guide.watchNow, onShow, ::firstFocus, onLongClick = hold) { it.badge }
             Shelf("Easy Watch", guide.easyWatch, onShow, ::firstFocus, onLongClick = hold) { it.badge }

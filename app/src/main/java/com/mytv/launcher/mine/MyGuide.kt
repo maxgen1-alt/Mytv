@@ -23,6 +23,8 @@ data class MyGuide(
     val newShows: List<AngItem> = emptyList(),
     /** Recommended older shows (2000 on, newer ones first). */
     val missed: List<AngItem> = emptyList(),
+    /** Shows you follow with a new episode out today ("Tonight" row). */
+    val tonight: List<AngItem> = emptyList(),
     /** Recommended movies released in the last year. */
     val newMovies: List<AngItem> = emptyList(),
     /** Recommended older movies (2000 on, newer ones first). */
@@ -127,8 +129,11 @@ object MyGuideBuilder {
             .take(15)
             .map { it.copy(detail = listOfNotNull("New show", it.service).joinToString(" · ")) }
 
+        // "New episode Thursday" on the shows you're watching.
+        val labels = followed.associate { it.item.key to Tonight.label(it, today) }
         return MyGuide(
-            watching = watching,
+            tonight = Tonight.row(followed, today),
+            watching = watching.map { w -> labels[w.key]?.let { w.copy(badge = it) } ?: w },
             watchLater = watchLater,
             watched = watched,
             forYou = forYou,

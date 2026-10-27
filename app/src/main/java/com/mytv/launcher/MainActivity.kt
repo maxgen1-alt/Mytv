@@ -43,6 +43,8 @@ class MainActivity : ComponentActivity() {
             requestWatchNext()
         }
 
+        handleWatchTeam(intent)
+
         setContent {
             val gameDay by vm.gameDay.collectAsStateWithLifecycle()
             MyTvTheme(gameDay) {
@@ -51,9 +53,28 @@ class MainActivity : ComponentActivity() {
                 // We're the home screen: Back from Home does nothing, Back elsewhere returns Home.
                 BackHandler(enabled = true) { if (screen != Screen.Home) vm.back() }
 
+                val profile by vm.profile.collectAsStateWithLifecycle()
+                val pickProfile by vm.pickProfile.collectAsStateWithLifecycle()
+
                 when (val s = screen) {
-                    Screen.Home -> {
+                    Screen.Home -> if (profile == LauncherViewModel.Profile.ANG) {
+                        // Ang's profile: her TV is the home screen.
+                        val ang by vm.ang.collectAsStateWithLifecycle()
                         val apps by vm.apps.collectAsStateWithLifecycle()
+                        AngScreen(
+                            ang,
+                            onOpenList = vm::openAngList,
+                            continueWatching = vm.withWatchingNow(ang.continueWatching, ang.watchingNow),
+                            onShow = vm::openAngShow,
+                            onRate = vm::angRate,
+                            onResume = vm::playWatchItem,
+                            apps = apps,
+                            onApp = vm::launchApp,
+                            onSwitchProfile = vm::openProfilePicker,
+                        )
+                    } else {
+                        val apps by vm.apps.collectAsStateWithLifecycle()
+                        val weather by vm.weather.collectAsStateWithLifecycle()
                         val teams by vm.teams.collectAsStateWithLifecycle()
                         val watching by vm.watching.collectAsStateWithLifecycle()
                         val busy by vm.busy.collectAsStateWithLifecycle()
@@ -105,6 +126,13 @@ class MainActivity : ComponentActivity() {
                             onAllowWatchNext = ::requestWatchNext,
                             onTurnOnTracking = vm::allowTracking,
                             onLinkTrakt = { vm.navigate(Screen.TraktLink) },
+                            tonight = my.guide.tonight,
+                            guest = profile == LauncherViewModel.Profile.GUEST,
+                            profileLabel = profile.label,
+                            onProfile = vm::openProfilePicker,
+                            weather = weather,
+                            onSystemSettings = { vm.navigate(Screen.SystemSetup) },
+                            onSleepTimer = vm::setSleepTimer,
                         )
                     }
                     is Screen.TeamPage -> {
@@ -157,6 +185,24 @@ class MainActivity : ComponentActivity() {
                         val link by vm.link.collectAsStateWithLifecycle()
                         TraktLinkScreen(link, linked = link == LinkState.Linked && vm.isTraktLinked, onUnlink = vm::unlinkTrakt)
                     }
+                    Screen.SystemSetup -> {
+                        val system by vm.system.collectAsStateWithLifecycle()
+                        com.mytv.launcher.ui.SystemScreen(
+                            system,
+                            sendToTvUrl = vm.sendToTvUrl,
+                            onMakeHome = vm::makeHome,
+                            onUndo = vm::undoHome,
+                            onScreensaver = vm::setMyScreensaver,
+                            onKickoff = vm::setKickoffAlerts,
+                            onScores = vm::setScoreAlerts,
+                            onChannel = vm::setUpdateChannel,
+                            onBackToApps = { vm.navigate(Screen.EditApps) },
+                        )
+                    }
+                }
+
+                if (pickProfile) {
+                    com.mytv.launcher.ui.ProfilePicker(profile, onPick = vm::chooseProfile, onDismiss = vm::closeProfilePicker)
                 }
             }
         }
@@ -177,9 +223,20 @@ class MainActivity : ComponentActivity() {
         vm.onStop()
     }
 
-    /** Pressing Home while we're already in front: jump back to the main screen. */
+    /** Pressing Home while we're already in front: jump back to the main screen. A kick-off alert's OK opens the game. */
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         vm.goHome()
+        handleWatchTeam(intent)
+    }
+
+    private fun handleWatchTeam(intent: android.content.Intent?) {
+        val team = intent?.getStringExtra(EXTRA_WATCH_TEAM) ?: return
+        intent.removeExtra(EXTRA_WATCH_TEAM)
+        vm.watchTeam(team)
+    }
+
+    companion object {
+        const val EXTRA_WATCH_TEAM = "com.mytv.launcher.WATCH_TEAM"
     }
 }

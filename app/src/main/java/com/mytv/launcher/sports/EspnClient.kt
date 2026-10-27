@@ -51,6 +51,15 @@ class EspnClient(
             .take(limit)
     }
 
+    /** Today's game from the live scoreboards (any state, with the score), if the team plays today. */
+    suspend fun todaysGame(team: Team): Game? = coroutineScope {
+        team.leagues.map { league ->
+            async { fetchGames("$base/${league.sport}/${league.code}/scoreboard", league) }
+        }.awaitAll().flatten().filter { it.involves(team.espnId) }
+            .sortedBy { it.startMillis }
+            .let { games -> games.firstOrNull { it.state == GameState.LIVE } ?: games.firstOrNull { it.state == GameState.UPCOMING } ?: games.lastOrNull() }
+    }
+
     /** Every game on the team's schedules (results and fixtures), soonest first. */
     suspend fun schedule(team: Team): List<Game> = coroutineScope {
         team.leagues.flatMap { league ->

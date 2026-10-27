@@ -33,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -100,8 +101,26 @@ fun HomeScreen(
     onAllowWatchNext: () -> Unit,
     onTurnOnTracking: () -> Unit,
     onLinkTrakt: () -> Unit,
+    tonight: List<AngItem> = emptyList(),
+    /** Guest profile: just the apps and the teams, nothing personal. */
+    guest: Boolean = false,
+    profileLabel: String = "",
+    onProfile: () -> Unit = {},
+    weather: com.mytv.launcher.weather.Weather.Now? = null,
+    onSystemSettings: () -> Unit = {},
+    onSleepTimer: (Int) -> Unit = {},
 ) {
     val firstApp = remember { FocusRequester() }
+    // The title in focus, for the preview at the top (after a short pause, so moving fast stays smooth).
+    var focusedTitle by remember { mutableStateOf<AngItem?>(null) }
+    var preview by remember { mutableStateOf<AngItem?>(null) }
+    LaunchedEffect(focusedTitle) {
+        if (focusedTitle == null) { preview = null; return@LaunchedEffect }
+        delay(350)
+        preview = focusedTitle
+    }
+    var sleepMenu by remember { mutableStateOf(false) }
+    val onTitleFocus: (AngItem?) -> Unit = { focusedTitle = it }
     var menuFor by remember { mutableStateOf<TvApp?>(null) }
     var rateFor by remember { mutableStateOf<AngItem?>(null) }
     val scroll = rememberScrollState()
@@ -111,13 +130,14 @@ fun HomeScreen(
     }
 
     Box(Modifier.fillMaxSize().background(LocalBackground.current)) {
+        PreviewBackdrop(preview)
         Column(
             Modifier
                 .fillMaxSize()
                 .verticalScroll(scroll)
                 .padding(vertical = 28.dp),
         ) {
-            TopBar(updateReady, onUpdate)
+            TopBar(updateReady, onUpdate, profileLabel, onProfile, weather)
             Spacer(Modifier.height(18.dp))
 
             // Row 1: streaming apps
@@ -155,8 +175,16 @@ fun HomeScreen(
                         onLongClick = { onTeamPage(team) },
                     )
                 }
-                item(key = "__ang") { AngTile(onAng) }
-                item(key = "__watchlist") { WatchlistTile(onWatchlist) }
+                if (!guest) {
+                    item(key = "__ang") { AngTile(onAng) }
+                    item(key = "__watchlist") { WatchlistTile(onWatchlist) }
+                }
+            }
+
+            if (guest) {
+                Spacer(Modifier.height(18.dp))
+                QuickSettingsRow(onSystemSettings) { sleepMenu = true }
+                return@Column
             }
 
             Spacer(Modifier.height(18.dp))
@@ -164,15 +192,21 @@ fun HomeScreen(
             // Row 3: continue watching
             SectionTitle("Continue Watching", Modifier.padding(start = 48.dp))
             ContinueWatchingRow(watching, onWatchItem, onAllowWatchNext, onTurnOnTracking, onLinkTrakt) { wi -> watchingNow[wi.key]?.let { rateFor = it } }
-            TitleRow("Watch Later", watchLater, onOpenTitle) { rateFor = it }
+            TitleRow("Tonight", tonight, onOpenTitle, onTitleFocus) { rateFor = it }
+            TitleRow("Watch Later", watchLater, onOpenTitle, onTitleFocus) { rateFor = it }
 
             // What's hot across the apps you have, then picks from what you watched and rated.
-            TitleRow("Popular on Your Apps", popular, onOpenTitle) { rateFor = it }
-            TitleRow("New Shows for You", newForYou, onOpenTitle) { rateFor = it }
-            TitleRow("Shows You Might Have Missed", missedForYou, onOpenTitle) { rateFor = it }
-            TitleRow("New Movies for You", newMovies, onOpenTitle) { rateFor = it }
-            TitleRow("Movies You Might Have Missed", missedMovies, onOpenTitle) { rateFor = it }
+            TitleRow("Popular on Your Apps", popular, onOpenTitle, onTitleFocus) { rateFor = it }
+            TitleRow("New Shows for You", newForYou, onOpenTitle, onTitleFocus) { rateFor = it }
+            TitleRow("Shows You Might Have Missed", missedForYou, onOpenTitle, onTitleFocus) { rateFor = it }
+            TitleRow("New Movies for You", newMovies, onOpenTitle, onTitleFocus) { rateFor = it }
+            TitleRow("Movies You Might Have Missed", missedMovies, onOpenTitle, onTitleFocus) { rateFor = it }
+
+            Spacer(Modifier.height(18.dp))
+            QuickSettingsRow(onSystemSettings) { sleepMenu = true }
         }
+
+        PreviewInfo(preview, Modifier.align(Alignment.TopEnd))
 
         if (busy != null) BusyOverlay(busy)
     }
@@ -190,6 +224,10 @@ fun HomeScreen(
         )
     }
 
+    if (sleepMenu) {
+        SleepMenu(onPick = { m -> onSleepTimer(m); sleepMenu = false }, onDismiss = { sleepMenu = false })
+    }
+
     menuFor?.let { app ->
         AppMenu(
             app = app,
@@ -201,7 +239,13 @@ fun HomeScreen(
 }
 
 @Composable
-private fun TopBar(updateReady: Boolean, onUpdate: () -> Unit) {
+private fun TopBar(
+    updateReady: Boolean,
+    onUpdate: () -> Unit,
+    profileLabel: String,
+    onProfile: () -> Unit,
+    weather: com.mytv.launcher.weather.Weather.Now?,
+) {
     val context = LocalContext.current
     var now by remember { mutableStateOf(Date()) }
     LaunchedEffect(Unit) {
@@ -214,6 +258,22 @@ private fun TopBar(updateReady: Boolean, onUpdate: () -> Unit) {
         Modifier.fillMaxWidth().padding(horizontal = 48.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (profileLabel.isNotBlank()) {
+            FocusCard(onClick = onProfile, corner = 18.dp, container = Palette.CardSoft, focusedScale = 1.06f, modifier = Modifier.height(36.dp)) {
+                Text(
+                    "👤 $profileLabel",
+                    color = Palette.Ink,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.align(Alignment.Center).padding(horizontal = 14.dp),
+                )
+            }
+            Spacer(Modifier.width(16.dp))
+        }
+        weather?.let { w ->
+            Text("${w.icon} ${w.tempText}", color = Palette.Ink, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+            if (w.place.isNotBlank()) Text("  ${w.place}", color = Palette.InkSoft, fontSize = 14.sp)
+        }
         Spacer(Modifier.weight(1f))
         if (updateReady) {
             FocusCard(onClick = onUpdate, corner = 18.dp, container = Palette.Ink, focusedScale = 1.06f, modifier = Modifier.height(36.dp)) {
@@ -467,7 +527,13 @@ private fun TraktTile(onClick: () -> Unit) {
 
 /** A row of posters you can open (click) or rate (hold select). Hidden when empty. */
 @Composable
-private fun TitleRow(title: String, items: List<AngItem>, onOpen: (AngItem) -> Unit, onHold: (AngItem) -> Unit) {
+private fun TitleRow(
+    title: String,
+    items: List<AngItem>,
+    onOpen: (AngItem) -> Unit,
+    onFocus: (AngItem?) -> Unit = {},
+    onHold: (AngItem) -> Unit,
+) {
     if (items.isEmpty()) return
     Spacer(Modifier.height(12.dp))
     SectionTitle(title, Modifier.padding(start = 48.dp))
@@ -478,7 +544,7 @@ private fun TitleRow(title: String, items: List<AngItem>, onOpen: (AngItem) -> U
         verticalAlignment = Alignment.Top,
     ) {
         items(items, key = { it.key }) { item ->
-            TitleCard(item, onClick = { onOpen(item) }, onLongClick = { onHold(item) })
+            TitleCard(item, onClick = { onOpen(item) }, onLongClick = { onHold(item) }, onFocused = { f -> onFocus(if (f) item else null) })
         }
     }
 }
@@ -489,6 +555,108 @@ private fun WatchlistTile(onClick: () -> Unit) {
         Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
             Text("★", fontSize = 26.sp, color = Color(0xFFF5C518))
             Text("My Watchlist", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Palette.Ink)
+        }
+    }
+}
+
+/**
+ * Apple TV-style preview: the focused title's wide picture fills the
+ * background (dimmed, so the rows stay readable).
+ */
+@Composable
+private fun PreviewBackdrop(item: AngItem?) {
+    val url = item?.backdropUrl ?: return
+    AsyncImage(
+        model = coil.request.ImageRequest.Builder(LocalContext.current).data(url).size(960, 540).crossfade(300).build(),
+        contentDescription = null,
+        modifier = Modifier.fillMaxSize().alpha(0.32f),
+        contentScale = ContentScale.Crop,
+    )
+}
+
+/** Title, IMDb rating, what's new and a short description of the focused title, top-right. */
+@Composable
+private fun PreviewInfo(item: AngItem?, modifier: Modifier) {
+    item ?: return
+    Column(
+        modifier
+            .padding(top = 20.dp, end = 40.dp)
+            .width(460.dp)
+            .background(Color(0xCC0B0B0E), RoundedCornerShape(16.dp))
+            .padding(horizontal = 18.dp, vertical = 14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(item.title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Palette.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+            Spacer(Modifier.width(10.dp))
+            RatingTag(item.ratingRef, true, Modifier, always = true)
+        }
+        val extra = listOfNotNull(item.badge, item.detail.takeIf { it.isNotBlank() }).joinToString(" · ")
+        if (extra.isNotBlank()) Text(extra, fontSize = 13.sp, color = Color(0xFFF5C518), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (item.overview.isNotBlank()) {
+            Spacer(Modifier.height(6.dp))
+            Text(item.overview, fontSize = 13.sp, color = Palette.InkSoft, maxLines = 3, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+/** Wi-Fi, Bluetooth, sleep timer, the TV's settings and MyTV's: what you'd otherwise open Google's settings for. */
+@Composable
+private fun QuickSettingsRow(onSystemSettings: () -> Unit, onSleep: () -> Unit) {
+    val context = LocalContext.current
+    fun open(action: String) {
+        runCatching { context.startActivity(Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+            .onFailure { runCatching { context.startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } }
+    }
+    SectionTitle("Settings", Modifier.padding(start = 48.dp))
+    LazyRow(
+        contentPadding = RowPadding,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier.height(110.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        item(key = "wifi") { QuickTile("📶", "Wi-Fi") { open(Settings.ACTION_WIFI_SETTINGS) } }
+        item(key = "bt") { QuickTile("🎧", "Bluetooth") { open(Settings.ACTION_BLUETOOTH_SETTINGS) } }
+        item(key = "sleep") { QuickTile("🌙", "Sleep timer", onSleep) }
+        item(key = "display") { QuickTile("🔊", "Display & sound") { open("android.settings.DISPLAY_SETTINGS") } }
+        item(key = "all") { QuickTile("⚙", "All settings") { open(Settings.ACTION_SETTINGS) } }
+        item(key = "mytv") { QuickTile("▶", "MyTV settings", onSystemSettings) }
+    }
+}
+
+@Composable
+private fun QuickTile(icon: String, label: String, onClick: () -> Unit) {
+    FocusCard(onClick = onClick, container = Palette.CardSoft, modifier = Modifier.size(150.dp, 84.dp)) {
+        Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(icon, fontSize = 22.sp)
+            Text(label, fontSize = 13.sp, color = Palette.Ink, maxLines = 1)
+        }
+    }
+}
+
+@Composable
+private fun SleepMenu(onPick: (Int) -> Unit, onDismiss: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            Modifier.background(Palette.Card, RoundedCornerShape(20.dp)).padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text("Sleep timer", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Palette.Ink)
+            Spacer(Modifier.height(4.dp))
+            Text("The TV turns off when it's done", fontSize = 13.sp, color = Palette.InkSoft)
+            Spacer(Modifier.height(16.dp))
+            val first = remember { FocusRequester() }
+            LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
+            listOf(30 to "30 minutes", 60 to "1 hour", 90 to "1½ hours", -1 to "End of this episode", 0 to "Off").forEachIndexed { i, (m, label) ->
+                FocusCard(
+                    onClick = { onPick(m) },
+                    container = Palette.CardSoft,
+                    focusedScale = 1.04f,
+                    modifier = Modifier.padding(vertical = 4.dp).size(280.dp, 44.dp).ignoreHeldSelect()
+                        .let { if (i == 0) it.focusRequester(first) else it },
+                ) {
+                    Text(label, fontSize = 15.sp, color = Palette.Ink, modifier = Modifier.align(Alignment.Center))
+                }
+            }
         }
     }
 }

@@ -34,6 +34,17 @@ class PlayingListener : NotificationListenerService() {
     private val worker = HandlerThread("mytv-playing").apply { start() }
     private val main = Handler(worker.looper)
     private val labels = HashMap<String, String>()
+    private val settings by lazy { com.mytv.launcher.system.MyTvSettings(this) }
+    private val alerts by lazy { com.mytv.launcher.alerts.GameAlerts(this, scope) }
+    /** Sleep timer "end of this episode": the episode playing when it was set. */
+    private var sleepEpisode: String? = null
+
+    /** Screen off (TV off / standby): the quiet moment to install a downloaded update. */
+    private val screenOff = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: android.content.Context, intent: android.content.Intent) {
+            scope.launch { runCatching { com.mytv.launcher.update.Updater(this@PlayingListener).installIfQuiet() } }
+        }
+    }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val watched = HashMap<String, Pair<MediaController, MediaController.Callback>>()
     private val lookedUp = HashSet<String>()
@@ -45,6 +56,8 @@ class PlayingListener : NotificationListenerService() {
     private val tick = object : Runnable {
         override fun run() {
             watched.values.forEach { (c, _) -> if (c.playbackState?.state == PlaybackState.STATE_PLAYING) note(c, flush = false) }
+            val at = settings.sleepAt
+            if (at > 0 && System.currentTimeMillis() >= at) sleepNow()
             main.postDelayed(this, 30_000)
         }
     }
@@ -61,6 +74,34 @@ class PlayingListener : NotificationListenerService() {
             main.removeCallbacks(tick)
             main.postDelayed(tick, 30_000)
         }
+        alerts.start()
+        runCatching {
+            androidx.core.content.ContextCompat.registerReceiver(
+                this, screenOff, android.content.IntentFilter(android.content.Intent.ACTION_SCREEN_OFF),
+                androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
+            )
+        }
+    }
+
+    /** Sleep timer done: the TV goes to sleep (and turns off over HDMI-CEC). */
+    private fun sleepNow() {
+        settings.sleepAt = 0L
+        settings.sleepAfterEpisode = false
+        sleepEpisode = null
+        scope.launch { com.mytv.launcher.system.HomeSetup(this@PlayingListener).sleep() }
+    }
+
+    /** "End of this episode": sleep once the episode playing now stops or the next one starts. */
+    private fun checkEpisodeEnd(c: MediaController) {
+        if (!settings.sleepAfterEpisode) { sleepEpisode = null; return }
+        val md = c.metadata ?: return
+        val title = (md.getString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE) ?: md.getString(MediaMetadata.METADATA_KEY_TITLE)).orEmpty()
+        val state = c.playbackState?.state
+        val current = sleepEpisode
+        when {
+            current == null -> if (state == PlaybackState.STATE_PLAYING) sleepEpisode = c.packageName + "|" + title
+            current != c.packageName + "|" + title || state == PlaybackState.STATE_STOPPED || state == PlaybackState.STATE_NONE -> sleepNow()
+        }
     }
 
     override fun onListenerDisconnected() {
@@ -75,6 +116,8 @@ class PlayingListener : NotificationListenerService() {
     }
 
     private fun stop() {
+        alerts.stop()
+        runCatching { unregisterReceiver(screenOff) }
         main.removeCallbacks(tick)
         runCatching { sessions?.removeOnActiveSessionsChangedListener(onSessions) }
         watched.values.forEach { (c, cb) -> note(c, flush = true); c.unregisterCallback(cb) }
@@ -99,6 +142,7 @@ class PlayingListener : NotificationListenerService() {
     }
 
     private fun note(c: MediaController, flush: Boolean) {
+        runCatching { checkEpisodeEnd(c) }
         val md = c.metadata ?: return
         val state = c.playbackState ?: return
         val playing = state.state == PlaybackState.STATE_PLAYING

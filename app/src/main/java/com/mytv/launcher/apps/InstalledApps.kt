@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.drawable.toBitmap
 
@@ -55,7 +56,41 @@ class InstalledApps(private val context: Context) {
             }
         // Drop banners of uninstalled apps and old versions of updated ones.
         rendered.keys.retainAll(current)
+        runCatching { saveIndex(found, current) }
         return sort(found)
+    }
+
+    // ---- Saved copy, so the apps row is there instantly after a reboot ----
+
+    private val artDir = java.io.File(context.filesDir, "appart")
+    private val indexFile = java.io.File(context.filesDir, "apps-index.json")
+
+    /** The apps row as it was last time (labels + pictures from disk). Fast: no package manager. */
+    fun cached(): List<TvApp> = runCatching {
+        val a = org.json.JSONArray(indexFile.readText())
+        val apps = (0 until a.length()).map { a.getJSONObject(it) }.mapNotNull { o ->
+            val bmp = android.graphics.BitmapFactory.decodeFile(java.io.File(artDir, o.getString("f")).path)?.asImageBitmap()
+            val isBanner = o.optBoolean("b")
+            TvApp(o.getString("p"), o.getString("l"), banner = if (isBanner) bmp else null, icon = if (isBanner) null else bmp)
+        }
+        visible(sort(apps))
+    }.getOrDefault(emptyList())
+
+    private fun saveIndex(apps: List<TvApp>, keys: Set<String>) {
+        artDir.mkdirs()
+        val byPkg = keys.associateBy { it.substringBefore('@') }
+        val a = org.json.JSONArray()
+        for (app in apps) {
+            val file = (byPkg[app.packageName] ?: app.packageName).replace(Regex("[^A-Za-z0-9._@-]"), "_") + ".png"
+            val art = app.banner ?: app.icon
+            val f = java.io.File(artDir, file)
+            if (art != null && !f.exists()) f.outputStream().use { art.asAndroidBitmap().compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+            a.put(org.json.JSONObject().put("p", app.packageName).put("l", app.label).put("f", file).put("b", app.banner != null))
+        }
+        indexFile.writeText(a.toString())
+        // Pictures of old versions / removed apps.
+        val wanted = apps.map { (byPkg[it.packageName] ?: it.packageName).replace(Regex("[^A-Za-z0-9._@-]"), "_") + ".png" }.toSet()
+        artDir.listFiles()?.filter { it.name !in wanted }?.forEach { it.delete() }
     }
 
     private fun Drawable.render(w: Int, h: Int): ImageBitmap? =

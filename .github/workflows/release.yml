@@ -1,0 +1,33 @@
+name: Release to TVs
+
+# Actions tab → "Release to TVs" → Run workflow: copies the newest test build
+# to the stable channel. TVs on stable download it and install it the next
+# time the TV is off.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-apk
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Promote the latest test build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release download latest --pattern MyTV.apk --pattern version.json
+          cat version.json
+          name=$(sed -n 's/.*"versionName": *"\([^"]*\)".*/\1/p' version.json)
+          if gh release view stable >/dev/null 2>&1; then
+            gh release upload stable MyTV.apk version.json --clobber
+            gh release edit stable --notes "Stable release ($name)." --latest
+          else
+            gh release create stable MyTV.apk version.json --title "MyTV" --notes "Stable release ($name)." --latest
+          fi
