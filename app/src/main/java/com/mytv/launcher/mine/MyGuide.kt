@@ -19,6 +19,10 @@ data class MyGuide(
     val watched: List<AngItem> = emptyList(),
     /** Recommended from what you watched / liked, varied across genres. */
     val forYou: List<AngItem> = emptyList(),
+    /** Recommended shows that premiered in the last year. */
+    val newShows: List<AngItem> = emptyList(),
+    /** Recommended older shows (2000 on, newer ones first). */
+    val missed: List<AngItem> = emptyList(),
     /** New seasons, out now, of shows you watched or liked. */
     val newSeasons: List<AngItem> = emptyList(),
     /** Next seasons of your shows + upcoming new shows in your genres, soonest first. */
@@ -45,6 +49,8 @@ object MyGuideBuilder {
         followed: List<FollowedShow>,
         upcoming: List<AngItem>,
         isAvailable: (String?) -> Boolean,
+        /** Shows from the last year in your genres, on your apps (for New Shows for You). */
+        fresh: List<AngItem> = emptyList(),
     ): MyGuide {
         val rated = ratings.map { it.key }.toSet()
         val ratedTitles = ratings.filter { it.title.isNotBlank() }.map { AngGuideBuilder.normalize(it.title) }.toSet()
@@ -66,6 +72,22 @@ object MyGuideBuilder {
         val ranked = recs.filter(::unseen).distinctBy { it.key }
             .sortedByDescending { TasteRanker.score(it, likedRecs, dislikedRecs) }
         val forYou = varied(ranked, perGenre = 4).take(30)
+
+        val yearAgo = today.minusYears(1)
+        fun isNew(i: AngItem) = i.date != null && !i.date.isBefore(yearAgo) && !i.date.isAfter(today)
+        val newShows = varied(
+            (recs + fresh).filter { !it.isMovie && isNew(it) && unseen(it) }.distinctBy { it.key }
+                // Recommended by your shows first, then the best of the year in your genres.
+                .sortedByDescending { TasteRanker.score(it, likedRecs, dislikedRecs) * (1.0 + (likedRecs[it.key] ?: 0)) },
+            perGenre = 5,
+        ).take(30)
+        // Older shows, 2000 on: newer ones get a lift (2024 counts about twice 2000).
+        fun recency(i: AngItem) = 1.0 + 0.04 * ((i.date?.year ?: 2000) - 2000).coerceAtLeast(0)
+        val missed = varied(
+            ranked.filter { !it.isMovie && it.date != null && it.date.year >= 2000 && it.date.isBefore(yearAgo) }
+                .sortedByDescending { TasteRanker.score(it, likedRecs, dislikedRecs) * recency(it) },
+            perGenre = 4,
+        ).take(30)
 
         val newSeasons = mutableListOf<AngItem>()
         val comingSoon = mutableListOf<AngItem>()
@@ -93,6 +115,8 @@ object MyGuideBuilder {
             watchLater = watchLater,
             watched = watched,
             forYou = forYou,
+            newShows = newShows,
+            missed = missed,
             newSeasons = newSeasons.sortedByDescending { it.date }.distinctBy { it.key },
             comingSoon = comingSoon.sortedWith(compareBy(nullsLast()) { it.date }).distinctBy { it.key },
         )

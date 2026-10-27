@@ -88,7 +88,7 @@ data class MyState(
 ) {
     /** "Shows for you" shows on the home screen once you've rated a few titles. */
     val showForYouRow: Boolean
-        get() = guide.forYou.isNotEmpty() &&
+        get() = (guide.newShows.isNotEmpty() || guide.missed.isNotEmpty()) &&
             ratings.values.count { it != com.mytv.launcher.ang.Rating.WONT_WATCH } >= com.mytv.launcher.mine.MyGuide.MIN_RATINGS_FOR_HOME_ROW
 }
 
@@ -181,8 +181,13 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             com.mytv.launcher.ang.Rating.WATCHED,
             com.mytv.launcher.ang.Rating.WANT,
         ),
-        maxCandidates = 40,
+        // A big pool: "more like this" from your 45 best-rated shows, up to 150 candidates.
+        maxCandidates = 150,
+        maxSeeds = 45,
     )
+    private val history = com.mytv.launcher.mine.HistoryImport(app)
+    private var myFresh: Pair<String, List<AngItem>>? = null
+    private var myFreshAt = 0L
     private val _my = MutableStateFlow(MyState())
     val my = _my.asStateFlow()
     private var myJob: Job? = null
@@ -530,9 +535,11 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             val sig = genres.joinToString() + providers.joinToString { it.name }
             val upcoming = myUpcoming?.takeIf { it.first == sig && System.currentTimeMillis() - myUpcomingAt < 6 * 3600_000L }?.second
                 ?: myTaste.upcomingInGenres(providers, genres).also { myUpcoming = sig to it; myUpcomingAt = System.currentTimeMillis() }
+            val fresh = myFresh?.takeIf { it.first == sig && System.currentTimeMillis() - myFreshAt < 6 * 3600_000L }?.second
+                ?: myTaste.newInGenres(providers, genres).also { myFresh = sig to it; myFreshAt = System.currentTimeMillis() }
             val guide = withContext(Dispatchers.Default) {
                 com.mytv.launcher.mine.MyGuideBuilder.build(
-                    java.time.LocalDate.now(), ratings, recs.items, recs.liked, recs.disliked, followed, upcoming, ::isAvailable,
+                    java.time.LocalDate.now(), ratings, recs.items, recs.liked, recs.disliked, followed, upcoming, ::isAvailable, fresh,
                 )
             }
             _my.value = MyState(guide, ratings.associate { it.key to it.rating }, loading = false)
@@ -543,12 +550,30 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val _syncStatus = MutableStateFlow(com.mytv.launcher.sync.CloudSync.status)
     val syncStatus = _syncStatus.asStateFlow()
 
+    /**
+     * Once per TV: your watched shows (IMDb + Serialized) into Watched. Runs
+     * after the first sync so it skips anything already rated on another TV.
+     */
+    private suspend fun importHistory() {
+        if (history.isDone) return
+        val added = history.run(myStore)
+        if (added > 0) {
+            toast("Added $added shows you've watched to My Watchlist")
+            com.mytv.launcher.sync.CloudSync.push(myStore, "me")
+            refreshMine()
+        }
+    }
+
     private fun syncRatings() {
-        if (!com.mytv.launcher.sync.CloudSync.isConfigured) return
+        if (!com.mytv.launcher.sync.CloudSync.isConfigured) {
+            viewModelScope.launch { importHistory() }
+            return
+        }
         viewModelScope.launch {
             com.mytv.launcher.sync.CloudSync.begin()
             if (com.mytv.launcher.sync.CloudSync.syncLayout(installed)) refreshApps()
             if (com.mytv.launcher.sync.CloudSync.sync(myStore, "me")) refreshMine()
+            importHistory()
             if (com.mytv.launcher.sync.CloudSync.sync(taste, "ang") && _screen.value == Screen.Ang) publishAng()
             _syncStatus.value = com.mytv.launcher.sync.CloudSync.status
         }

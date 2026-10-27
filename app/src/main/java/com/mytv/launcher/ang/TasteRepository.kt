@@ -24,7 +24,14 @@ class TasteRepository(
     private val positive: Map<Rating, Int>,
     private val follow: Set<Rating>,
     private val maxCandidates: Int = 30,
+    /** How many of the best-rated titles seed "more like this". */
+    private val maxSeeds: Int = 20,
 ) {
+    /** How much a title counts towards "more like this": your 1-10 score if you gave one, else its rating's weight. */
+    private fun weight(r: Rated): Int = r.stars?.let { s -> (s - 5).coerceAtLeast(0) } ?: (positive[r.rating] ?: 0)
+
+    private fun isDisliked(r: Rated) = r.rating == Rating.DISLIKE || (r.stars ?: 10) <= 5
+
     // Shared with every profile: TMDB ids and where things stream don't depend on who's asking.
     private val prefs = context.getSharedPreferences("tmdb_cache", Context.MODE_PRIVATE)
 
@@ -43,8 +50,11 @@ class TasteRepository(
      * they're on your apps) and for what she disliked (pushed down).
      */
     suspend fun recommendations(ratings: List<Rated>, providers: List<WhereToWatch.Provider>): Recs = coroutineScope {
-        val liked = ratings.filter { it.rating in positive }.sortedByDescending { it.date }.take(20)
-        val disliked = ratings.filter { it.rating == Rating.DISLIKE }.sortedByDescending { it.date }.take(10)
+        // Best-rated first (your 10s and 9s), newest first among equals.
+        val liked = ratings.filter { it.rating in positive && !isDisliked(it) && weight(it) > 0 }
+            .sortedWith(compareByDescending<Rated> { weight(it) }.thenByDescending { it.date })
+            .take(maxSeeds)
+        val disliked = ratings.filter(::isDisliked).sortedByDescending { it.date }.take(10)
         val sig = (liked + disliked).joinToString { it.key + it.rating } + "|" + providers.joinToString { it.name }
         recsMem?.takeIf { it.first == sig && System.currentTimeMillis() - recsAt < 6 * 3600_000L }
             ?.let { return@coroutineScope it.second }
@@ -57,7 +67,7 @@ class TasteRepository(
                 AngDiscovery.parseResults(it, r.isMovie, null, today, strict)
             }.orEmpty()
         }
-        val likedLists = liked.map { r -> async { recsFor(r).map { it to (positive[r.rating] ?: 1) } } }.awaitAll()
+        val likedLists = liked.map { r -> async { recsFor(r).map { it to weight(r) } } }.awaitAll()
         val dislikedLists = disliked.map { async { recsFor(it) } }.awaitAll()
         // Weighted: e.g. for you a like counts double an "already watched".
         val likedCounts = likedLists.flatten().groupBy({ it.first.key }, { it.second }).mapValues { it.value.sum() }
@@ -123,6 +133,21 @@ class TasteRepository(
                 withContext(Dispatchers.Default) { runCatching { AngDiscovery.parseFollowed(json, r, today) }.getOrNull() }
             }
         }.awaitAll().filterNotNull()
+    }
+
+    /** Shows that premiered in the last year in [genres], streaming on your apps (several pages). */
+    suspend fun newInGenres(providers: List<WhereToWatch.Provider>, genres: List<Int>): List<AngItem> = coroutineScope {
+        if (!Tmdb.isConfigured || providers.isEmpty()) return@coroutineScope emptyList()
+        val today = LocalDate.now()
+        providers.map { p ->
+            async {
+                (1..2).flatMap { page ->
+                    Tmdb.get(AngDiscovery.newInGenresPath(today, p.tmdbIds, genres, page)) {
+                        AngDiscovery.parseResults(it, false, p.name, today, strict)
+                    }.orEmpty()
+                }
+            }
+        }.awaitAll().flatten().sortedByDescending { it.popularity }.distinctBy { it.key }
     }
 
     /** Upcoming new shows in [genres] from the streaming services you have (next 6 months). */

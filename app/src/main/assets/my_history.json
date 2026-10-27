@@ -1,0 +1,986 @@
+[
+{
+"title": "The Last of Us",
+"year": 2023,
+"imdb": "tt3581920",
+"stars": 8,
+"rated": "2025-11-15"
+},
+{
+"title": "Peaky Blinders",
+"year": 2013,
+"imdb": "tt2442560",
+"stars": 10,
+"rated": "2023-03-14"
+},
+{
+"title": "The Watchful Eye",
+"year": 2023,
+"imdb": "tt15422758",
+"stars": 6,
+"rated": "2023-03-14"
+},
+{
+"title": "Sons of Anarchy",
+"year": 2008,
+"imdb": "tt1124373",
+"stars": 9,
+"rated": "2023-03-26"
+},
+{
+"title": "Breaking Bad",
+"year": 2008,
+"imdb": "tt0903747",
+"stars": 9,
+"rated": "2023-03-14"
+},
+{
+"title": "Game of Thrones",
+"year": 2011,
+"imdb": "tt0944947",
+"stars": 10,
+"rated": "2023-03-14"
+},
+{
+"title": "House of the Dragon",
+"year": 2022,
+"imdb": "tt11198330",
+"stars": 7,
+"rated": "2026-02-17"
+},
+{
+"title": "Top Boy",
+"year": 2011,
+"imdb": "tt1830379",
+"stars": 8,
+"rated": "2023-03-14"
+},
+{
+"title": "Chernobyl",
+"year": 2019,
+"imdb": "tt7366338",
+"stars": 9,
+"rated": "2023-03-14"
+},
+{
+"title": "You Don't Know Me",
+"year": 2021,
+"imdb": "tt12005828",
+"stars": 7,
+"rated": "2023-03-14"
+},
+{
+"title": "House",
+"year": 2004,
+"imdb": "tt0412142",
+"stars": 9,
+"rated": "2023-03-14"
+},
+{
+"title": "The Boys",
+"year": 2019,
+"imdb": "tt1190634",
+"stars": 9,
+"rated": "2023-03-14"
+},
+{
+"title": "Hunters",
+"year": 2020,
+"imdb": "tt7456722",
+"stars": 8,
+"rated": "2023-03-14"
+},
+{
+"title": "Stranger Things",
+"year": 2016,
+"imdb": "tt4574334",
+"stars": 8,
+"rated": "2023-03-14"
+},
+{
+"title": "Money Heist",
+"year": 2017,
+"imdb": "tt6468322",
+"stars": 9,
+"rated": "2023-03-14"
+},
+{
+"title": "Luther",
+"year": 2010,
+"imdb": "tt1474684",
+"stars": 9,
+"rated": "2023-03-14"
+},
+{
+"title": "Sherlock",
+"year": 2010,
+"imdb": "tt1475582",
+"stars": 9,
+"rated": "2023-03-14"
+},
+{
+"title": "Dexter",
+"year": 2006,
+"imdb": "tt0773262",
+"stars": 8,
+"rated": "2023-03-14"
+},
+{
+"title": "Outer Banks",
+"year": 2020,
+"imdb": "tt10293938",
+"stars": 7,
+"rated": "2023-03-14"
+},
+{
+"title": "Squid Game",
+"year": 2021,
+"imdb": "tt10919420",
+"stars": 8,
+"rated": "2023-03-14"
+},
+{
+"title": "Lupin",
+"year": 2021,
+"imdb": "tt2531336",
+"stars": 7,
+"rated": "2023-03-14"
+},
+{
+"title": "The Queen's Gambit",
+"year": 2020,
+"imdb": "tt10048342",
+"stars": 8,
+"rated": "2023-03-14"
+},
+{
+"title": "The Punisher",
+"year": 2017,
+"imdb": "tt5675620",
+"stars": 8,
+"rated": "2023-03-14"
+},
+{
+"title": "You",
+"year": 2018,
+"imdb": "tt7335184",
+"stars": 8,
+"rated": "2023-03-16"
+},
+{
+"title": "Poker Face",
+"year": 2023,
+"imdb": "tt14269590",
+"stars": 7,
+"rated": "2023-03-14"
+},
+{
+"title": "The White Lotus",
+"year": 2021,
+"imdb": "tt13406094",
+"stars": 7,
+"rated": "2023-03-14"
+},
+{
+"title": "Ted Lasso",
+"year": 2020,
+"imdb": "tt10986410",
+"stars": 9,
+"rated": "2023-03-14"
+},
+{
+"title": "Wednesday",
+"year": 2022,
+"imdb": "tt13443470",
+"stars": 8,
+"rated": "2023-03-14"
+},
+{
+"title": "Suits",
+"year": 2011,
+"imdb": "tt1632701",
+"stars": 8,
+"rated": "2023-03-14"
+},
+{
+"title": "Friends",
+"year": 1994,
+"imdb": "tt0108778",
+"stars": 9,
+"rated": "2023-03-14"
+},
+{
+"title": "Lost",
+"year": 2004,
+"imdb": "tt0411008",
+"stars": 8,
+"rated": "2023-03-14"
+},
+{
+"title": "How I Met Your Mother",
+"year": 2005,
+"imdb": "tt0460649",
+"stars": 7,
+"rated": "2023-03-14"
+},
+{
+"title": "The End of the F***ing World",
+"year": 2017,
+"imdb": "tt6257970",
+"stars": 7,
+"rated": "2023-03-14"
+},
+{
+"title": "Prison Break",
+"year": 2005,
+"imdb": "tt0455275",
+"stars": 7,
+"rated": "2023-03-14"
+},
+{
+"title": "Seinfeld",
+"year": 1989,
+"imdb": "tt0098904",
+"stars": 9,
+"rated": "2023-03-14"
+},
+{
+"title": "The Office",
+"year": 2005,
+"imdb": "tt0386676",
+"stars": 9,
+"rated": "2023-03-14"
+},
+{
+"title": "Arrested Development",
+"year": 2003,
+"imdb": "tt0367279",
+"stars": 6,
+"rated": "2023-03-14"
+},
+{
+"title": "Scrubs",
+"year": 2001,
+"imdb": "tt0285403",
+"stars": 7,
+"rated": "2023-03-14"
+},
+{
+"title": "Only Murders in the Building",
+"year": 2021,
+"imdb": "tt11691774",
+"stars": 9,
+"rated": "2024-09-30"
+},
+{
+"title": "The Bear",
+"year": 2022,
+"imdb": "tt14452776",
+"stars": 9,
+"rated": "2023-03-14"
+},
+{
+"title": "Schitt's Creek",
+"year": 2015,
+"imdb": "tt3526078",
+"stars": 8,
+"rated": "2023-03-14"
+},
+{
+"title": "Silicon Valley",
+"year": 2014,
+"imdb": "tt2575988",
+"stars": 8,
+"rated": "2023-03-14"
+},
+{
+"title": "Entourage",
+"year": 2004,
+"imdb": "tt0387199",
+"stars": 8,
+"rated": "2023-03-14"
+},
+{
+"title": "Sneaky Pete",
+"year": 2015,
+"imdb": "tt5011816",
+"stars": 8,
+"rated": "2023-03-14"
+},
+{
+"title": "Criminal: UK",
+"year": 2019,
+"imdb": "tt9348692",
+"stars": 8,
+"rated": "2023-03-14"
+},
+{
+"title": "Severance",
+"year": 2022,
+"imdb": "tt11280740",
+"stars": 8,
+"rated": "2023-03-14"
+},
+{
+"title": "Black Bird",
+"year": 2022,
+"imdb": "tt4301160",
+"stars": 8,
+"rated": "2023-05-04"
+},
+{
+"title": "The Marvelous Mrs. Maisel",
+"year": 2017,
+"imdb": "tt5788792",
+"stars": 9,
+"rated": "2023-05-30"
+},
+{
+"title": "Daredevil",
+"year": 2015,
+"imdb": "tt3322312",
+"stars": 8,
+"rated": "2023-03-14"
+},
+{
+"title": "Winning Time: The Rise of the Lakers Dynasty",
+"year": 2022,
+"imdb": "tt10244600",
+"stars": 9,
+"rated": "2023-03-14"
+},
+{
+"title": "Watchmen",
+"year": 2019,
+"imdb": "tt7049682",
+"stars": 7,
+"rated": "2023-03-14"
+},
+{
+"title": "Extraordinary",
+"year": 2023,
+"imdb": "tt14531842",
+"stars": 7,
+"rated": "2023-03-14"
+},
+{
+"title": "The Resort",
+"year": 2022,
+"imdb": "tt11897688",
+"stars": 7,
+"rated": "2023-03-14"
+},
+{
+"title": "The Flight Attendant",
+"year": 2020,
+"imdb": "tt7569576",
+"stars": 7,
+"rated": "2023-03-14"
+},
+{
+"title": "The Undoing",
+"year": 2020,
+"imdb": "tt8134470",
+"stars": 7,
+"rated": "2023-03-14"
+},
+{
+"title": "The Night Manager",
+"year": 2016,
+"imdb": "tt1399664",
+"stars": 8,
+"rated": "2023-03-14"
+},
+{
+"title": "Californication",
+"year": 2007,
+"imdb": "tt0904208",
+"stars": 8,
+"rated": "2023-03-14"
+},
+{
+"title": "White Collar",
+"year": 2009,
+"imdb": "tt1358522",
+"stars": 8,
+"rated": "2023-03-14"
+},
+{
+"title": "The Inbetweeners",
+"year": 2008,
+"imdb": "tt1220617",
+"stars": 8,
+"rated": "2023-03-14"
+},
+{
+"title": "The League",
+"year": 2009,
+"imdb": "tt1480684",
+"stars": 8,
+"rated": "2023-03-14"
+},
+{
+"title": "Blue Mountain State",
+"year": 2010,
+"imdb": "tt1344204",
+"stars": 7,
+"rated": "2023-03-14"
+},
+{
+"title": "It's Always Sunny in Philadelphia",
+"year": 2005,
+"imdb": "tt0472954",
+"stars": 8,
+"rated": "2023-05-04"
+},
+{
+"title": "Eastbound & Down",
+"year": 2009,
+"imdb": "tt0866442",
+"stars": 8,
+"rated": "2023-03-15"
+},
+{
+"title": "Master of None",
+"year": 2015,
+"imdb": "tt4635276",
+"stars": 7,
+"rated": "2023-03-15"
+},
+{
+"title": "Loki",
+"year": 2021,
+"imdb": "tt9140554",
+"stars": 8,
+"rated": "2023-03-16"
+},
+{
+"title": "Ms. Marvel",
+"year": 2022,
+"imdb": "tt10857164",
+"stars": 5,
+"rated": "2023-03-16"
+},
+{
+"title": "Hawkeye",
+"year": 2021,
+"imdb": "tt10160804",
+"stars": 7,
+"rated": "2023-03-16"
+},
+{
+"title": "The Falcon and the Winter Soldier",
+"year": 2021,
+"imdb": "tt9208876",
+"stars": 7,
+"rated": "2023-03-16"
+},
+{
+"title": "WandaVision",
+"year": 2021,
+"imdb": "tt9140560",
+"stars": 7,
+"rated": "2023-03-16"
+},
+{
+"title": "Jessica Jones",
+"year": 2015,
+"imdb": "tt2357547",
+"stars": 7,
+"rated": "2023-03-16"
+},
+{
+"title": "Luke Cage",
+"year": 2016,
+"imdb": "tt3322314",
+"stars": 6,
+"rated": "2023-03-16"
+},
+{
+"title": "Iron Fist",
+"year": 2017,
+"imdb": "tt3322310",
+"stars": 5,
+"rated": "2023-03-16"
+},
+{
+"title": "The Defenders",
+"year": 2017,
+"imdb": "tt4230076",
+"stars": 7,
+"rated": "2023-03-16"
+},
+{
+"title": "Moon Knight",
+"year": 2022,
+"imdb": "tt10234724",
+"stars": 7,
+"rated": "2023-03-16"
+},
+{
+"title": "Peacemaker",
+"year": 2022,
+"imdb": "tt13146488",
+"stars": 8,
+"rated": "2023-03-16"
+},
+{
+"title": "Search Party",
+"year": 2016,
+"imdb": "tt5460226",
+"stars": 7,
+"rated": "2023-03-16"
+},
+{
+"title": "After Life",
+"year": 2019,
+"imdb": "tt8398600",
+"stars": 8,
+"rated": "2023-03-16"
+},
+{
+"title": "Shameless",
+"year": 2011,
+"imdb": "tt1586680",
+"stars": 8,
+"rated": "2023-05-04"
+},
+{
+"title": "Westworld",
+"year": 2016,
+"imdb": "tt0475784",
+"stars": 8,
+"rated": "2023-03-26"
+},
+{
+"title": "Louie",
+"year": 2010,
+"imdb": "tt1492966",
+"stars": 8,
+"rated": "2023-03-16"
+},
+{
+"title": "The Sinner",
+"year": 2017,
+"imdb": "tt6048596",
+"stars": 7,
+"rated": "2023-03-18"
+},
+{
+"title": "The Stranger",
+"year": 2020,
+"imdb": "tt9698480",
+"stars": 7,
+"rated": "2023-03-18"
+},
+{
+"title": "Safe",
+"year": 2018,
+"imdb": "tt7902072",
+"stars": 7,
+"rated": "2023-03-18"
+},
+{
+"title": "Stay Close",
+"year": 2021,
+"imdb": "tt2201227",
+"stars": 7,
+"rated": "2023-03-18"
+},
+{
+"title": "Shrinking",
+"year": 2023,
+"imdb": "tt15677150",
+"stars": 8,
+"rated": "2023-03-26"
+},
+{
+"title": "Maid",
+"year": 2021,
+"imdb": "tt11337908",
+"stars": 8,
+"rated": "2023-03-26"
+},
+{
+"title": "The Night Agent",
+"year": 2023,
+"imdb": "tt13918776",
+"stars": 7,
+"rated": "2023-04-03"
+},
+{
+"title": "Waco",
+"year": 2018,
+"imdb": "tt6040674",
+"stars": 8,
+"rated": "2023-04-03"
+},
+{
+"title": "The Watcher",
+"year": 2022,
+"imdb": "tt14852808",
+"stars": 6,
+"rated": "2023-04-03"
+},
+{
+"title": "Gossip Girl",
+"year": 2007,
+"imdb": "tt0397442",
+"stars": 7,
+"rated": "2023-04-03"
+},
+{
+"title": "Class of '07",
+"year": 2023,
+"imdb": "tt14671640",
+"stars": 7,
+"rated": "2023-04-08"
+},
+{
+"title": "Beef",
+"year": 2023,
+"imdb": "tt14403178",
+"stars": 8,
+"rated": "2023-04-24"
+},
+{
+"title": "Clickbait",
+"year": 2021,
+"imdb": "tt10888878",
+"stars": 7,
+"rated": "2023-04-12"
+},
+{
+"title": "Dave",
+"year": 2020,
+"imdb": "tt8531222",
+"stars": 8,
+"rated": "2023-04-17"
+},
+{
+"title": "Mythic Quest",
+"year": 2020,
+"imdb": "tt8879940",
+"stars": 7,
+"rated": "2023-04-17"
+},
+{
+"title": "The Leftovers",
+"year": 2014,
+"imdb": "tt2699128",
+"stars": 8,
+"rated": "2023-05-04"
+},
+{
+"title": "Succession",
+"year": 2018,
+"imdb": "tt7660850",
+"stars": 9,
+"rated": "2023-04-24"
+},
+{
+"title": "Swagger",
+"year": 2021,
+"imdb": "tt8005626",
+"stars": 8,
+"rated": "2023-06-10"
+},
+{
+"title": "Based on a True Story",
+"year": 2023,
+"imdb": "tt19500224",
+"stars": 7,
+"rated": "2023-07-12"
+},
+{
+"title": "Hijack",
+"year": 2023,
+"imdb": "tt19854762",
+"stars": 8,
+"rated": "2023-08-09"
+},
+{
+"title": "Bodies",
+"year": 2023,
+"imdb": "tt18347622",
+"stars": 8,
+"rated": "2023-11-14"
+},
+{
+"title": "One Day",
+"year": 2024,
+"imdb": "tt16283804",
+"stars": 8,
+"rated": "2024-02-14"
+},
+{
+"title": "Slow Horses",
+"year": 2022,
+"imdb": "tt5875444",
+"stars": 8,
+"rated": "2024-02-14"
+},
+{
+"title": "The Gentlemen",
+"year": 2024,
+"imdb": "tt13210838",
+"stars": 8,
+"rated": "2024-06-02"
+},
+{
+"title": "Baby Reindeer",
+"year": 2024,
+"imdb": "tt13649112",
+"stars": 8,
+"rated": "2024-06-02"
+},
+{
+"title": "Snowfall",
+"year": 2017,
+"imdb": "tt6439752",
+"stars": 9,
+"rated": "2025-11-15"
+},
+{
+"title": "The Sopranos",
+"year": 1999,
+"fav": true
+},
+{
+"title": "Hannibal",
+"year": 2013,
+"fav": true
+},
+{
+"title": "The Penguin",
+"year": 2024,
+"fav": true
+},
+{
+"title": "The Pitt",
+"year": 2025,
+"fav": true
+},
+{
+"title": "Curb Your Enthusiasm",
+"year": 2000,
+"fav": true
+},
+{
+"title": "The Americans",
+"year": 2013,
+"fav": true
+},
+{
+"title": "Person of Interest",
+"year": 2011,
+"fav": true
+},
+{
+"title": "The Last Dance",
+"year": 2020,
+"fav": true
+},
+{
+"title": "The Traitors",
+"year": 2022,
+"country": "GB"
+},
+{
+"title": "The Studio",
+"year": 2025
+},
+{
+"title": "A Knight of the Seven Kingdoms",
+"year": 2026
+},
+{
+"title": "Invincible",
+"year": 2021
+},
+{
+"title": "New Girl",
+"year": 2011
+},
+{
+"title": "Jury Duty",
+"year": 2023
+},
+{
+"title": "The Celebrity Traitors",
+"year": 2025
+},
+{
+"title": "Boy Meets World",
+"year": 1993
+},
+{
+"title": "Heated Rivalry",
+"year": 2025
+},
+{
+"title": "Industry",
+"year": 2020
+},
+{
+"title": "Monk",
+"year": 2002
+},
+{
+"title": "Brigada",
+"year": 2002
+},
+{
+"title": "Summer House",
+"year": 2017
+},
+{
+"title": "Pluribus",
+"year": 2025
+},
+{
+"title": "Fallout",
+"year": 2024
+},
+{
+"title": "The Walking Dead",
+"year": 2010
+},
+{
+"title": "Chuck",
+"year": 2007
+},
+{
+"title": "The Traitors",
+"year": 2023,
+"country": "US"
+},
+{
+"title": "The Crowded Room",
+"year": 2023
+},
+{
+"title": "Mr. & Mrs. Smith",
+"year": 2024
+},
+{
+"title": "School Spirits",
+"year": 2023
+},
+{
+"title": "Daredevil: Born Again",
+"year": 2025
+},
+{
+"title": "Below Deck Mediterranean",
+"year": 2016
+},
+{
+"title": "Homeland",
+"year": 2011
+},
+{
+"title": "Grey's Anatomy",
+"year": 2005
+},
+{
+"title": "Top Boy",
+"year": 2019
+},
+{
+"title": "Dance Moms",
+"year": 2011
+},
+{
+"title": "All Her Fault",
+"year": 2025
+},
+{
+"title": "The Lincoln Lawyer",
+"year": 2022
+},
+{
+"title": "The Wilds",
+"year": 2020
+},
+{
+"title": "Dark Matter",
+"year": 2024
+},
+{
+"title": "Russian Doll",
+"year": 2019
+},
+{
+"title": "Tell Me Lies",
+"year": 2022
+},
+{
+"title": "Runaway",
+"year": 2024
+},
+{
+"title": "Kaos",
+"year": 2024
+},
+{
+"title": "Wonder Man",
+"year": 2026
+},
+{
+"title": "Your Friends & Neighbors",
+"year": 2025
+},
+{
+"title": "Nobody Wants This",
+"year": 2024
+},
+{
+"title": "Euphoria",
+"year": 2019
+},
+{
+"title": "The Morning Show",
+"year": 2019
+},
+{
+"title": "Tulsa King",
+"year": 2022
+},
+{
+"title": "His & Hers",
+"year": 2026
+},
+{
+"title": "Behind Her Eyes",
+"year": 2021
+},
+{
+"title": "Numb3rs",
+"year": 2005
+},
+{
+"title": "Arrow",
+"year": 2012
+},
+{
+"title": "Love Island: All Stars",
+"year": 2024
+},
+{
+"title": "The Flash",
+"year": 2014
+},
+{
+"title": "Breakout Kings",
+"year": 2011
+},
+{
+"title": "The Last Thing He Told Me",
+"year": 2023
+},
+{
+"title": "She-Hulk: Attorney at Law",
+"year": 2022
+}
+]

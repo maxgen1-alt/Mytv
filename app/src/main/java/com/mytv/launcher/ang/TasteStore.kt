@@ -44,6 +44,14 @@ class TasteStore(context: Context, name: String = "taste") {
         sync.edit().putLong("at:${item.key}", System.currentTimeMillis()).putBoolean("dirty:${item.key}", true).apply()
     }
 
+    fun has(key: String): Boolean = prefs.contains(key)
+
+    /** Saves a rating as is (imports), queued for syncing like any other. */
+    fun put(r: Rated) {
+        prefs.edit().putString(r.key, encode(r).toString()).apply()
+        sync.edit().putLong("at:${r.key}", System.currentTimeMillis()).putBoolean("dirty:${r.key}", true).apply()
+    }
+
     // ---- Sync support ----
 
     /** A rating as stored (JSON), or null if cleared, plus when it changed. */
@@ -88,6 +96,7 @@ class TasteStore(context: Context, name: String = "taste") {
         .put("key", r.key).put("title", r.title).put("rating", r.rating.name)
         .put("date", r.date.toEpochDay()).put("tmdbId", r.tmdbId ?: -1).put("movie", r.isMovie)
         .put("image", r.imageUrl ?: "").put("service", r.service ?: "")
+        .apply { r.stars?.let { put("stars", it) } }
 
     private fun decode(o: JSONObject) = Rated(
         key = o.getString("key"),
@@ -98,5 +107,6 @@ class TasteStore(context: Context, name: String = "taste") {
         isMovie = o.optBoolean("movie"),
         imageUrl = o.optString("image").ifBlank { null },
         service = o.optString("service").ifBlank { null },
+        stars = o.optInt("stars", 0).takeIf { it in 1..10 },
     )
 }

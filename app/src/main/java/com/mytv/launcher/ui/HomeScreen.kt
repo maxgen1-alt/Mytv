@@ -75,7 +75,8 @@ fun HomeScreen(
     busy: String?,
     updateReady: Boolean,
     popular: List<AngItem>,
-    forYou: List<AngItem>,
+    newForYou: List<AngItem>,
+    missedForYou: List<AngItem>,
     watchLater: List<AngItem>,
     myRatings: Map<String, Rating>,
     /** Continue Watching key → the "Watching now" title it came from. */
@@ -161,9 +162,10 @@ fun HomeScreen(
             ContinueWatchingRow(watching, onWatchItem, onAllowWatchNext, onTurnOnTracking, onLinkTrakt) { wi -> watchingNow[wi.key]?.let { rateFor = it } }
             TitleRow("Watch Later", watchLater, onOpenTitle) { rateFor = it }
 
-            // Row 4: what's hot across the apps you have. Row 5: picked from what you watched.
+            // What's hot across the apps you have, then picks from what you watched and rated.
             TitleRow("Popular on Your Apps", popular, onOpenTitle) { rateFor = it }
-            TitleRow("Shows for You", forYou, onOpenTitle) { rateFor = it }
+            TitleRow("New Shows for You", newForYou, onOpenTitle) { rateFor = it }
+            TitleRow("Shows You Might Have Missed", missedForYou, onOpenTitle) { rateFor = it }
         }
 
         if (busy != null) BusyOverlay(busy)

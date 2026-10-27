@@ -9,7 +9,8 @@ A clean, Apple TV-style launcher on a black-to-graphite gradient:
 | **2. Teams** | **Arsenal** and **Lakers** buttons. When a game is on, the button shows a red **LIVE** badge and the score. Pressing it opens the game in the app that's carrying it. If there's no game, you get a page with upcoming games, recent results and the league table or conference standings. Long-press always opens that page. |
 | **3. Continue Watching** | Shows and movies you're in the middle of in any app, most recent first, with progress bars. Select one to resume it in its app. |
 | **4. Popular on Your Apps** | The Top 10s of your streaming apps (Paramount+ included, through Prime Video), merged into one ranking. Hold select to like, mark watched, dislike, or hide a title. |
-| **5. Shows for You** | Appears once you've rated 3 titles: picks based on what you watched and liked, mixed across genres, shows and movies. |
+| **5. New Shows for You** | Shows from the last year, picked from what you watched and how you rated it (your 9s and 10s count most), on your apps. |
+| **6. Shows You Might Have Missed** | Older picks (2000 on, newer ones first), same taste. |
 
 A clock and a ⚙ settings button sit in the top-right.
 
@@ -162,6 +163,10 @@ When you stop on a show or movie in Ang's TV or the Popular row, a small **IMDb 
 3. Add it as a repository secret named `OMDB_API_KEY`, then re-run **Build APK**.
 
 Until the key is added, the tag shows TMDB's score instead (blue **TMDB 7.6**).
+
+### Your watch history
+
+`app/src/main/assets/my_history.json` is your IMDb list (with your ratings) plus your Serialized history. Each TV imports it once into **My Watchlist → Watched**: 9s and 10s (and Serialized's top 20) as liked, everything else as watched. It never overwrites something already rated. Your scores weight the recommendations: a 10 counts five times a 6, and 5 or lower counts against similar shows.
 
 ## Syncing between TVs (Supabase)
 

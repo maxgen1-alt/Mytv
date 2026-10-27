@@ -30,6 +30,8 @@ data class Rated(
     /** For showing it in a list (e.g. My Watchlist → Watched). */
     val imageUrl: String? = null,
     val service: String? = null,
+    /** Your own 1-10 score (from your IMDb ratings), when known. */
+    val stars: Int? = null,
 ) {
     fun toItem() = AngItem(
         key = key,

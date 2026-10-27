@@ -24,7 +24,31 @@ class MyGuideTest {
         liked: Map<String, Int> = emptyMap(),
         followed: List<FollowedShow> = emptyList(),
         upcoming: List<AngItem> = emptyList(),
-    ) = MyGuideBuilder.build(today, ratings, recs, liked, emptyMap(), followed, upcoming, available)
+        fresh: List<AngItem> = emptyList(),
+    ) = MyGuideBuilder.build(today, ratings, recs, liked, emptyMap(), followed, upcoming, available, fresh)
+
+    @Test
+    fun newShowsAreFromTheLastYearAndMissedFrom2000On() {
+        val g = build(
+            ratings = listOf(Rated("tmdb:tv:50", "Seen", Rating.WATCHED, today)),
+            recs = listOf(
+                item(51, "Brand New", date = today.minusMonths(3)),
+                item(52, "Last Decade", date = LocalDate.of(2019, 5, 1)),
+                item(53, "Too Old", date = LocalDate.of(1995, 1, 1)),
+                item(54, "Not Out Yet", date = today.plusMonths(2)),
+                item(50, "Seen", date = today.minusMonths(1)),
+            ),
+            fresh = listOf(item(55, "Genre Pick", date = today.minusMonths(6)), item(56, "Not On Your Apps", service = "ITVX", date = today.minusMonths(2))),
+        )
+        assertEquals(setOf("Brand New", "Genre Pick"), g.newShows.map { it.title }.toSet())
+        assertEquals(listOf("Last Decade"), g.missed.map { it.title })
+    }
+
+    @Test
+    fun missedPrefersNewerShows() {
+        val g = build(recs = listOf(item(61, "2003 Show", date = LocalDate.of(2003, 1, 1)), item(62, "2022 Show", date = LocalDate.of(2022, 1, 1))))
+        assertEquals(listOf("2022 Show", "2003 Show"), g.missed.map { it.title })
+    }
 
     @Test
     fun watchedTabListsWatchedAndLikedNewestFirst() {
