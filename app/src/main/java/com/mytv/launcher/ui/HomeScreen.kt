@@ -54,6 +54,8 @@ import com.mytv.launcher.ang.AngItem
 import com.mytv.launcher.ang.Rating
 import com.mytv.launcher.apps.TvApp
 import com.mytv.launcher.sports.Game
+import com.mytv.launcher.sports.GameDay
+import com.mytv.launcher.sports.TeamInfo
 import com.mytv.launcher.sports.Team
 import com.mytv.launcher.sports.Teams
 import com.mytv.launcher.topten.TopTenService
@@ -70,7 +72,7 @@ private val TileHeight = 99.dp
 @Composable
 fun HomeScreen(
     apps: List<TvApp>,
-    liveGames: Map<String, Game>,
+    teams: Map<String, TeamInfo>,
     watching: WatchState,
     busy: String?,
     updateReady: Boolean,
@@ -106,7 +108,7 @@ fun HomeScreen(
         if (apps.isNotEmpty()) runCatching { firstApp.requestFocus() }
     }
 
-    Box(Modifier.fillMaxSize().background(Palette.Background)) {
+    Box(Modifier.fillMaxSize().background(LocalBackground.current)) {
         Column(
             Modifier
                 .fillMaxSize()
@@ -146,7 +148,7 @@ fun HomeScreen(
                 items(Teams.all, key = { it.key }) { team ->
                     TeamTile(
                         team = team,
-                        live = liveGames[team.key],
+                        info = teams[team.key],
                         onClick = { onTeam(team) },
                         onLongClick = { onTeamPage(team) },
                     )
@@ -283,14 +285,42 @@ private fun EditTile(onClick: () -> Unit) {
 }
 
 @Composable
-private fun TeamTile(team: Team, live: Game?, onClick: () -> Unit, onLongClick: () -> Unit) {
-    FocusCard(onClick = onClick, onLongClick = onLongClick, modifier = Modifier.size(TileWidth, TileHeight)) {
+private fun TeamTile(team: Team, info: TeamInfo?, onClick: () -> Unit, onLongClick: () -> Unit) {
+    val live = info?.live
+    var focused by remember { mutableStateOf(false) }
+    val pulseColor = if (team.key == Teams.lakers.key) Palette.LakersGold else Palette.ArsenalRed
+    FocusCard(
+        onClick = onClick,
+        onLongClick = onLongClick,
+        modifier = Modifier
+            .size(TileWidth, TileHeight)
+            .onFocusChanged { focused = it.hasFocus }
+            .then(if (live != null) Modifier.livePulse(pulseColor, scale = if (focused) 1.08f else 1f) else Modifier),
+    ) {
         AsyncImage(
             model = team.logoUrl,
             contentDescription = team.name,
-            modifier = Modifier.align(Alignment.Center).size(68.dp),
+            modifier = Modifier.align(Alignment.Center).size(if (focused && live == null && info?.next != null) 52.dp else 68.dp),
             contentScale = ContentScale.Fit,
         )
+        // Hovering shows the next game, so you don't have to open the team page.
+        val next = info?.next
+        if (focused && live == null && next != null) {
+            val them = next.opponentOf(team.espnId)
+            Column(
+                Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Color(0xB3000000)).padding(horizontal = 8.dp, vertical = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    remember(next.startMillis) { GameDay.whenText(next.startMillis, System.currentTimeMillis(), java.time.ZoneId.systemDefault()) },
+                    fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Palette.Ink, maxLines = 1,
+                )
+                Text(
+                    (if (next.isHome(team.espnId)) "vs " else "at ") + them.name,
+                    fontSize = 11.sp, color = Palette.InkSoft, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
         if (live != null) {
             LiveBadge(Modifier.align(Alignment.TopEnd).padding(8.dp))
             val us = if (live.isHome(team.espnId)) live.home else live.away

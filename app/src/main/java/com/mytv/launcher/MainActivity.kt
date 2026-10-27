@@ -43,7 +43,8 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            MyTvTheme {
+            val gameDay by vm.gameDay.collectAsStateWithLifecycle()
+            MyTvTheme(gameDay) {
                 val screen by vm.screen.collectAsStateWithLifecycle()
 
                 // We're the home screen: Back from Home does nothing, Back elsewhere returns Home.
@@ -52,7 +53,7 @@ class MainActivity : ComponentActivity() {
                 when (val s = screen) {
                     Screen.Home -> {
                         val apps by vm.apps.collectAsStateWithLifecycle()
-                        val live by vm.liveGames.collectAsStateWithLifecycle()
+                        val teams by vm.teams.collectAsStateWithLifecycle()
                         val watching by vm.watching.collectAsStateWithLifecycle()
                         val busy by vm.busy.collectAsStateWithLifecycle()
                         val updateReady by vm.updateReady.collectAsStateWithLifecycle()
@@ -62,7 +63,7 @@ class MainActivity : ComponentActivity() {
                             if (my.ratings[item.key] == com.mytv.launcher.ang.Rating.LIKE) item.copy(badge = "♥ Liked") else item
                         HomeScreen(
                             apps = apps,
-                            liveGames = live,
+                            teams = teams,
                             watching = watching.copy(items = vm.withWatchingNow(watching.items, my.guide.watching)),
                             watchingNow = my.guide.watching.associateBy { MANUAL_PREFIX + it.key },
                             busy = busy,

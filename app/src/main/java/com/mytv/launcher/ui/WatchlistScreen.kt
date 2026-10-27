@@ -121,7 +121,7 @@ fun WatchlistScreen(state: MyState, onOpen: (AngItem) -> Unit, onRate: (AngItem,
         Tab.COMING_SOON -> g.comingSoon
     }
 
-    Column(Modifier.fillMaxSize().background(Palette.Background).padding(horizontal = 48.dp, vertical = 28.dp)) {
+    Column(Modifier.fillMaxSize().background(LocalBackground.current).padding(horizontal = 48.dp, vertical = 28.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("My Watchlist", fontSize = 30.sp, fontWeight = FontWeight.Bold, color = Palette.Ink)
             Spacer(Modifier.weight(1f))

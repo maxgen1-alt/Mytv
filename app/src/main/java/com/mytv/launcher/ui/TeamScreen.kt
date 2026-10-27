@@ -60,7 +60,7 @@ fun TeamScreen(
     Row(
         Modifier
             .fillMaxSize()
-            .background(Palette.Background)
+            .background(LocalBackground.current)
             .padding(horizontal = 48.dp, vertical = 32.dp),
         horizontalArrangement = Arrangement.spacedBy(36.dp),
     ) {

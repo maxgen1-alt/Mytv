@@ -38,6 +38,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -254,8 +256,16 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val watching = _watching.asStateFlow()
 
     /** Team key -> the game on right now (drives the LIVE badge on the home screen). */
-    private val _liveGames = MutableStateFlow<Map<String, Game>>(emptyMap())
-    val liveGames = _liveGames.asStateFlow()
+    /** Team key -> the game on now and the next one (for the team buttons). */
+    private val _teams = MutableStateFlow<Map<String, com.mytv.launcher.sports.TeamInfo>>(emptyMap())
+    val teams = _teams.asStateFlow()
+
+    /** Game-day colours for the whole app (Arsenal red, Lakers yellow at home / purple away). */
+    private val _gameDay = MutableStateFlow(com.mytv.launcher.sports.GameDayTheme.NONE)
+    val gameDay = _gameDay.asStateFlow()
+
+    private var schedules: Map<String, List<Game>> = emptyMap()
+    private var schedulesAt = 0L
 
     private val _teamDetail = MutableStateFlow(TeamDetail())
     val teamDetail = _teamDetail.asStateFlow()
@@ -320,13 +330,44 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         liveJob?.cancel()
         liveJob = viewModelScope.launch {
             while (isActive) {
-                val found = Teams.all.map { team -> async { team.key to espn.findLiveGame(team) } }
-                    .mapNotNull { it.await().let { (k, g) -> g?.let { k to it } } }
-                    .toMap()
-                _liveGames.value = found
+                refreshTeams()
                 delay(2 * 60_000L)
             }
         }
+    }
+
+    /**
+     * Scores every 2 minutes; schedules every 10 minutes on a game day, else
+     * every 30. Drives the team buttons and the game-day background.
+     */
+    private suspend fun refreshTeams() = coroutineScope {
+        val now = System.currentTimeMillis()
+        val gameDayNow = _teams.value.values.any { it.today.isNotEmpty() }
+        val live = async {
+            Teams.all.map { team -> async { team.key to espn.findLiveGame(team) } }.awaitAll()
+                .mapNotNull { (k, g) -> g?.let { k to it } }.toMap()
+        }
+        if (now - schedulesAt > (if (gameDayNow) 10 else 30) * 60_000L) {
+            val fetched = Teams.all.map { team -> async { team.key to espn.schedule(team) } }.awaitAll().toMap()
+            // Keep the last good schedule if a fetch failed.
+            schedules = Teams.all.associate { t -> t.key to (fetched[t.key].takeIf { !it.isNullOrEmpty() } ?: schedules[t.key].orEmpty()) }
+            if (fetched.values.any { it.isNotEmpty() }) schedulesAt = now
+        }
+        val found = live.await()
+        val zone = java.time.ZoneId.systemDefault()
+        val info = Teams.all.associate { team ->
+            val onNow = found[team.key]
+            // The live scoreboard is fresher than the schedule.
+            val all = schedules[team.key].orEmpty().map { g -> onNow?.takeIf { it.id == g.id } ?: g }
+                .let { list -> if (onNow != null && list.none { it.id == onNow.id }) (list + onNow).sortedBy { it.startMillis } else list }
+            team.key to com.mytv.launcher.sports.TeamInfo(
+                live = onNow?.takeIf { it.state == com.mytv.launcher.sports.GameState.LIVE },
+                next = com.mytv.launcher.sports.GameDay.next(all, now),
+                today = com.mytv.launcher.sports.GameDay.today(all, now, zone),
+            )
+        }
+        _teams.value = info
+        _gameDay.value = com.mytv.launcher.sports.GameDay.theme(info, now)
     }
 
     fun onPause() {

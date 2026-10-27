@@ -22,6 +22,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -110,6 +118,34 @@ fun LiveBadge(modifier: Modifier = Modifier) {
         contentAlignment = Alignment.Center,
     ) {
         Text("LIVE", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+/**
+ * A glowing ring that breathes in [color] (a team's game is live). Animated in
+ * the draw phase only, so it never recomposes anything.
+ */
+fun Modifier.livePulse(color: Color, scale: Float = 1f): Modifier = composed {
+    val t = rememberInfiniteTransition(label = "pulse")
+    val alpha = t.animateFloat(
+        initialValue = 0.25f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(900, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "pulseAlpha",
+    )
+    drawWithContent {
+        drawContent()
+        // Around the card as drawn: a focused card is scaled up by [scale].
+        val stroke = 4.dp.toPx()
+        val dx = size.width * (scale - 1) / 2 + stroke / 2
+        val dy = size.height * (scale - 1) / 2 + stroke / 2
+        drawRoundRect(
+            color = color.copy(alpha = alpha.value),
+            topLeft = androidx.compose.ui.geometry.Offset(-dx, -dy),
+            size = androidx.compose.ui.geometry.Size(size.width + 2 * dx, size.height + 2 * dy),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx() * scale),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = stroke),
+        )
     }
 }
 

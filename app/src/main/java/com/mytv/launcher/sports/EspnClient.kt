@@ -51,6 +51,16 @@ class EspnClient(
             .take(limit)
     }
 
+    /** Every game on the team's schedules (results and fixtures), soonest first. */
+    suspend fun schedule(team: Team): List<Game> = coroutineScope {
+        team.leagues.flatMap { league ->
+            val url = "$base/${league.sport}/${league.code}/teams/${team.espnId}/schedule"
+            // Soccer: results without fixture=true, upcoming games with it.
+            val urls = if (league.sport == "soccer") listOf(url, "$url?fixture=true") else listOf(url)
+            urls.map { async { fetchGames(it, league) } }
+        }.awaitAll().flatten().distinctBy { it.id }.sortedBy { it.startMillis }
+    }
+
     /** Most recent finished games, newest first. */
     suspend fun recentResults(team: Team, limit: Int = 3): List<Game> = coroutineScope {
         team.leagues.map { league ->
