@@ -21,7 +21,8 @@ import java.util.concurrent.TimeUnit
  * lets a device see rows with the household it sends.
  */
 object CloudSync {
-    private val url = BuildConfig.SUPABASE_URL.trimEnd('/')
+    // The project URL, with or without the API path pasted after it.
+    private val url = BuildConfig.SUPABASE_URL.trim().trimEnd('/').removeSuffix("/rest/v1").trimEnd('/')
     private val key = BuildConfig.SUPABASE_KEY
     private val household = BuildConfig.SYNC_HOUSEHOLD
     val isConfigured: Boolean get() = url.isNotBlank() && key.isNotBlank() && household.isNotBlank()
