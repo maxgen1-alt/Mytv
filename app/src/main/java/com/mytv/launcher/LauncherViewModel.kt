@@ -575,12 +575,17 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 return@launch
             }
             val first = options.firstOrNull()
-            // YouTube TV: its Live guide, where the game on now is at the top (else the app).
-            if (first != null && com.mytv.launcher.sports.Service.YOUTUBE_TV.matches(first.app.packageName, first.app.label) &&
-                watchNext.openLink(first.app.packageName, "https://tv.youtube.com/live")
-            ) {
-                toast("${team.name} vs ${opponent.name} is on ${first.network} · YouTube TV Live")
-                return@launch
+            // YouTube TV: straight onto the channel showing it (it starts playing), else its Live guide.
+            if (first != null && com.mytv.launcher.sports.Service.YOUTUBE_TV.matches(first.app.packageName, first.app.label)) {
+                val channel = com.mytv.launcher.sports.YouTubeTvChannels.linkFor(first.network)
+                if (channel != null && watchNext.openLink(first.app.packageName, channel)) {
+                    toast("${team.name} vs ${opponent.name} · ${first.network} on YouTube TV")
+                    return@launch
+                }
+                if (watchNext.openLink(first.app.packageName, "https://tv.youtube.com/live")) {
+                    toast("${team.name} vs ${opponent.name} is on ${first.network} · YouTube TV Live")
+                    return@launch
+                }
             }
             if (first != null && installed.launch(first.app.packageName)) {
                 toast("${team.name} vs ${opponent.name} is on ${first.network} · opening ${first.app.label}")
