@@ -83,6 +83,40 @@ class WatchNext(private val context: Context) {
             .distinctBy { it.packageName + "|" + it.title.lowercase() }
     }
 
+    /**
+     * A playable link to a game an app has put on the TV's home screen (its
+     * "channels" and Watch Next): sports apps often list the live game with a
+     * link that starts it. [mustContain]: every word must be in the title or
+     * description (e.g. "lakers", "celtics"). [packages]: only these apps, best first.
+     */
+    suspend fun findGame(mustContain: List<String>, packages: List<String>): Pair<String, String>? = withContext(Dispatchers.IO) {
+        if (!hasPermission() || packages.isEmpty()) return@withContext null
+        val words = mustContain.map { it.lowercase() }.filter { it.isNotBlank() }
+        val found = mutableListOf<Pair<String, String>>() // package to intent uri
+        for (uri in listOf(PREVIEW_URI, CONTENT_URI)) {
+            val cursor = runCatching { context.contentResolver.query(uri, null, null, null, null) }.getOrNull() ?: continue
+            cursor.use { c ->
+                while (c.moveToNext()) {
+                    val pkg = c.str("package_name") ?: continue
+                    if (pkg !in packages) continue
+                    val link = c.str("intent_uri") ?: continue
+                    val text = listOfNotNull(c.str("title"), c.str("episode_title"), c.str("short_description")).joinToString(" ").lowercase()
+                    if (words.all { it in text }) found += pkg to link
+                }
+            }
+        }
+        found.minByOrNull { packages.indexOf(it.first) }
+    }
+
+    /** Starts [uri] (an app's own link) inside [pkg]. */
+    fun openLink(pkg: String, uri: String): Boolean {
+        val intent = runCatching { Intent.parseUri(uri, Intent.URI_INTENT_SCHEME) }.getOrNull()
+            ?: Intent(Intent.ACTION_VIEW, Uri.parse(uri))
+        if (intent.`package` == null && intent.component == null) intent.setPackage(pkg)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        return runCatching { context.startActivity(intent) }.isSuccess
+    }
+
     /** Opens the item right where you left off, inside the app that published it. */
     fun open(item: WatchItem): Boolean {
         val uri = item.intentUri ?: return false
@@ -100,6 +134,8 @@ class WatchNext(private val context: Context) {
 
     companion object {
         val CONTENT_URI: Uri = Uri.parse("content://android.media.tv/watch_next_program")
+        /** Apps' home-screen channels (where live games often show up). */
+        val PREVIEW_URI: Uri = Uri.parse("content://android.media.tv/preview_program")
 
         /** The name differs between Android versions / vendors; any one is enough. */
         val PERMISSIONS = listOf(

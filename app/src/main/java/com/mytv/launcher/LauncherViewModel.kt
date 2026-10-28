@@ -557,15 +557,30 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * Straight to the game, never a search:
+     * 1. the game itself, if the app showing it lists it on the TV (its live link starts it);
+     * 2. otherwise that app, opened on its own;
+     * 3. no app of yours has it: the team page says where it's on.
+     */
     fun watchGame(team: Team, game: Game, option: WatchOption?) {
-        val opponent = game.opponentOf(team.espnId).name
-        if (option != null && installed.launch(option.app.packageName)) {
-            toast("${team.name} vs $opponent · opening ${option.app.label}")
-            return
-        }
-        // Nothing installed that we know carries it: let Google TV find it.
-        toast("Searching for ${team.name} vs $opponent")
-        if (!Search.open(context, "${team.name} vs $opponent live")) {
+        val opponent = game.opponentOf(team.espnId)
+        viewModelScope.launch {
+            val options = (listOfNotNull(option) + watchOptions(game)).distinctBy { it.app.packageName }
+            val opponentWord = opponent.name.split(' ').lastOrNull().orEmpty()
+            val link = watchNext.findGame(listOf(team.name, opponentWord), options.map { it.app.packageName })
+            if (link != null && watchNext.openLink(link.first, link.second)) {
+                val app = options.firstOrNull { it.app.packageName == link.first }?.app?.label.orEmpty()
+                toast("${team.name} vs ${opponent.name} · starting on $app")
+                return@launch
+            }
+            val first = options.firstOrNull()
+            if (first != null && installed.launch(first.app.packageName)) {
+                toast("${team.name} vs ${opponent.name} is on ${first.network} · opening ${first.app.label}")
+                return@launch
+            }
+            val where = (game.broadcasts.ifEmpty { game.league.defaultNetworks }).joinToString(", ")
+            toast("${team.name} vs ${opponent.name} is on $where, which isn't one of your apps")
             navigate(Screen.TeamPage(team.key))
         }
     }
