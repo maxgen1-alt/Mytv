@@ -34,6 +34,11 @@ class EspnClient(
                 it.state == GameState.UPCOMING &&
                     it.startMillis - now in 0..preGameMinutes * 60_000L
             }
+            // Backup: the scoreboard can be on a different day (late games) or briefly stale.
+            // A game on the team's schedule that started in the last 3½ hours and isn't over is on now.
+            ?: schedule(team).firstOrNull { g ->
+                g.state != GameState.FINISHED && now - g.startMillis in -preGameMinutes * 60_000L..(3.5 * 3600_000L).toLong()
+            }?.let { g -> if (g.startMillis <= now) g.copy(state = GameState.LIVE) else g }
     }
 
     /** Next few games across every competition, soonest first. */

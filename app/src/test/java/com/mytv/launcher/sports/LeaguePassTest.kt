@@ -34,3 +34,15 @@ class NbcTest {
         assertEquals("YouTube TV", Broadcasters.optionsFor(g, apps).first().app.label)
     }
 }
+
+class NbaOnPeacockTest {
+    @Test fun nbaPeacockGoesToYouTubeTvSportsExtra() {
+        val nba = Teams.lakers.leagues.first()
+        val g = Game("3", nba, 0L, GameState.LIVE, "", Side("13", "Lakers", "LAL", null, null), Side("2", "Celtics", "BOS", null, null), listOf("Peacock"))
+        val apps = listOf(InstalledApp("com.peacocktv.peacockandroid", "Peacock"), InstalledApp("com.google.android.youtube.tvunplugged", "YouTube TV"))
+        val first = Broadcasters.optionsFor(g, apps).first()
+        assertEquals("YouTube TV", first.app.label)
+        assertEquals(true, YouTubeTvChannels.linkFor(first.network)!!.contains("SonoVJHSR0A"))
+        assertEquals(true, YouTubeTvChannels.linkFor("NBC")!!.contains("fIbKmfCLA9o"))
+    }
+}

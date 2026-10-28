@@ -92,7 +92,10 @@ object Broadcasters {
         val networks = (game.broadcasts + game.league.defaultNetworks).distinct()
         val out = LinkedHashMap<String, WatchOption>()
         for (network in networks) {
-            for (service in servicesFor(network)) {
+            // NBA on NBC / Peacock: YouTube TV (NBC, or NBC Sports Extra) first.
+            val nbaOnNbc = game.league.sport == "basketball" && (network.contains("nbc", true) || network.contains("peacock", true))
+            val services = if (nbaOnNbc) listOf(Service.YOUTUBE_TV) + servicesFor(network) else servicesFor(network)
+            for (service in services.distinct()) {
                 installed.filter { service.matches(it.packageName, it.label) }.forEach { app ->
                     out.putIfAbsent(app.packageName, WatchOption(app, network))
                 }
