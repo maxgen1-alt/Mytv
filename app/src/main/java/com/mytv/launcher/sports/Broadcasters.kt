@@ -55,9 +55,11 @@ object Broadcasters {
         "prime" to listOf(Service.PRIME_VIDEO),
         "amazon" to listOf(Service.PRIME_VIDEO),
         "nba tv" to listOf(Service.NBA, Service.YOUTUBE_TV, Service.SLING, Service.DIRECTV),
-        "league pass" to listOf(Service.NBA),
-        "sportsnet" to listOf(Service.SPECTRUM_SPORTSNET, Service.SPECTRUM_TV, Service.DIRECTV),
-        "spectrum" to listOf(Service.SPECTRUM_SPORTSNET, Service.SPECTRUM_TV, Service.DIRECTV),
+        // NBA League Pass, here as a Prime Video channel. Local-TV games (Spectrum SportsNet in LA)
+        // are on League Pass everywhere outside LA, so they go there first too.
+        "league pass" to listOf(Service.PRIME_VIDEO, Service.NBA),
+        "sportsnet" to listOf(Service.PRIME_VIDEO, Service.NBA, Service.SPECTRUM_SPORTSNET, Service.SPECTRUM_TV, Service.DIRECTV),
+        "spectrum" to listOf(Service.PRIME_VIDEO, Service.NBA, Service.SPECTRUM_SPORTSNET, Service.SPECTRUM_TV, Service.DIRECTV),
         "cbssn" to listOf(Service.PARAMOUNT, Service.PRIME_VIDEO) + liveTv,
         "cbs" to listOf(Service.PARAMOUNT, Service.PRIME_VIDEO) + liveTv,
         "nbcsn" to listOf(Service.NBC_SPORTS) + liveTv,
