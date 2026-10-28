@@ -63,7 +63,8 @@ object Broadcasters {
         "cbssn" to listOf(Service.PARAMOUNT, Service.PRIME_VIDEO) + liveTv,
         "cbs" to listOf(Service.PARAMOUNT, Service.PRIME_VIDEO) + liveTv,
         "nbcsn" to listOf(Service.NBC_SPORTS) + liveTv,
-        "nbc" to listOf(Service.PEACOCK, Service.NBC_SPORTS) + liveTv,
+        // NBC: live on YouTube TV (Peacock only simulcasts some of it).
+        "nbc" to listOf(Service.YOUTUBE_TV, Service.PEACOCK, Service.NBC_SPORTS) + liveTv,
         "usa" to liveTv + listOf(Service.NBC_SPORTS),
         "telemundo" to listOf(Service.PEACOCK, Service.TELEMUNDO) + liveTv,
         "universo" to listOf(Service.PEACOCK, Service.TELEMUNDO) + liveTv,

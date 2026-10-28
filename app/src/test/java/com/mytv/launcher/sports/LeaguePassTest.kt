@@ -25,3 +25,12 @@ class LeaguePassTest {
     @Test fun unknownBroadcasterFallsBackToLeaguePass() =
         assertEquals("Prime Video", Broadcasters.optionsFor(game(), apps).first().app.label)
 }
+
+class NbcTest {
+    @Test fun nbcGoesToYouTubeTv() {
+        val pl = Teams.arsenal.leagues.first()
+        val g = Game("2", pl, 0L, GameState.LIVE, "", Side("359", "Arsenal", "ARS", null, null), Side("1", "Chelsea", "CHE", null, null), listOf("NBC"))
+        val apps = listOf(InstalledApp("com.peacocktv.peacockandroid", "Peacock"), InstalledApp("com.google.android.youtube.tvunplugged", "YouTube TV"))
+        assertEquals("YouTube TV", Broadcasters.optionsFor(g, apps).first().app.label)
+    }
+}
