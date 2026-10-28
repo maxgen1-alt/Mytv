@@ -1236,6 +1236,17 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         "https://${owner.lowercase()}.github.io/$repo/send.html#$enc"
     }
 
+    /** MyTV settings → Test NBC: opens YouTube TV on the NBC channel, as a game on NBC would. */
+    fun testNbc() {
+        val app = _allApps.value.firstOrNull { com.mytv.launcher.sports.Service.YOUTUBE_TV.matches(it.packageName, it.label) }
+        val link = com.mytv.launcher.sports.YouTubeTvChannels.linkFor("NBC")
+        when {
+            app == null -> toast("YouTube TV isn't installed on this TV")
+            link != null && watchNext.openLink(app.packageName, link) -> Unit
+            else -> toast("YouTube TV didn't accept the NBC link")
+        }
+    }
+
     /** Remote shortcut from a kickoff alert: open that team's game. */
     fun watchTeam(key: String) {
         val team = Teams.byKey(key) ?: return

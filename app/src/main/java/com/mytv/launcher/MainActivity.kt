@@ -197,6 +197,7 @@ class MainActivity : ComponentActivity() {
                             onScores = vm::setScoreAlerts,
                             onChannel = vm::setUpdateChannel,
                             onBackToApps = { vm.navigate(Screen.EditApps) },
+                            onTestNbc = vm::testNbc,
                         )
                     }
                 }

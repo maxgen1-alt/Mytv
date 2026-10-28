@@ -47,6 +47,7 @@ fun SystemScreen(
     onScores: (Boolean) -> Unit,
     onChannel: (String) -> Unit,
     onBackToApps: () -> Unit,
+    onTestNbc: () -> Unit = {},
 ) {
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
@@ -87,6 +88,9 @@ fun SystemScreen(
                 Pill("Google (Google Photos)", !state.myScreensaver) { if (!state.busy) onScreensaver(false) }
                 Pill("MyTV", state.myScreensaver) { if (!state.busy) onScreensaver(true) }
             }
+
+            Section("Games on NBC", "Open YouTube TV on NBC, the way the team buttons do when a game is on NBC.")
+            Pill("Test NBC on YouTube TV", false, onClick = onTestNbc)
 
             Section("Game alerts", "Pop-ups over whatever you're watching. Kick-off: press OK to switch to the game.")
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
