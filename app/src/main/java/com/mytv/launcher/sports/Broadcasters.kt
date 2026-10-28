@@ -47,7 +47,8 @@ object Broadcasters {
      */
     private val networks: List<Pair<String, List<Service>>> = listOf(
         "peacock" to listOf(Service.PEACOCK),
-        "paramount" to listOf(Service.PARAMOUNT),
+        // Paramount+ also comes as a Prime Video channel.
+        "paramount" to listOf(Service.PARAMOUNT, Service.PRIME_VIDEO),
         "espn+" to listOf(Service.ESPN),
         "espn" to listOf(Service.ESPN) + liveTv,
         "abc" to listOf(Service.ESPN) + liveTv,
@@ -57,8 +58,8 @@ object Broadcasters {
         "league pass" to listOf(Service.NBA),
         "sportsnet" to listOf(Service.SPECTRUM_SPORTSNET, Service.SPECTRUM_TV, Service.DIRECTV),
         "spectrum" to listOf(Service.SPECTRUM_SPORTSNET, Service.SPECTRUM_TV, Service.DIRECTV),
-        "cbssn" to listOf(Service.PARAMOUNT) + liveTv,
-        "cbs" to listOf(Service.PARAMOUNT) + liveTv,
+        "cbssn" to listOf(Service.PARAMOUNT, Service.PRIME_VIDEO) + liveTv,
+        "cbs" to listOf(Service.PARAMOUNT, Service.PRIME_VIDEO) + liveTv,
         "nbcsn" to listOf(Service.NBC_SPORTS) + liveTv,
         "nbc" to listOf(Service.PEACOCK, Service.NBC_SPORTS) + liveTv,
         "usa" to liveTv + listOf(Service.NBC_SPORTS),
