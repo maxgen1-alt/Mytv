@@ -19,7 +19,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.foundation.border
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -51,6 +56,8 @@ fun SystemScreen(
     onChooseFantasyButton: () -> Unit = {},
     onShowFantasy: () -> Unit = {},
     onSignInFantrax: () -> Unit = {},
+    onPairWireless: (code: String, port: String) -> Unit = { _, _ -> },
+    onDeveloperOptions: () -> Unit = {},
 ) {
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
@@ -68,8 +75,9 @@ fun SystemScreen(
                 Text(state.helper, fontSize = 13.sp, color = if (state.helper.endsWith("running")) Color(0xFF7CD992) else Color(0xFFFF8A80))
                 Spacer(Modifier.height(8.dp))
             }
+            if (state.phoneSetup != null && !state.wirelessPaired) WirelessPairing(state.busy, onPairWireless, onDeveloperOptions)
             state.phoneSetup?.let { cmd ->
-                Text("One-time step from your phone (Bugjaeger → Shell), then select the button below:", fontSize = 13.sp, color = Color(0xFFF5C518))
+                Text("Or, from your phone (Bugjaeger → Shell), then select the button below:", fontSize = 13.sp, color = Color(0xFFF5C518))
                 Spacer(Modifier.height(4.dp))
                 Text(
                     cmd,
@@ -132,6 +140,57 @@ fun SystemScreen(
             }
         }
     }
+}
+
+/**
+ * No phone needed: pair MyTV with the TV's own Wireless debugging. The code
+ * is on Settings' pairing screen; MyTV finds the port itself (type it if not).
+ */
+@Composable
+private fun WirelessPairing(busy: Boolean, onPair: (String, String) -> Unit, onDeveloperOptions: () -> Unit) {
+    var code by remember { mutableStateOf("") }
+    var port by remember { mutableStateOf("") }
+    Text("No phone needed (one time):", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFF5C518))
+    Spacer(Modifier.height(4.dp))
+    Text(
+        "1. Developer options → Wireless debugging: turn it on, then choose Pair device with pairing code.\n" +
+            "2. Note the 6-digit code and the port (the number after the colon), come back here (Home → MyTV → ⚙) and type them.",
+        fontSize = 13.sp,
+        color = Palette.InkSoft,
+    )
+    Spacer(Modifier.height(8.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Pill("Open Developer options", false, onClick = onDeveloperOptions)
+        Field(code, "Code", 120.dp) { code = it.filter(Char::isDigit).take(6) }
+        Field(port, "Port", 100.dp) { port = it.filter(Char::isDigit).take(5) }
+        Pill("Pair", true) { if (!busy) onPair(code, port) }
+    }
+    Spacer(Modifier.height(14.dp))
+}
+
+/** A number box: select it and the TV's keyboard opens. */
+@Composable
+private fun Field(value: String, hint: String, width: androidx.compose.ui.unit.Dp, onChange: (String) -> Unit) {
+    var focused by remember { mutableStateOf(false) }
+    androidx.compose.foundation.text.BasicTextField(
+        value = value,
+        onValueChange = onChange,
+        singleLine = true,
+        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+        textStyle = androidx.compose.ui.text.TextStyle(color = Palette.Ink, fontSize = 18.sp, fontWeight = FontWeight.SemiBold),
+        cursorBrush = androidx.compose.ui.graphics.SolidColor(Palette.Ink),
+        modifier = Modifier
+            .width(width)
+            .height(42.dp)
+            .onFocusChanged { focused = it.isFocused }
+            .background(Palette.CardSoft, RoundedCornerShape(20.dp))
+            .border(if (focused) 3.dp else 0.dp, if (focused) Color.White else Color.Transparent, RoundedCornerShape(20.dp))
+            .padding(horizontal = 16.dp, vertical = 9.dp),
+        decorationBox = { inner ->
+            if (value.isEmpty()) Text(hint, fontSize = 16.sp, color = Palette.InkSoft)
+            inner()
+        },
+    )
 }
 
 @Composable

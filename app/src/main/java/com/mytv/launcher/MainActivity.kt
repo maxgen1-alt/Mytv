@@ -213,6 +213,8 @@ class MainActivity : ComponentActivity() {
                             onChooseFantasyButton = vm::chooseFantasyButton,
                             onShowFantasy = vm::toggleFantasy,
                             onSignInFantrax = vm::signInToFantrax,
+                            onPairWireless = vm::pairWireless,
+                            onDeveloperOptions = vm::openDeveloperOptions,
                         )
                     }
                 }

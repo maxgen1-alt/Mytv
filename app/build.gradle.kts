@@ -103,6 +103,12 @@ dependencies {
     // Installs the baseline profiles Compose ships with, so the TV pre-compiles the
     // hot UI code instead of interpreting it: much smoother scrolling and startup.
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
+    // Wireless debugging: pairs with the TV's pairing code and talks to its debugging service,
+    // so MyTV can set itself up without a phone. TLS 1.3 from Conscrypt; MyTV's debugging
+    // certificate made with BouncyCastle.
+    implementation("com.github.MuntashirAkon:libadb-android:3.1.1")
+    implementation("org.conscrypt:conscrypt-android:2.5.3")
+    implementation("org.bouncycastle:bcpkix-jdk15to18:1.81")
 
     testImplementation("junit:junit:4.13.2")
     // Android's org.json is stubbed in local unit tests; use the real one.

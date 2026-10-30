@@ -1323,6 +1323,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         val helper: String = "",
         val fantasyButton: String = "none",
         val fantraxSignedIn: Boolean = false,
+        /** Paired with the TV's Wireless debugging (MyTV sets itself up without a phone). */
+        val wirelessPaired: Boolean = false,
     )
 
     private fun systemNow(busy: Boolean = false, message: String = _system.value.message) = SystemState(
@@ -1337,6 +1339,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         message = message,
         fantasyButton = com.mytv.launcher.system.FantasyButton.label(settings.fantasyKey),
         fantraxSignedIn = settings.fantraxSignedIn,
+        wirelessPaired = com.mytv.launcher.system.WirelessAdb.isPaired(app),
         phoneSetup = if (homeSetup.canWriteSecure) null else com.mytv.launcher.system.HomeSetup.PHONE_COMMAND,
         helper = when {
             !settings.homeOverride -> ""
@@ -1362,6 +1365,31 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 is com.mytv.launcher.system.HomeSetup.Result.NoAccess -> r.message
             }
             _system.value = systemNow(busy = false, message = msg)
+        }
+    }
+
+    /**
+     * Wireless debugging instead of a phone: pairs with the code from Settings,
+     * then makes MyTV the home screen straight away.
+     */
+    fun pairWireless(code: String, port: String) {
+        val digits = code.filter { it.isDigit() }
+        if (digits.length != 6) {
+            _system.value = systemNow(message = "Type the 6-digit pairing code from the TV's Wireless debugging screen.")
+            return
+        }
+        runSetup("Pairing with Wireless debugging…") {
+            val error = com.mytv.launcher.system.WirelessAdb.pair(app, digits, port.trim().toIntOrNull())
+            if (error != null) com.mytv.launcher.system.HomeSetup.Result.NoAccess(error) else homeSetup.takeOver()
+        }
+    }
+
+    /** Opens the TV's Developer options (Wireless debugging is in there). */
+    fun openDeveloperOptions() {
+        val intent = android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (runCatching { context.startActivity(intent) }.isFailure) {
+            toast("Open Settings → System → Developer options (turn it on: Settings → System → About, click Android TV OS build 7 times)")
         }
     }
 
