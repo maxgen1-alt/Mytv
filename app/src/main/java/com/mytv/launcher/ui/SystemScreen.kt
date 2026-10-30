@@ -48,6 +48,8 @@ fun SystemScreen(
     onChannel: (String) -> Unit,
     onBackToApps: () -> Unit,
     onTestNbc: () -> Unit = {},
+    onChooseFantasyButton: () -> Unit = {},
+    onShowFantasy: () -> Unit = {},
 ) {
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
@@ -91,6 +93,16 @@ fun SystemScreen(
 
             Section("Games on NBC", "Open YouTube TV on NBC, the way the team buttons do when a game is on NBC.")
             Pill("Test NBC on YouTube TV", false, onClick = onTestNbc)
+
+            Section(
+                "Fantasy basketball",
+                "Press your fantasy button in any app: Midland Monarchs' live matchup slides in from the right. Press it again (or Back) to slide it away. " +
+                    "Pick a button you don't use, e.g. the YouTube or Netflix button (it stops opening that app).",
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Pill("Choose button (now: ${state.fantasyButton})", false, onClick = onChooseFantasyButton)
+                Pill("Show it now", false, onClick = onShowFantasy)
+            }
 
             Section("Game alerts", "Pop-ups over whatever you're watching. Kick-off: press OK to switch to the game.")
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {

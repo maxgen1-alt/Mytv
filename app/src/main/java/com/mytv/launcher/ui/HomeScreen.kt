@@ -98,6 +98,8 @@ fun HomeScreen(
     onTeamPage: (Team) -> Unit,
     nba: com.mytv.launcher.NbaSummary,
     onNba: () -> Unit,
+    fantasy: com.mytv.launcher.fantasy.FantasyResult?,
+    onFantasy: () -> Unit,
     onAng: () -> Unit,
     onWatchItem: (WatchItem) -> Unit,
     onAllowWatchNext: () -> Unit,
@@ -178,6 +180,7 @@ fun HomeScreen(
                     )
                 }
                 item(key = "__nba") { NbaTile(nba, onNba) }
+                item(key = "__fantasy") { FantasyTile(fantasy, onFantasy) }
                 if (!guest) {
                     item(key = "__ang") { AngTile(onAng) }
                     item(key = "__watchlist") { WatchlistTile(onWatchlist) }
@@ -436,6 +439,39 @@ private fun NbaTile(summary: com.mytv.launcher.NbaSummary, onClick: () -> Unit) 
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp),
             )
         }
+    }
+}
+
+/** Your fantasy matchup's score; select slides the full panel in (your fantasy button does too, in any app). */
+@Composable
+private fun FantasyTile(result: com.mytv.launcher.fantasy.FantasyResult?, onClick: () -> Unit) {
+    val m = (result as? com.mytv.launcher.fantasy.FantasyResult.Ok)?.matchup
+    val live = m != null && (m.mine.players + m.them.players).any { it.state == com.mytv.launcher.fantasy.FState.LIVE }
+    FocusCard(
+        onClick = onClick,
+        modifier = Modifier
+            .size(TileWidth, TileHeight)
+            .then(if (live) Modifier.livePulse(Palette.Live) else Modifier),
+    ) {
+        Column(
+            Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text("Fantasy", fontSize = 12.sp, color = Palette.InkSoft, fontWeight = FontWeight.SemiBold)
+            if (m == null) {
+                Text("Midland Monarchs", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Palette.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            } else {
+                val fmt = remember { java.text.DecimalFormat("0.#") }
+                Text(
+                    "${fmt.format(m.mine.points)} – ${fmt.format(m.them.points)}",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (m.mine.points >= m.them.points) Color(0xFF7CD992) else Color(0xFFFF8A80),
+                )
+                Text("vs ${m.them.name}", fontSize = 11.sp, color = Palette.InkSoft, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        if (live) LiveBadge(Modifier.align(Alignment.TopEnd).padding(8.dp))
     }
 }
 

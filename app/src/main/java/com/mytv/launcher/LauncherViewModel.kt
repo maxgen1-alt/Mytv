@@ -307,6 +307,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val nbaSummary = _nbaSummary.asStateFlow()
     private var nbaJob: Job? = null
 
+    /** The fantasy matchup, for the home screen's Fantasy tile. */
+    private val _fantasy = MutableStateFlow<com.mytv.launcher.fantasy.FantasyResult?>(null)
+    val fantasy = _fantasy.asStateFlow()
+
     /** Short "Finding the Arsenal game..." message shown over the home screen. */
     private val _busy = MutableStateFlow<String?>(null)
     val busy: StateFlow<String?> = _busy.asStateFlow()
@@ -425,6 +429,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             if (fetched.values.any { it.isNotEmpty() }) schedulesAt = now
         }
         val nbaToday = async { nbaGames(0) }
+        val fantasyNow = async { com.mytv.launcher.fantasy.FantasyPanel.fetch() }
         val found = live.await()
         val zone = java.time.ZoneId.systemDefault()
         val info = Teams.all.associate { team ->
@@ -439,6 +444,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             )
         }
         _teams.value = info
+        fantasyNow.await().let { r -> if (r is com.mytv.launcher.fantasy.FantasyResult.Ok || _fantasy.value == null) _fantasy.value = r }
         nbaToday.await()?.let { games ->
             _nbaSummary.value = NbaSummary(live = games.count { it.state == com.mytv.launcher.sports.GameState.LIVE }, today = games.size)
         }
@@ -591,35 +597,79 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun watchGame(team: Team, game: Game, option: WatchOption?) {
         val opponent = game.opponentOf(team.espnId)
         viewModelScope.launch {
-            val options = (listOfNotNull(option) + watchOptions(game)).distinctBy { it.app.packageName }
             val opponentWord = opponent.name.split(' ').lastOrNull().orEmpty()
-            val link = watchNext.findGame(listOf(team.name, opponentWord), options.map { it.app.packageName })
-            if (link != null && watchNext.openLink(link.first, link.second)) {
-                val app = options.firstOrNull { it.app.packageName == link.first }?.app?.label.orEmpty()
-                toast("${team.name} vs ${opponent.name} · starting on $app")
-                return@launch
-            }
-            val first = options.firstOrNull()
-            // YouTube TV: straight onto the channel showing it (it starts playing), else its Live guide.
-            if (first != null && com.mytv.launcher.sports.Service.YOUTUBE_TV.matches(first.app.packageName, first.app.label)) {
-                val channel = com.mytv.launcher.sports.YouTubeTvChannels.linkFor(first.network)
-                if (channel != null && watchNext.openLink(first.app.packageName, channel)) {
-                    toast("${team.name} vs ${opponent.name} · ${first.network} on YouTube TV")
-                    return@launch
-                }
-                if (watchNext.openLink(first.app.packageName, "https://tv.youtube.com/live")) {
-                    toast("${team.name} vs ${opponent.name} is on ${first.network} · YouTube TV Live")
-                    return@launch
-                }
-            }
-            if (first != null && installed.launch(first.app.packageName)) {
-                toast("${team.name} vs ${opponent.name} is on ${first.network} · opening ${first.app.label}")
-                return@launch
-            }
-            val where = (game.broadcasts.ifEmpty { game.league.defaultNetworks }).joinToString(", ")
-            toast("${team.name} vs ${opponent.name} is on $where, which isn't one of your apps")
-            navigate(Screen.TeamPage(team.key))
+            if (!openGame(game, "${team.name} vs ${opponent.name}", listOf(team.name, opponentWord), option)) navigate(Screen.TeamPage(team.key))
         }
+    }
+
+    /**
+     * Opens [game] in the app carrying it; false (after saying where it's on)
+     * if none of your apps has it. [words] find its listing on the TV.
+     */
+    private suspend fun openGame(game: Game, title: String, words: List<String>, option: WatchOption? = null): Boolean {
+        val options = (listOfNotNull(option) + watchOptions(game)).distinctBy { it.app.packageName }
+        val link = watchNext.findGame(words, options.map { it.app.packageName })
+        if (link != null && watchNext.openLink(link.first, link.second)) {
+            val app = options.firstOrNull { it.app.packageName == link.first }?.app?.label.orEmpty()
+            toast("$title · starting on $app")
+            return true
+        }
+        val first = options.firstOrNull()
+        // YouTube TV: straight onto the channel showing it (it starts playing), else its Live guide.
+        if (first != null && com.mytv.launcher.sports.Service.YOUTUBE_TV.matches(first.app.packageName, first.app.label)) {
+            val channel = com.mytv.launcher.sports.YouTubeTvChannels.linkFor(first.network)
+            if (channel != null && watchNext.openLink(first.app.packageName, channel)) {
+                toast("$title · ${first.network} on YouTube TV")
+                return true
+            }
+            if (watchNext.openLink(first.app.packageName, "https://tv.youtube.com/live")) {
+                toast("$title is on ${first.network} · YouTube TV Live")
+                return true
+            }
+        }
+        if (first != null && installed.launch(first.app.packageName)) {
+            toast("$title is on ${first.network} · opening ${first.app.label}")
+            return true
+        }
+        val where = (game.broadcasts.ifEmpty { game.league.defaultNetworks }).joinToString(", ")
+        toast("$title is on $where, which isn't one of your apps")
+        return false
+    }
+
+    /** A fantasy player's ▶: today's game of their NBA team ([abbr]), wherever it's on. */
+    fun watchNbaTeam(abbr: String) {
+        viewModelScope.launch {
+            _allApps.first { it.isNotEmpty() } // need the apps to know which one shows the game
+            _busy.value = "Finding the game…"
+            val game = nbaGames(0)?.let { com.mytv.launcher.sports.NbaGames.gameFor(it, abbr) }
+            _busy.value = null
+            if (game == null) {
+                toast("Couldn't find today's $abbr game")
+                navigate(Screen.Nba)
+                return@launch
+            }
+            val title = com.mytv.launcher.sports.NbaGames.title(game)
+            if (!openGame(game, title, com.mytv.launcher.sports.NbaGames.matchWords(game))) navigate(Screen.Nba)
+        }
+    }
+
+    /** The Fantasy tile, or "Show it now" in settings: slides the fantasy panel in (or out). */
+    fun toggleFantasy() { com.mytv.launcher.fantasy.FantasyPanel.toggle(context) }
+
+    /** MyTV settings: the next button pressed on the remote becomes the fantasy button. */
+    fun chooseFantasyButton() {
+        val helper = com.mytv.launcher.system.HomeOverride.isRunning
+        if (!helper) {
+            _system.value = systemNow(message = "The fantasy button needs MyTV's home helper: choose \"Make MyTV my home screen\" first.")
+            return
+        }
+        com.mytv.launcher.system.FantasyButton.onChosen = { code ->
+            viewModelScope.launch {
+                _system.value = systemNow(message = "Fantasy button: ${com.mytv.launcher.system.FantasyButton.label(code)}. Press it in any app.")
+            }
+        }
+        com.mytv.launcher.system.FantasyButton.choosing = true
+        _system.value = systemNow(message = "Press the remote button you want for the fantasy panel (not OK, Back or the arrows)…")
     }
 
     private fun watchOptions(game: Game): List<WatchOption> =
@@ -1234,6 +1284,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         /** The one line to run from a phone before MyTV can switch things itself (null once done). */
         val phoneSetup: String? = null,
         val helper: String = "",
+        val fantasyButton: String = "none",
     )
 
     private fun systemNow(busy: Boolean = false, message: String = _system.value.message) = SystemState(
@@ -1246,6 +1297,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         sleepAfterEpisode = settings.sleepAfterEpisode,
         busy = busy,
         message = message,
+        fantasyButton = com.mytv.launcher.system.FantasyButton.label(settings.fantasyKey),
         phoneSetup = if (homeSetup.canWriteSecure) null else com.mytv.launcher.system.HomeSetup.PHONE_COMMAND,
         helper = when {
             !settings.homeOverride -> ""

@@ -78,6 +78,7 @@ class MainActivity : ComponentActivity() {
                         val weather by vm.weather.collectAsStateWithLifecycle()
                         val teams by vm.teams.collectAsStateWithLifecycle()
                         val nbaSummary by vm.nbaSummary.collectAsStateWithLifecycle()
+                        val fantasy by vm.fantasy.collectAsStateWithLifecycle()
                         val watching by vm.watching.collectAsStateWithLifecycle()
                         val busy by vm.busy.collectAsStateWithLifecycle()
                         val updateReady by vm.updateReady.collectAsStateWithLifecycle()
@@ -125,6 +126,8 @@ class MainActivity : ComponentActivity() {
                             onTeamPage = { vm.navigate(Screen.TeamPage(it.key)) },
                             nba = nbaSummary,
                             onNba = { vm.navigate(Screen.Nba) },
+                            fantasy = fantasy,
+                            onFantasy = vm::toggleFantasy,
                             onAng = { vm.navigate(Screen.Ang) },
                             onWatchItem = vm::playWatchItem,
                             onAllowWatchNext = ::requestWatchNext,
@@ -206,6 +209,8 @@ class MainActivity : ComponentActivity() {
                             onChannel = vm::setUpdateChannel,
                             onBackToApps = { vm.navigate(Screen.EditApps) },
                             onTestNbc = vm::testNbc,
+                            onChooseFantasyButton = vm::chooseFantasyButton,
+                            onShowFantasy = vm::toggleFantasy,
                         )
                     }
                 }
@@ -240,6 +245,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleWatchTeam(intent: android.content.Intent?) {
+        // A fantasy player's ▶: their NBA team's game.
+        intent?.getStringExtra(EXTRA_WATCH_NBA)?.let { abbr ->
+            intent.removeExtra(EXTRA_WATCH_NBA)
+            vm.watchNbaTeam(abbr)
+            return
+        }
         val team = intent?.getStringExtra(EXTRA_WATCH_TEAM) ?: return
         intent.removeExtra(EXTRA_WATCH_TEAM)
         vm.watchTeam(team)
@@ -247,5 +258,6 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_WATCH_TEAM = "com.mytv.launcher.WATCH_TEAM"
+        const val EXTRA_WATCH_NBA = "com.mytv.launcher.WATCH_NBA"
     }
 }

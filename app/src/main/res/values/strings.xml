@@ -1,4 +1,4 @@
 <resources>
     <string name="app_name">MyTV</string>
-    <string name="home_override_description">Opens MyTV whenever Google TV\'s home screen would appear (when you press Home or turn the TV on). It doesn\'t read anything on screen.</string>
+    <string name="home_override_description">Opens MyTV whenever Google TV\'s home screen would appear (when you press Home or turn the TV on), and slides in your fantasy matchup when you press the button you chose for it. It doesn\'t read anything on screen.</string>
 </resources>
