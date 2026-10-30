@@ -96,6 +96,8 @@ fun HomeScreen(
     onEditApps: () -> Unit,
     onTeam: (Team) -> Unit,
     onTeamPage: (Team) -> Unit,
+    nba: com.mytv.launcher.NbaSummary,
+    onNba: () -> Unit,
     onAng: () -> Unit,
     onWatchItem: (WatchItem) -> Unit,
     onAllowWatchNext: () -> Unit,
@@ -175,6 +177,7 @@ fun HomeScreen(
                         onLongClick = { onTeamPage(team) },
                     )
                 }
+                item(key = "__nba") { NbaTile(nba, onNba) }
                 if (!guest) {
                     item(key = "__ang") { AngTile(onAng) }
                     item(key = "__watchlist") { WatchlistTile(onWatchlist) }
@@ -398,6 +401,39 @@ private fun TeamTile(team: Team, info: TeamInfo?, onClick: () -> Unit, onLongCli
                 fontWeight = FontWeight.Bold,
                 color = Palette.Ink,
                 modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp),
+            )
+        }
+    }
+}
+
+/** Every NBA game today: live count and scores on the next page, Play on Prime Video. */
+@Composable
+private fun NbaTile(summary: com.mytv.launcher.NbaSummary, onClick: () -> Unit) {
+    FocusCard(
+        onClick = onClick,
+        modifier = Modifier
+            .size(TileWidth, TileHeight)
+            .then(if (summary.live > 0) Modifier.livePulse(Palette.Live) else Modifier),
+    ) {
+        AsyncImage(
+            model = NBA_LOGO,
+            contentDescription = "NBA",
+            modifier = Modifier.align(Alignment.Center).size(60.dp),
+            contentScale = ContentScale.Fit,
+        )
+        if (summary.live > 0) LiveBadge(Modifier.align(Alignment.TopEnd).padding(8.dp))
+        val games = when {
+            summary.live > 0 -> "${summary.live} on now"
+            summary.today > 0 -> "${summary.today} games today"
+            else -> ""
+        }
+        if (games.isNotEmpty()) {
+            Text(
+                games,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = Palette.Ink,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp),
             )
         }
     }

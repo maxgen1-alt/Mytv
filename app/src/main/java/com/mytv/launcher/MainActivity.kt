@@ -14,6 +14,7 @@ import com.mytv.launcher.ui.AngListScreen
 import com.mytv.launcher.ui.AngScreen
 import com.mytv.launcher.ui.EditAppsScreen
 import com.mytv.launcher.ui.HomeScreen
+import com.mytv.launcher.ui.NbaScreen
 import com.mytv.launcher.ui.MyTvTheme
 import com.mytv.launcher.ui.TeamScreen
 import com.mytv.launcher.ui.TraktLinkScreen
@@ -76,6 +77,7 @@ class MainActivity : ComponentActivity() {
                         val apps by vm.apps.collectAsStateWithLifecycle()
                         val weather by vm.weather.collectAsStateWithLifecycle()
                         val teams by vm.teams.collectAsStateWithLifecycle()
+                        val nbaSummary by vm.nbaSummary.collectAsStateWithLifecycle()
                         val watching by vm.watching.collectAsStateWithLifecycle()
                         val busy by vm.busy.collectAsStateWithLifecycle()
                         val updateReady by vm.updateReady.collectAsStateWithLifecycle()
@@ -121,6 +123,8 @@ class MainActivity : ComponentActivity() {
                             onEditApps = { vm.navigate(Screen.EditApps) },
                             onTeam = vm::onTeamPressed,
                             onTeamPage = { vm.navigate(Screen.TeamPage(it.key)) },
+                            nba = nbaSummary,
+                            onNba = { vm.navigate(Screen.Nba) },
                             onAng = { vm.navigate(Screen.Ang) },
                             onWatchItem = vm::playWatchItem,
                             onAllowWatchNext = ::requestWatchNext,
@@ -139,6 +143,10 @@ class MainActivity : ComponentActivity() {
                         val team = Teams.byKey(s.teamKey) ?: return@MyTvTheme
                         val detail by vm.teamDetail.collectAsStateWithLifecycle()
                         TeamScreen(team, detail, onWatch = { game, option -> vm.watchGame(team, game, option) })
+                    }
+                    Screen.Nba -> {
+                        val nba by vm.nba.collectAsStateWithLifecycle()
+                        NbaScreen(nba, onDay = vm::loadNba, onPlay = vm::playOnPrime)
                     }
                     Screen.EditApps -> {
                         val all by vm.allApps.collectAsStateWithLifecycle()
