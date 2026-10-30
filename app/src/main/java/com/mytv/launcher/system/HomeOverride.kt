@@ -3,6 +3,7 @@ package com.mytv.launcher.system
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
 import android.os.SystemClock
+import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import com.mytv.launcher.MainActivity
 
@@ -48,6 +49,28 @@ class HomeOverride : AccessibilityService() {
         }
     }
 
+    /**
+     * The fantasy button, in any app: slides the panel in, and out again. While
+     * MyTV settings is waiting for you to choose it, the next button you press
+     * becomes the fantasy button. Every other button passes through untouched.
+     */
+    override fun onKeyEvent(event: KeyEvent): Boolean {
+        val code = event.keyCode
+        if (FantasyButton.choosing) {
+            if (code in FantasyButton.reserved) return false
+            if (event.action == KeyEvent.ACTION_UP) {
+                settings.fantasyKey = code
+                FantasyButton.choosing = false
+                FantasyButton.onChosen?.invoke(code)
+            }
+            return true
+        }
+        val key = settings.fantasyKey
+        if (key == 0 || code != key) return false
+        if (event.action == KeyEvent.ACTION_UP) com.mytv.launcher.fantasy.FantasyPanel.toggle(this)
+        return true
+    }
+
     override fun onInterrupt() {}
 
     /** Google TV's home activity, as the system resolves the Home button to it. */
@@ -60,6 +83,9 @@ class HomeOverride : AccessibilityService() {
         val component: String get() = "com.mytv.launcher/com.mytv.launcher.system.HomeOverride"
 
         @Volatile private var instance: HomeOverride? = null
+
+        /** Running (and so catching the fantasy button)? */
+        val isRunning: Boolean get() = instance != null
 
         /** Sleep timer: puts the TV to sleep (screen off; the TV turns off over HDMI-CEC). */
         fun sleep(): Boolean = instance?.performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN) ?: false

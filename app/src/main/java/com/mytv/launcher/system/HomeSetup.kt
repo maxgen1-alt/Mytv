@@ -70,8 +70,9 @@ class HomeSetup(private val context: Context) {
         Settings.Secure.putString(cr, name, items.distinct().joinToString(":"))
     }
 
-    /** Runs [cmd] over the TV's debugging connection; null if MyTV can't reach it. */
+    /** Runs [cmd] over the TV's debugging connection (USB debugging, else Wireless debugging once paired); null if MyTV can't reach it. */
     suspend fun shell(cmd: String): String? = withContext(Dispatchers.IO) {
+        if (WirelessAdb.isPaired(context)) WirelessAdb.shell(context, cmd)?.let { return@withContext it }
         runCatching { adb.run(cmd) }
             .onFailure { e ->
                 lastError = when {
@@ -85,6 +86,8 @@ class HomeSetup(private val context: Context) {
     }
 
     suspend fun takeOver(): Result = withContext(Dispatchers.IO) {
+        // Paired with Wireless debugging: MyTV sends the one-time phone command itself.
+        if (!canWriteSecure && WirelessAdb.isPaired(context)) WirelessAdb.shell(context, PHONE_COMMAND)
         if (canWriteSecure) {
             setSecureList(ACCESSIBILITY, secureList(ACCESSIBILITY) + HomeOverride.component)
             Settings.Secure.putInt(cr, "accessibility_enabled", 1)
@@ -173,7 +176,8 @@ class HomeSetup(private val context: Context) {
     private fun noAccess() = Result.NoAccess(
         when (lastError) {
             "timeout" -> "The TV didn't answer in time. Try again: when it asks \"Allow USB debugging?\", tick Always allow and choose OK."
-            else -> "One-time step from your phone: in Bugjaeger's Shell, run   " + PHONE_COMMAND + "   then select this button again."
+            else -> if (WirelessAdb.isPaired(context)) "MyTV is paired but couldn't connect: turn Wireless debugging on (Developer options) and select this button again."
+            else "One-time step: pair MyTV with Wireless debugging below (no phone needed), or run   " + PHONE_COMMAND + "   in Bugjaeger's Shell, then select this button again."
         },
     )
 

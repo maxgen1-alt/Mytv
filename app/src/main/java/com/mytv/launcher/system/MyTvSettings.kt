@@ -26,6 +26,16 @@ class MyTvSettings(context: Context) {
         get() = prefs.getString("update_channel", "stable") ?: "stable"
         set(v) = prefs.edit().putString("update_channel", v).apply()
 
+    /** The remote button that slides the fantasy panel in and out (0 = none chosen). */
+    var fantasyKey: Int
+        get() = prefs.getInt("fantasy_key", 0)
+        set(v) = prefs.edit().putInt("fantasy_key", v).apply()
+
+    /** Signed in to Fantrax through MyTV (its cookies live in the system WebView). */
+    var fantraxSignedIn: Boolean
+        get() = prefs.getBoolean("fantrax_signed_in", false)
+        set(v) = prefs.edit().putBoolean("fantrax_signed_in", v).apply()
+
     /** Who's watching: "me", "ang" or "guest". */
     var profile: String
         get() = prefs.getString("profile", "me") ?: "me"
