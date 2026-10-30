@@ -158,6 +158,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val context get() = getApplication<Application>()
     private val installed = InstalledApps(app)
     private val espn = EspnClient()
+    private val leaguePass = com.mytv.launcher.sports.LeaguePassClient()
     private val trakt = TraktClient(app)
     private val watchNext = WatchNext(app)
     private val updater = Updater(app)
@@ -608,6 +609,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
      */
     private suspend fun openGame(game: Game, title: String, words: List<String>, option: WatchOption? = null): Boolean {
         val options = (listOfNotNull(option) + watchOptions(game)).distinctBy { it.app.packageName }
+        // NBA on League Pass: straight to that game's page in Prime Video.
+        options.firstOrNull()?.takeIf { com.mytv.launcher.sports.Service.PRIME_VIDEO.matches(it.app.packageName, it.app.label) }?.let { prime ->
+            if (openOnLeaguePass(game, title, prime.app.packageName)) return true
+        }
         val link = watchNext.findGame(words, options.map { it.app.packageName })
         if (link != null && watchNext.openLink(link.first, link.second)) {
             val app = options.firstOrNull { it.app.packageName == link.first }?.app?.label.orEmpty()
@@ -729,28 +734,37 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * Play: the game on Prime Video (NBA League Pass lives there).
-     * 1. the game itself, if Prime Video lists it on the TV (its link starts it);
-     * 2. otherwise Prime Video, opened on its own.
+     * 1. that game's own page in Prime Video, from the League Pass channel;
+     * 2. the game itself, if Prime Video lists it on the TV;
+     * 3. not on League Pass (a national TV game): wherever it is on.
      */
     fun playOnPrime(game: Game) {
         val title = com.mytv.launcher.sports.NbaGames.title(game)
         viewModelScope.launch {
-            val prime = _allApps.value.firstOrNull { com.mytv.launcher.sports.Service.PRIME_VIDEO.matches(it.packageName, it.label) }
+            val prime = primeVideo()
             if (prime == null) {
                 toast("$title · Prime Video isn't installed on this TV")
                 return@launch
             }
+            if (openOnLeaguePass(game, title, prime.packageName)) return@launch
             val link = watchNext.findGame(com.mytv.launcher.sports.NbaGames.matchWords(game), listOf(prime.packageName))
             if (link != null && watchNext.openLink(link.first, link.second)) {
                 toast("$title · starting on Prime Video")
                 return@launch
             }
-            if (installed.launch(prime.packageName)) {
-                toast("$title · opening Prime Video, it's under NBA League Pass")
-            } else {
-                toast("Couldn't open Prime Video")
-            }
+            if (!openGame(game, title, com.mytv.launcher.sports.NbaGames.matchWords(game))) navigate(Screen.Nba)
         }
+    }
+
+    private fun primeVideo() = _allApps.value.firstOrNull { com.mytv.launcher.sports.Service.PRIME_VIDEO.matches(it.packageName, it.label) }
+
+    /** Opens the game's own page in Prime Video, if League Pass lists it. */
+    private suspend fun openOnLeaguePass(game: Game, title: String, primePackage: String): Boolean {
+        if (game.league.sport != "basketball") return false
+        val card = com.mytv.launcher.sports.LeaguePass.find(leaguePass.cards(), game) ?: return false
+        if (!watchNext.openFresh(primePackage, com.mytv.launcher.sports.LeaguePass.link(card))) return false
+        toast("$title · opening it on League Pass")
+        return true
     }
 
     // ---- Top 10 ----

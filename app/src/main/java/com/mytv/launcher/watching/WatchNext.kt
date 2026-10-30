@@ -117,6 +117,16 @@ class WatchNext(private val context: Context) {
         return runCatching { context.startActivity(intent) }.isSuccess
     }
 
+    /**
+     * Opens [uri] in [pkg] as a fresh start: Prime Video ignores a link while
+     * it's already open, so its old screen is cleared first.
+     */
+    fun openFresh(pkg: String, uri: String): Boolean {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(uri)).setPackage(pkg)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        return runCatching { context.startActivity(intent) }.isSuccess
+    }
+
     /** Opens the item right where you left off, inside the app that published it. */
     fun open(item: WatchItem): Boolean {
         val uri = item.intentUri ?: return false

@@ -89,11 +89,7 @@ class FantraxClient(
 
     private suspend fun call(builder: Request.Builder): String? = withContext(Dispatchers.IO) {
         runCatching {
-            // Fantrax sits behind Cloudflare, which turns away clients that don't look like a browser.
-            val request = builder
-                .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
-                .header("Accept", "application/json")
-                .build()
+            val request = builder.header("Accept", "application/json").build()
             http.newCall(request).execute().use { resp -> if (resp.isSuccessful) resp.body?.string() else null }
         }.getOrNull()
     }
