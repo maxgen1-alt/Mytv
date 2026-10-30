@@ -60,6 +60,8 @@ sealed interface Screen {
     data class TeamPage(val teamKey: String) : Screen
     /** Every NBA game of the day with live scores; Play opens it on Prime Video (League Pass). */
     data object Nba : Screen
+    /** Fantrax's sign-in page (once), so the fantasy panel can show your league's live scoring. */
+    data object FantraxSignIn : Screen
     data object EditApps : Screen
     data object TraktLink : Screen
     data object Ang : Screen
@@ -309,7 +311,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private var nbaJob: Job? = null
 
     /** The fantasy matchup, for the home screen's Fantasy tile. */
-    private val _fantasy = MutableStateFlow<com.mytv.launcher.fantasy.FantasyResult?>(null)
+    private val _fantasy = MutableStateFlow<com.mytv.launcher.fantasy.FantasyNow?>(null)
     val fantasy = _fantasy.asStateFlow()
 
     /** Short "Finding the Arsenal game..." message shown over the home screen. */
@@ -337,8 +339,12 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     fun back() {
         linkJob?.cancel()
-        // Her List lives inside Ang's TV: Back returns there.
-        _screen.value = if (_screen.value == Screen.AngList) Screen.Ang else Screen.Home
+        // Her List lives inside Ang's TV: Back returns there. Fantrax's sign-in returns to settings.
+        when (_screen.value) {
+            Screen.AngList -> _screen.value = Screen.Ang
+            Screen.FantraxSignIn -> navigate(Screen.SystemSetup)
+            else -> _screen.value = Screen.Home
+        }
     }
 
     /** The remote's Home button: always the home screen. */
@@ -445,7 +451,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             )
         }
         _teams.value = info
-        fantasyNow.await().let { r -> if (r is com.mytv.launcher.fantasy.FantasyResult.Ok || _fantasy.value == null) _fantasy.value = r }
+        _fantasy.value = fantasyNow.await()
         nbaToday.await()?.let { games ->
             _nbaSummary.value = NbaSummary(live = games.count { it.state == com.mytv.launcher.sports.GameState.LIVE }, today = games.size)
         }
@@ -660,6 +666,23 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     /** The Fantasy tile, or "Show it now" in settings: slides the fantasy panel in (or out). */
     fun toggleFantasy() { com.mytv.launcher.fantasy.FantasyPanel.toggle(context) }
+
+    /** MyTV settings → Sign in to Fantrax: Fantrax's sign-in page, once. */
+    fun signInToFantrax() = navigate(Screen.FantraxSignIn)
+
+    /** A page loaded in the sign-in screen: once Fantrax shows the league's scores, we're done. */
+    fun fantraxPageLoaded(url: String) {
+        if (url.contains("/login")) return
+        viewModelScope.launch {
+            if (_screen.value != Screen.FantraxSignIn) return@launch
+            if (com.mytv.launcher.fantasy.FantasyPanel.signedIn()) {
+                android.webkit.CookieManager.getInstance().flush()
+                settings.fantraxSignedIn = true
+                toast("Signed in to Fantrax. Press your fantasy button in any app.")
+                navigate(Screen.SystemSetup)
+            }
+        }
+    }
 
     /** MyTV settings: the next button pressed on the remote becomes the fantasy button. */
     fun chooseFantasyButton() {
@@ -1299,6 +1322,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         val phoneSetup: String? = null,
         val helper: String = "",
         val fantasyButton: String = "none",
+        val fantraxSignedIn: Boolean = false,
     )
 
     private fun systemNow(busy: Boolean = false, message: String = _system.value.message) = SystemState(
@@ -1312,6 +1336,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         busy = busy,
         message = message,
         fantasyButton = com.mytv.launcher.system.FantasyButton.label(settings.fantasyKey),
+        fantraxSignedIn = settings.fantraxSignedIn,
         phoneSetup = if (homeSetup.canWriteSecure) null else com.mytv.launcher.system.HomeSetup.PHONE_COMMAND,
         helper = when {
             !settings.homeOverride -> ""

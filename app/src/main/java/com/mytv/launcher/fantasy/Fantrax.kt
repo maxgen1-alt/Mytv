@@ -1,5 +1,9 @@
 package com.mytv.launcher.fantasy
 
+import android.webkit.CookieManager
+import com.mytv.launcher.sports.Game
+import com.mytv.launcher.sports.GameState
+import com.mytv.launcher.sports.NbaGames
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -10,263 +14,165 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
+import java.time.OffsetDateTime
 import java.util.concurrent.TimeUnit
 
 /** Your fantasy league on Fantrax. */
 object FantasyLeague {
     const val LEAGUE_ID = "mkj6sceamtvr8qje"
     const val MY_TEAM = "Midland Monarchs"
+    /** Fantrax's own live matchup screen (mobile layout: fits half the TV). */
+    const val MATCHUP_URL = "https://www.fantrax.com/fantasy/league/$LEAGUE_ID/livescoring?mobileMatchupView=true"
+    const val LOGIN_URL = "https://www.fantrax.com/login"
 }
 
-enum class FState { NONE, UPCOMING, LIVE, FINAL }
-
-data class FPlayer(
+data class FantasyPlayer(
     val id: String,
     val name: String,
-    /** NBA team abbreviation as Fantrax writes it ("LAL", "GSW"...). */
+    /** NBA team as Fantrax writes it ("LAL", "PHO"...). */
     val nbaTeam: String,
     val position: String,
-    val points: Double,
-    /** Fantrax's game line ("@BOS 88-90 Q3 5:21"), or the tip-off time. */
-    val status: String,
-    val state: FState,
 )
 
-data class FTeam(val id: String, val name: String, val points: Double, val players: List<FPlayer>)
+/** This week's matchup: both teams and who's in their starting lineups today. */
+data class FantasyWeek(
+    val myTeam: String,
+    val opponent: String,
+    val mine: List<FantasyPlayer>,
+    val theirs: List<FantasyPlayer>,
+)
 
-data class FMatchup(val mine: FTeam, val them: FTeam)
-
-sealed interface FantasyResult {
-    data class Ok(val matchup: FMatchup) : FantasyResult
-    data class Error(val message: String) : FantasyResult
-}
+/** A starter whose NBA game is on right now. */
+data class LivePlayer(val player: FantasyPlayer, val mine: Boolean, val game: Game)
 
 /**
- * Fantrax has no official live-scoring API; this uses what its own web app
- * calls (fxpa/req getLiveScoringStats) plus the public fxea endpoints for
- * team and player names.
+ * Fantrax: the league's public data (matchups, rosters, player names), and
+ * whether you're signed in. The live scores themselves are only shown to
+ * signed-in members, so the panel shows Fantrax's own matchup screen.
  */
 class FantraxClient(
     private val http: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(8, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
         .build(),
 ) {
+    private val base = "https://www.fantrax.com/fxea/general"
     private val leagueId = FantasyLeague.LEAGUE_ID
-    // Team and player names barely change: fetched at most every 12 hours.
-    private var leagueInfo: String? = null
+    // League info and the player list barely change: fetched at most every 6 hours.
+    private var info: String? = null
     private var players: String? = null
     private var namesAt = 0L
 
-    suspend fun matchup(myTeam: String = FantasyLeague.MY_TEAM): FantasyResult = coroutineScope {
-        val stale = System.currentTimeMillis() - namesAt > 12 * 3600_000L
-        val info = async { if (stale || leagueInfo == null) get("https://www.fantrax.com/fxea/general/getLeagueInfo?leagueId=$leagueId") else leagueInfo }
-        val ids = async { if (stale || players == null) get("https://www.fantrax.com/fxea/general/getPlayerIds?sport=NBA") else players }
-        val live = post(
-            "https://www.fantrax.com/fxpa/req?leagueId=$leagueId",
-            JSONObject().put(
-                "msgs",
-                JSONArray().put(JSONObject().put("method", "getLiveScoringStats").put("data", JSONObject().put("leagueId", leagueId).put("newView", true))),
-            ).toString(),
-        ) ?: return@coroutineScope FantasyResult.Error("Couldn't reach Fantrax")
-        val infoBody = info.await()
-        val idsBody = ids.await()
-        if (infoBody != null && idsBody != null) {
-            leagueInfo = infoBody
-            players = idsBody
-            namesAt = System.currentTimeMillis()
-        }
+    /** This week's matchup; null if Fantrax couldn't be reached. */
+    suspend fun week(now: Long = System.currentTimeMillis()): FantasyWeek? = coroutineScope {
+        val stale = now - namesAt > 6 * 3600_000L || info == null || players == null
+        val infoBody = async { if (stale) get("$base/getLeagueInfo?leagueId=$leagueId") else info }
+        val playersBody = async { if (stale) get("$base/getPlayerIds?sport=NBA") else players }
+        val rosters = get("$base/getTeamRosters?leagueId=$leagueId") ?: return@coroutineScope null
+        val i = infoBody.await() ?: info ?: return@coroutineScope null
+        val p = playersBody.await() ?: players ?: return@coroutineScope null
+        if (stale) { info = i; players = p; namesAt = now }
         withContext(Dispatchers.Default) {
-            runCatching { FantraxParser.parse(live, infoBody ?: leagueInfo, idsBody ?: players, myTeam) }
-                .getOrElse { FantasyResult.Error("Couldn't read Fantrax's scores") }
+            runCatching { FantraxData.week(i, rosters, p, FantasyLeague.MY_TEAM, now) }.getOrNull()
         }
+    }
+
+    /** True once Fantrax shows the league's live scoring to this TV (signed in through MyTV). */
+    suspend fun signedIn(): Boolean {
+        val cookies = runCatching { CookieManager.getInstance().getCookie("https://www.fantrax.com") }.getOrNull()
+        if (cookies.isNullOrBlank()) return false
+        val body = JSONObject().put(
+            "msgs",
+            JSONArray().put(JSONObject().put("method", "getLiveScoringStats").put("data", JSONObject().put("leagueId", leagueId))),
+        ).toString()
+        val reply = call(
+            Request.Builder().url("https://www.fantrax.com/fxpa/req?leagueId=$leagueId")
+                .header("Cookie", cookies)
+                .post(body.toRequestBody("application/json".toMediaType())),
+        ) ?: return false
+        return !reply.contains("WARNING_NOT_LOGGED_IN") && !reply.contains("NOT_MEMBER_OF_LEAGUE") && reply.contains("\"responses\"")
     }
 
     private suspend fun get(url: String): String? = call(Request.Builder().url(url))
 
-    private suspend fun post(url: String, json: String): String? =
-        call(Request.Builder().url(url).post(json.toRequestBody("application/json".toMediaType())))
-
     private suspend fun call(builder: Request.Builder): String? = withContext(Dispatchers.IO) {
         runCatching {
-            val request = builder.header("Accept", "application/json").build()
-            http.newCall(request).execute().use { resp -> if (resp.isSuccessful) resp.body?.string() else null }
+            http.newCall(builder.header("Accept", "application/json").build()).execute().use { resp ->
+                if (resp.isSuccessful) resp.body?.string() else null
+            }
         }.getOrNull()
     }
 }
 
-/** Turns Fantrax's responses into the matchup. Tolerant: the format is undocumented. */
-object FantraxParser {
+/** Reads Fantrax's public league data. */
+object FantraxData {
 
-    fun parse(liveJson: String, leagueInfoJson: String?, playersJson: String?, myTeam: String): FantasyResult {
-        val root = JSONObject(liveJson)
-        root.optJSONObject("pageError")?.let { return error(it) }
-        val first = root.optJSONArray("responses")?.optJSONObject(0)
-        first?.optJSONObject("pageError")?.let { return error(it) }
-        val data = first?.optJSONObject("data") ?: return FantasyResult.Error("Fantrax sent no scores")
-        data.optJSONObject("pageError")?.let { return error(it) }
+    fun week(infoJson: String, rostersJson: String, playersJson: String, myTeam: String, now: Long): FantasyWeek? {
+        val info = JSONObject(infoJson)
+        val teams = info.optJSONObject("teamInfo") ?: return null
+        val mine = teams.keys().asSequence().firstOrNull { teams.optJSONObject(it)?.optString("name").equals(myTeam, ignoreCase = true) }
+            ?: return null
 
-        // Team names: the league info (public), plus anything named in the live data.
-        val teamNames = HashMap<String, String>()
-        leagueInfoJson?.let { runCatching { collectTeams(JSONObject(it), teamNames) } }
-        collectTeams(data, teamNames)
+        // The scoring period (matchup week) we're in, else the next one, and who we play in it.
+        val periods = info.optJSONArray("scoringPeriods")?.objects().orEmpty()
+        val period = periods.firstOrNull { p ->
+            val start = time(p.optString("startDate"))
+            val end = time(p.optString("endDate"))
+            start != null && end != null && now in start..end
+        }?.optInt("number")
+            ?: periods.firstOrNull { (time(it.optString("startDate")) ?: 0L) > now }?.optInt("number")
+            ?: return null
+        val pair = info.optJSONArray("matchups")?.objects()?.firstOrNull { it.optInt("period") == period }
+            ?.optJSONArray("matchupList")?.objects()
+            ?.firstOrNull { m -> m.optJSONObject("home")?.optString("id") == mine || m.optJSONObject("away")?.optString("id") == mine }
+            ?: return null
+        val them = pair.optJSONObject("home")?.optString("id")?.takeIf { it != mine } ?: pair.optJSONObject("away")?.optString("id").orEmpty()
 
-        val pairs = matchups(data)
-        val mine = teamNames.entries.firstOrNull { it.value.equals(myTeam, ignoreCase = true) }?.key
-            ?: teamNames.entries.firstOrNull { it.value.contains(myTeam, ignoreCase = true) }?.key
-            ?: return FantasyResult.Error("Couldn't find $myTeam in the league")
-        val them = pairs.firstNotNullOfOrNull { (a, b) -> if (a == mine) b else if (b == mine) a else null }
-            ?: return FantasyResult.Error("$myTeam has no matchup right now")
-
-        // Players: names and NBA teams from the live data's scorers, else Fantrax's player list.
-        val scorers = HashMap<String, Triple<String, String, String>>()
-        collectScorers(data, scorers)
-        val directory = playersJson?.let { runCatching { JSONObject(it) }.getOrNull() }
-        val statuses = HashMap<String, String>()
-        collectStatuses(data, statuses)
-
-        val allStats = data.optJSONObject("statsPerTeam")?.optJSONObject("allTeamsStats")
-        fun team(id: String): FTeam {
-            val slots = allStats?.optJSONObject(id)
-            val slot = slots?.optJSONObject("ACTIVE") ?: slots?.let { s -> s.keys().asSequence().mapNotNull { s.optJSONObject(it) }.firstOrNull() }
-            val stats = slot?.optJSONObject("statsMap")
-            val players = stats?.keys()?.asSequence().orEmpty()
-                .filter { !it.startsWith("_") }
-                .map { pid ->
-                    val known = scorers[pid]
-                    val listed = directory?.optJSONObject(pid)
-                    val (status, state) = gameStatus(statuses[pid])
-                    FPlayer(
-                        id = pid,
-                        name = known?.first?.ifBlank { null } ?: listed?.optString("name")?.takeIf { it.isNotBlank() }?.let(::firstLast) ?: pid,
-                        nbaTeam = known?.second?.ifBlank { null } ?: listed?.optString("team").orEmpty(),
-                        position = known?.third?.ifBlank { null } ?: listed?.optString("position").orEmpty(),
-                        points = number(stats?.opt(pid)),
-                        status = status,
-                        state = state,
+        val directory = JSONObject(playersJson)
+        val rosters = JSONObject(rostersJson).optJSONObject("rosters")
+        fun starters(teamId: String): List<FantasyPlayer> =
+            rosters?.optJSONObject(teamId)?.optJSONArray("rosterItems")?.objects().orEmpty()
+                .filter { it.optString("status") == "ACTIVE" }
+                .map { item ->
+                    val id = item.optString("id")
+                    val p = directory.optJSONObject(id)
+                    FantasyPlayer(
+                        id = id,
+                        name = p?.optString("name")?.takeIf { it.isNotBlank() }?.let(::firstLast) ?: id,
+                        nbaTeam = p?.optString("team").orEmpty().takeIf { it != "(N/A)" }.orEmpty(),
+                        position = item.optString("position").ifBlank { p?.optString("position").orEmpty() },
                     )
                 }
-                .sortedWith(compareBy<FPlayer>({ order(it.state) }, { -it.points }))
-                .toList()
-            val total = slot?.takeIf { it.has("totalFpts") }?.let { number(it.opt("totalFpts")) } ?: players.sumOf { it.points }
-            return FTeam(id, teamNames[id] ?: "Opponent", total, players)
-        }
-        return FantasyResult.Ok(FMatchup(team(mine), team(them)))
+
+        return FantasyWeek(
+            myTeam = teams.optJSONObject(mine)?.optString("name") ?: myTeam,
+            opponent = teams.optJSONObject(them)?.optString("name") ?: "Opponent",
+            mine = starters(mine),
+            theirs = starters(them),
+        )
     }
 
-    private fun error(e: JSONObject): FantasyResult.Error = FantasyResult.Error(
-        when (e.optString("code")) {
-            "WARNING_NOT_LOGGED_IN", "NOT_MEMBER_OF_LEAGUE" -> "Fantrax only shows this league to signed-in members"
-            else -> e.optString("title").ifBlank { "Fantrax error" }
-        },
-    )
-
-    /** "a_b" matchup ids, as strings or as home/away objects. */
-    private fun matchups(data: JSONObject): List<Pair<String, String>> {
-        val out = mutableListOf<Pair<String, String>>()
-        val list = data.optJSONArray("matchups") ?: return out
-        for (i in 0 until list.length()) {
-            when (val m = list.opt(i)) {
-                is String -> m.split('_').takeIf { it.size == 2 }?.let { out += it[0] to it[1] }
-                is JSONObject -> {
-                    val a = m.optJSONObject("home")?.optString("id") ?: m.optString("team1")
-                    val b = m.optJSONObject("away")?.optString("id") ?: m.optString("team2")
-                    if (!a.isNullOrBlank() && !b.isNullOrBlank()) out += a to b
-                }
-            }
-        }
-        return out
+    /** Starters (both teams) whose NBA team is playing right now. */
+    fun liveNow(week: FantasyWeek, games: List<Game>): List<LivePlayer> {
+        val live = games.filter { it.state == GameState.LIVE }
+        fun on(p: FantasyPlayer) = p.nbaTeam.takeIf { it.isNotBlank() }?.let { NbaGames.gameFor(live, it) }
+        return week.mine.mapNotNull { p -> on(p)?.let { LivePlayer(p, true, it) } } +
+            week.theirs.mapNotNull { p -> on(p)?.let { LivePlayer(p, false, it) } }
     }
 
-    /** Every {id|teamId, name|teamName} object anywhere in [json]. */
-    private fun collectTeams(json: Any?, out: MutableMap<String, String>) {
-        when (json) {
-            is JSONObject -> {
-                val id = json.optString("teamId").ifBlank { json.optString("id") }
-                val name = json.optString("teamName").ifBlank { json.optString("name") }
-                if (id.isNotBlank() && name.isNotBlank() && !json.has("scorerId")) out.putIfAbsent(id, name)
-                json.keys().forEach { collectTeams(json.opt(it), out) }
-            }
-            is JSONArray -> for (i in 0 until json.length()) collectTeams(json.opt(i), out)
-        }
+    /** "2026-10-26T19:00:00.0-0400" -> millis. */
+    fun time(s: String): Long? {
+        val m = stamp.find(s) ?: return null
+        return runCatching { OffsetDateTime.parse("${m.groupValues[1]}${m.groupValues[2]}:${m.groupValues[3]}").toInstant().toEpochMilli() }.getOrNull()
     }
 
-    /** Every scorer object: id -> (name, NBA team, position). */
-    private fun collectScorers(json: Any?, out: MutableMap<String, Triple<String, String, String>>) {
-        when (json) {
-            is JSONObject -> {
-                val id = json.optString("scorerId")
-                if (id.isNotBlank()) {
-                    out.putIfAbsent(
-                        id,
-                        Triple(
-                            json.optString("name").let(::firstLast),
-                            json.optString("teamShortName"),
-                            json.optString("posShortNames").ifBlank { json.optString("posShortName") },
-                        ),
-                    )
-                }
-                json.keys().forEach { collectScorers(json.opt(it), out) }
-            }
-            is JSONArray -> for (i in 0 until json.length()) collectScorers(json.opt(i), out)
-        }
-    }
+    private val stamp = Regex("(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})(?:\\.\\d+)?([+-]\\d{2})(\\d{2})")
 
-    /** Every gameStatusMap, merged: player id -> "caption|eventId|code". */
-    private fun collectStatuses(json: Any?, out: MutableMap<String, String>) {
-        when (json) {
-            is JSONObject -> json.keys().forEach { key ->
-                val v = json.opt(key)
-                if (key == "gameStatusMap" && v is JSONObject) v.keys().forEach { pid -> v.optString(pid).takeIf { it.isNotBlank() }?.let { out[pid] = it } }
-                else collectStatuses(v, out)
-            }
-            is JSONArray -> for (i in 0 until json.length()) collectStatuses(json.opt(i), out)
-        }
-    }
-
-    /**
-     * "caption|eventId|code": code 1 = not started, 2 = live, 3 = final. Before
-     * tip-off the caption is "@BOS~<tip-off millis>".
-     */
-    fun gameStatus(raw: String?): Pair<String, FState> {
-        if (raw.isNullOrBlank()) return "" to FState.NONE
-        val parts = raw.split('|')
-        val state = when (parts.getOrNull(2)?.trim()) {
-            "1" -> FState.UPCOMING
-            "2" -> FState.LIVE
-            "3" -> FState.FINAL
-            else -> FState.NONE
-        }
-        var caption = parts[0]
-        if (caption.contains('~')) {
-            val (text, millis) = caption.split('~', limit = 2)
-            val tip = millis.trim().toLongOrNull()?.let {
-                java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneId.systemDefault())
-                    .format(java.time.format.DateTimeFormatter.ofPattern("h:mm a"))
-            }
-            caption = listOfNotNull(text.trim().ifBlank { null }, tip).joinToString(" ")
-        }
-        return caption.trim() to state
-    }
-
-    private fun order(state: FState) = when (state) {
-        FState.LIVE -> 0
-        FState.UPCOMING -> 1
-        FState.FINAL -> 2
-        FState.NONE -> 3
-    }
-
-    /** Points come as a number, a string, or {object1: points}. */
-    private fun number(v: Any?): Double = when (v) {
-        is Number -> v.toDouble()
-        is String -> v.replace(",", "").toDoubleOrNull() ?: 0.0
-        is JSONObject -> number(v.opt("object1"))
-        else -> 0.0
-    }
-
-    /** Fantrax lists people as "James, LeBron". */
+    /** Fantrax lists people as "Doncic, Luka". */
     private fun firstLast(name: String): String {
         val parts = name.split(',').map { it.trim() }
         return if (parts.size == 2 && parts.all { it.isNotEmpty() }) "${parts[1]} ${parts[0]}" else name.trim()
     }
+
+    private fun JSONArray.objects(): List<JSONObject> = (0 until length()).mapNotNull { optJSONObject(it) }
 }

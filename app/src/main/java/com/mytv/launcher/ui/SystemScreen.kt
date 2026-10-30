@@ -50,6 +50,7 @@ fun SystemScreen(
     onTestNbc: () -> Unit = {},
     onChooseFantasyButton: () -> Unit = {},
     onShowFantasy: () -> Unit = {},
+    onSignInFantrax: () -> Unit = {},
 ) {
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
@@ -100,6 +101,7 @@ fun SystemScreen(
                     "Pick a button you don't use, e.g. the YouTube or Netflix button (it stops opening that app).",
             )
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Pill(if (state.fantraxSignedIn) "Fantrax: signed in" else "Sign in to Fantrax", !state.fantraxSignedIn, onClick = onSignInFantrax)
                 Pill("Choose button (now: ${state.fantasyButton})", false, onClick = onChooseFantasyButton)
                 Pill("Show it now", false, onClick = onShowFantasy)
             }

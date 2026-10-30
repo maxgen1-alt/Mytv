@@ -1,5 +1,6 @@
 package com.mytv.launcher.fantasy
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
@@ -12,43 +13,65 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.widget.FrameLayout
+import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import com.mytv.launcher.MainActivity
+import com.mytv.launcher.sports.EspnClient
+import com.mytv.launcher.sports.NbaGames
+import com.mytv.launcher.sports.Teams
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import java.text.DecimalFormat
+import java.time.LocalDate
+
+/** What the Fantasy tile and the panel's play row show. */
+data class FantasyNow(val week: FantasyWeek?, val live: List<LivePlayer>)
 
 /**
  * Your fantasy matchup, slid in over the right half of the screen on top of
- * whatever is playing. The fantasy button (or Back) slides it away again.
- * Players in a live game get a ▶ that switches to that game.
+ * whatever is playing: Fantrax's own live matchup screen (signed in as you),
+ * with a ▶ row above it for your starters (and theirs) who are playing right
+ * now. The fantasy button (or Back) slides it away again.
  */
 object FantasyPanel {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    private val client = FantraxClient()
-    private val pts = DecimalFormat("0.#")
+    private val fantrax = FantraxClient()
+    private val espn = EspnClient()
     private var root: FrameLayout? = null
-    private var content: LinearLayout? = null
+    private var playRow: LinearLayout? = null
+    private var web: WebView? = null
     private var refreshJob: Job? = null
-    private var last: FantasyResult? = null
-    private var updatedAt = 0L
+    private var last: FantasyNow? = null
 
     val isShowing: Boolean get() = root != null
 
-    /** The last matchup fetched (for the home screen's Fantasy tile). */
-    suspend fun fetch(): FantasyResult = client.matchup().also { if (it is FantasyResult.Ok || last == null) last = it }
+    /** The matchup and who's playing now (for the home screen's Fantasy tile too). */
+    suspend fun fetch(): FantasyNow {
+        val week = scope.async { fantrax.week() }
+        val games = scope.async {
+            // After midnight, last night's late games are still on.
+            val today = LocalDate.now()
+            espn.scoreboard(Teams.nba, today) + espn.scoreboard(Teams.nba, today.minusDays(1))
+        }
+        val w = week.await() ?: last?.week
+        return FantasyNow(w, w?.let { FantraxData.liveNow(it, games.await()) }.orEmpty()).also { last = it }
+    }
+
+    suspend fun signedIn(): Boolean = fantrax.signedIn()
 
     fun toggle(context: Context) = scope.launch { if (isShowing) hide() else show(context) }
 
+    @SuppressLint("SetJavaScriptEnabled")
     private fun show(context: Context) {
         val app = context.applicationContext
         // A drawn-over-apps window (granted during MyTV's setup); from the home helper, its own overlay works too.
@@ -60,16 +83,29 @@ object FantasyPanel {
                 return
             }
         }
-        val windowContext = if (type == WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY) context else app
-        val wm = windowContext.getSystemService(WindowManager::class.java) ?: return
-        val width = windowContext.resources.displayMetrics.widthPixels / 2
+        val ctx = if (type == WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY) context else app
+        val wm = ctx.getSystemService(WindowManager::class.java) ?: return
+        val width = ctx.resources.displayMetrics.widthPixels / 2
 
-        val list = LinearLayout(windowContext).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(windowContext, 28), dp(windowContext, 24), dp(windowContext, 28), dp(windowContext, 24))
+        val row = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(ctx, 16), dp(ctx, 10), dp(ctx, 16), dp(ctx, 10))
         }
-        val frame = object : FrameLayout(windowContext) {
-            // Back closes it, whichever ▶ is selected (the fantasy button does too, through the home helper).
+        val webView = WebView(ctx).apply {
+            settings.javaScriptEnabled = true
+            settings.domStorageEnabled = true
+            setBackgroundColor(0xFF0E0E12.toInt())
+            isFocusable = true
+            webViewClient = WebViewClient()
+        }
+        val column = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(HorizontalScrollView(ctx).apply { isHorizontalScrollBarEnabled = false; addView(row) })
+            addView(webView, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        }
+        val frame = object : FrameLayout(ctx) {
+            // Back closes it, wherever you are in it (the fantasy button does too, through the home helper).
             override fun dispatchKeyEvent(event: KeyEvent): Boolean {
                 if (event.keyCode != KeyEvent.KEYCODE_BACK) return super.dispatchKeyEvent(event)
                 if (event.action == KeyEvent.ACTION_UP) hide()
@@ -77,9 +113,7 @@ object FantasyPanel {
             }
         }.apply {
             setBackgroundColor(0xF20E0E12.toInt())
-            isFocusable = true
-            descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
-            addView(ScrollView(windowContext).apply { isFillViewport = true; addView(list) })
+            addView(column)
         }
         val params = WindowManager.LayoutParams(
             width,
@@ -88,23 +122,29 @@ object FantasyPanel {
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT,
         ).apply { gravity = Gravity.END or Gravity.TOP }
-        if (runCatching { wm.addView(frame, params) }.isFailure) return
+        if (runCatching { wm.addView(frame, params) }.isFailure) {
+            webView.destroy()
+            return
+        }
         root = frame
-        content = list
-        render(windowContext, last, focus = null)
+        playRow = row
+        web = webView
+        renderRow(ctx, last)
         frame.translationX = width.toFloat()
         frame.animate().translationX(0f).setDuration(260).start()
 
         refreshJob?.cancel()
         refreshJob = scope.launch {
+            if (fantrax.signedIn()) webView.loadUrl(FantasyLeague.MATCHUP_URL)
+            else webView.loadData(SIGN_IN_FIRST, "text/html", "utf-8")
+            var reloads = 0
             while (isActive && root === frame) {
-                val result = client.matchup()
-                if (result is FantasyResult.Ok || last !is FantasyResult.Ok) last = result
-                updatedAt = System.currentTimeMillis()
+                val now = fetch()
                 if (root !== frame) break
-                // Keep the ▶ you're on selected across refreshes.
-                render(windowContext, last, focus = (frame.findFocus()?.tag as? String))
-                delay(30_000L)
+                renderRow(ctx, now)
+                delay(60_000L)
+                // Fresh scores every couple of minutes, if Fantrax's page doesn't update itself.
+                if (++reloads % 2 == 0 && webView.url?.startsWith("https://www.fantrax.com") == true) webView.reload()
             }
         }
     }
@@ -112,141 +152,83 @@ object FantasyPanel {
     private fun hide() {
         val frame = root ?: return
         root = null
-        content = null
+        playRow = null
+        val webView = web
+        web = null
         refreshJob?.cancel()
         val wm = frame.context.getSystemService(WindowManager::class.java)
         frame.animate().translationX(frame.width.toFloat()).setDuration(220)
-            .withEndAction { runCatching { wm?.removeView(frame) } }
+            .withEndAction {
+                runCatching { wm?.removeView(frame) }
+                webView?.destroy()
+            }
             .start()
     }
 
-    private fun render(context: Context, result: FantasyResult?, focus: String?) {
-        val list = content ?: return
-        list.removeAllViews()
-        fun text(s: String, size: Float, color: Int = 0xFFF5F5F7.toInt(), bold: Boolean = false) = TextView(context).apply {
-            text = s
-            setTextColor(color)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, size)
-            if (bold) typeface = Typeface.DEFAULT_BOLD
+    /** The ▶ row: everyone in either lineup whose game is on now. */
+    private fun renderRow(context: Context, now: FantasyNow?) {
+        val row = playRow ?: return
+        val focused = row.findFocus()?.tag as? String
+        row.removeAllViews()
+        val live = now?.live.orEmpty()
+        if (live.isEmpty()) {
+            row.addView(label(context, if (now == null) "Fantasy · loading…" else "Fantasy · nobody in your matchup is playing right now"))
+            if (root?.findFocus() == null) web?.requestFocus()
+            return
         }
-        list.addView(text("Fantasy · live", 13f, 0xFFA1A1AA.toInt()))
-        when (result) {
-            null -> { list.addView(text("Loading…", 18f)); focusPanel(); return }
-            is FantasyResult.Error -> { list.addView(text(result.message, 18f)); focusPanel(); return }
-            is FantasyResult.Ok -> Unit
-        }
-        val m = (result as? FantasyResult.Ok)?.matchup ?: return
-        val winning = m.mine.points >= m.them.points
-        list.addView(scoreLine(context, m.mine, if (winning) 0xFF7CD992.toInt() else 0xFFF5F5F7.toInt()))
-        list.addView(scoreLine(context, m.them, if (!winning) 0xFFFF8A80.toInt() else 0xFFF5F5F7.toInt()))
-        val live = (m.mine.players + m.them.players).count { it.state == FState.LIVE }
-        list.addView(text(
-            (if (live > 0) "$live playing now · " else "") +
-                "Updated " + java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(updatedAt.takeIf { it > 0 } ?: System.currentTimeMillis())),
-            12f, 0xFFA1A1AA.toInt(),
-        ).apply { setPadding(0, dp(context, 4), 0, dp(context, 10)) })
-
-        var firstPlay: View? = null
+        row.addView(label(context, "On now"))
+        var first: View? = null
         var wanted: View? = null
-        for (team in listOf(m.mine, m.them)) {
-            list.addView(text(team.name, 16f, bold = true).apply { setPadding(0, dp(context, 14), 0, dp(context, 6)) })
-            if (team.players.isEmpty()) list.addView(text("No players in the lineup yet", 13f, 0xFFA1A1AA.toInt()))
-            team.players.forEach { p ->
-                val (row, play) = playerRow(context, p)
-                list.addView(row)
-                if (play != null) {
-                    if (firstPlay == null) firstPlay = play
-                    if (p.id == focus) wanted = play
-                }
-            }
+        live.forEach { lp ->
+            val chip = chip(context, lp)
+            row.addView(chip)
+            if (first == null) first = chip
+            if (lp.player.id == focused) wanted = chip
         }
-        (wanted ?: firstPlay)?.requestFocus() ?: focusPanel()
+        // Keep the ▶ you were on; don't pull you out of Fantrax's page while you scroll it.
+        if (focused != null || root?.findFocus() == null) (wanted ?: first)?.requestFocus()
     }
 
-    private fun focusPanel() { root?.requestFocus() }
-
-    private fun scoreLine(context: Context, team: FTeam, color: Int) = LinearLayout(context).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
-        setPadding(0, dp(context, 6), 0, 0)
-        addView(TextView(context).apply {
-            text = team.name
-            setTextColor(0xFFF5F5F7.toInt())
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f)
-            typeface = Typeface.DEFAULT_BOLD
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
-        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        addView(TextView(context).apply {
-            text = pts.format(team.points)
-            setTextColor(color)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 30f)
-            typeface = Typeface.DEFAULT_BOLD
-        })
+    private fun label(context: Context, text: String) = TextView(context).apply {
+        this.text = text
+        setTextColor(0xFFA1A1AA.toInt())
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+        setPadding(0, 0, dp(context, 12), 0)
     }
 
-    /** One player: ▶ (live games only), name, team · position · game, fantasy points. */
-    private fun playerRow(context: Context, p: FPlayer): Pair<View, View?> {
-        val row = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(context, 5), 0, dp(context, 5))
-        }
-        val play = if (p.state == FState.LIVE && p.nbaTeam.isNotBlank()) TextView(context).apply {
-            text = "▶"
-            tag = p.id
-            gravity = Gravity.CENTER
-            setTextColor(0xFFFFFFFF.toInt())
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
-            isFocusable = true
-            val normal = GradientDrawable().apply { cornerRadius = dp(context, 16).toFloat(); setColor(0xFFE5383B.toInt()) }
-            val focused = GradientDrawable().apply { cornerRadius = dp(context, 16).toFloat(); setColor(0xFFE5383B.toInt()); setStroke(dp(context, 3), 0xFFFFFFFF.toInt()) }
-            background = normal
-            setOnFocusChangeListener { v, has ->
-                v.background = if (has) focused else normal
-                v.animate().scaleX(if (has) 1.15f else 1f).scaleY(if (has) 1.15f else 1f).setDuration(120).start()
-            }
-            setOnClickListener { watch(context, p) }
-        } else null
-        row.addView(play ?: View(context), LinearLayout.LayoutParams(dp(context, 40), dp(context, 32)).apply { marginEnd = dp(context, 12) })
-        row.addView(LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            addView(TextView(context).apply {
-                text = p.name
-                setTextColor(0xFFF5F5F7.toInt())
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
-                typeface = if (p.state == FState.LIVE) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
-                maxLines = 1
-                ellipsize = android.text.TextUtils.TruncateAt.END
-            })
-            addView(TextView(context).apply {
-                text = listOf(p.nbaTeam, p.position, p.status).filter { it.isNotBlank() }.joinToString(" · ")
-                setTextColor(if (p.state == FState.LIVE) 0xFFFF8A80.toInt() else 0xFFA1A1AA.toInt())
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                maxLines = 1
-                ellipsize = android.text.TextUtils.TruncateAt.END
-            })
-        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        row.addView(TextView(context).apply {
-            text = pts.format(p.points)
-            setTextColor(0xFFF5F5F7.toInt())
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
-            typeface = Typeface.DEFAULT_BOLD
-        })
-        return row to play
+    /** "▶ Luka Doncic · LAL": your players in green, theirs in grey. */
+    private fun chip(context: Context, lp: LivePlayer) = TextView(context).apply {
+        text = "▶  ${lp.player.name} · ${lp.player.nbaTeam}"
+        tag = lp.player.id
+        setTextColor(0xFFFFFFFF.toInt())
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+        typeface = Typeface.DEFAULT_BOLD
+        isFocusable = true
+        setPadding(dp(context, 14), dp(context, 8), dp(context, 14), dp(context, 8))
+        val fill = if (lp.mine) 0xFF1F7A3D.toInt() else 0xFF3A3A44.toInt()
+        val normal = GradientDrawable().apply { cornerRadius = dp(context, 18).toFloat(); setColor(fill) }
+        val selected = GradientDrawable().apply { cornerRadius = dp(context, 18).toFloat(); setColor(fill); setStroke(dp(context, 3), 0xFFFFFFFF.toInt()) }
+        background = normal
+        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginEnd = dp(context, 10) }
+        setOnFocusChangeListener { v, has -> v.background = if (has) selected else normal }
+        setOnClickListener { watch(context, lp) }
     }
 
     /** ▶: the panel slides away and MyTV switches to that player's game, in whichever app has it. */
-    private fun watch(context: Context, p: FPlayer) {
+    private fun watch(context: Context, lp: LivePlayer) {
         hide()
         runCatching {
             context.startActivity(
                 Intent(context, MainActivity::class.java)
-                    .putExtra(MainActivity.EXTRA_WATCH_NBA, p.nbaTeam)
+                    .putExtra(MainActivity.EXTRA_WATCH_NBA, NbaGames.espnAbbr(lp.player.nbaTeam))
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             )
         }
     }
+
+    private const val SIGN_IN_FIRST = "<html><body style='background:#0e0e12;color:#f5f5f7;font-family:sans-serif;padding:24px'>" +
+        "<h2>Sign in to Fantrax</h2><p>Fantrax only shows live scoring to the league's members. On MyTV: " +
+        "<b>⚙ settings → Fantasy basketball → Sign in to Fantrax</b> (once).</p></body></html>"
 
     private fun dp(context: Context, v: Int) =
         TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), context.resources.displayMetrics).toInt()
