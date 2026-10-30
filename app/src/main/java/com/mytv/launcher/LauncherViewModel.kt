@@ -1339,7 +1339,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         message = message,
         fantasyButton = com.mytv.launcher.system.FantasyButton.label(settings.fantasyKey),
         fantraxSignedIn = settings.fantraxSignedIn,
-        wirelessPaired = com.mytv.launcher.system.WirelessAdb.isPaired(app),
+        wirelessPaired = com.mytv.launcher.system.WirelessAdb.isPaired(context),
         phoneSetup = if (homeSetup.canWriteSecure) null else com.mytv.launcher.system.HomeSetup.PHONE_COMMAND,
         helper = when {
             !settings.homeOverride -> ""
@@ -1379,7 +1379,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         runSetup("Pairing with Wireless debugging…") {
-            val error = com.mytv.launcher.system.WirelessAdb.pair(app, digits, port.trim().toIntOrNull())
+            val error = com.mytv.launcher.system.WirelessAdb.pair(context, digits, port.trim().toIntOrNull())
             if (error != null) com.mytv.launcher.system.HomeSetup.Result.NoAccess(error) else homeSetup.takeOver()
         }
     }
