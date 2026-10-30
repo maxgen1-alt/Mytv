@@ -58,6 +58,8 @@ import kotlinx.coroutines.launch
 sealed interface Screen {
     data object Home : Screen
     data class TeamPage(val teamKey: String) : Screen
+    /** Every NBA game of the day with live scores; Play opens it on Prime Video (League Pass). */
+    data object Nba : Screen
     data object EditApps : Screen
     data object TraktLink : Screen
     data object Ang : Screen
@@ -126,6 +128,18 @@ data class TeamDetail(
     val standings: Standings? = null,
     val loading: Boolean = true,
 )
+
+data class NbaState(
+    /** 0 = today, -1 = yesterday, 1 = tomorrow. */
+    val dayOffset: Int = 0,
+    val games: List<Game> = emptyList(),
+    val loading: Boolean = true,
+    /** When the scores were last fetched. */
+    val updatedAt: Long = 0L,
+)
+
+/** What the NBA button on the home screen shows. */
+data class NbaSummary(val live: Int = 0, val today: Int = 0)
 
 sealed interface LinkState {
     data object Starting : LinkState
@@ -287,6 +301,12 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val _teamDetail = MutableStateFlow(TeamDetail())
     val teamDetail = _teamDetail.asStateFlow()
 
+    private val _nba = MutableStateFlow(NbaState())
+    val nba = _nba.asStateFlow()
+    private val _nbaSummary = MutableStateFlow(NbaSummary())
+    val nbaSummary = _nbaSummary.asStateFlow()
+    private var nbaJob: Job? = null
+
     /** Short "Finding the Arsenal game..." message shown over the home screen. */
     private val _busy = MutableStateFlow<String?>(null)
     val busy: StateFlow<String?> = _busy.asStateFlow()
@@ -301,6 +321,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         _screen.value = to
         when (to) {
             is Screen.TeamPage -> Teams.byKey(to.teamKey)?.let(::loadTeam)
+            Screen.Nba -> loadNba(0)
             Screen.TraktLink -> startTraktLink()
             Screen.Ang -> loadAng()
             Screen.Watchlist -> refreshMine()
@@ -403,6 +424,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             schedules = Teams.all.associate { t -> t.key to (fetched[t.key].takeIf { !it.isNullOrEmpty() } ?: schedules[t.key].orEmpty()) }
             if (fetched.values.any { it.isNotEmpty() }) schedulesAt = now
         }
+        val nbaToday = async { nbaGames(0) }
         val found = live.await()
         val zone = java.time.ZoneId.systemDefault()
         val info = Teams.all.associate { team ->
@@ -417,6 +439,9 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             )
         }
         _teams.value = info
+        nbaToday.await()?.let { games ->
+            _nbaSummary.value = NbaSummary(live = games.count { it.state == com.mytv.launcher.sports.GameState.LIVE }, today = games.size)
+        }
         _gameDay.value = com.mytv.launcher.sports.GameDay.theme(info, now)
     }
 
@@ -616,6 +641,65 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 standings = standings.await(),
                 loading = false,
             )
+        }
+    }
+
+    // ---- NBA ----
+
+    /** The NBA page for today + [dayOffset]; scores refresh every 30 seconds while it's open. */
+    fun loadNba(dayOffset: Int) {
+        nbaJob?.cancel()
+        _nba.value = NbaState(dayOffset = dayOffset, games = _nba.value.games.takeIf { _nba.value.dayOffset == dayOffset }.orEmpty())
+        nbaJob = viewModelScope.launch {
+            while (isActive && _screen.value == Screen.Nba) {
+                val games = nbaGames(dayOffset)
+                if (games != null || _nba.value.loading) {
+                    _nba.value = NbaState(dayOffset, games ?: _nba.value.games, loading = false, updatedAt = System.currentTimeMillis())
+                }
+                if (dayOffset == 0 && games != null) {
+                    _nbaSummary.value = NbaSummary(live = games.count { it.state == com.mytv.launcher.sports.GameState.LIVE }, today = games.size)
+                }
+                // Yesterday's finals and tomorrow's schedule don't change; today's scores do.
+                if (dayOffset != 0 && games != null) break
+                delay(30_000L)
+            }
+        }
+    }
+
+    /** That day's games, live first; null if ESPN couldn't be reached. */
+    private suspend fun nbaGames(dayOffset: Int): List<Game>? = coroutineScope {
+        val day = java.time.LocalDate.now().plusDays(dayOffset.toLong())
+        val games = async { espn.scoreboard(Teams.nba, day) }
+        // After midnight, last night's late games are still on: show them on today's page too.
+        val before = if (dayOffset == 0) async { espn.scoreboard(Teams.nba, day.minusDays(1)) } else null
+        val list = games.await()
+        val stillOn = before?.await().orEmpty()
+        if (list.isEmpty() && stillOn.isEmpty()) null else com.mytv.launcher.sports.NbaGames.forDay(list, stillOn)
+    }
+
+    /**
+     * Play: the game on Prime Video (NBA League Pass lives there).
+     * 1. the game itself, if Prime Video lists it on the TV (its link starts it);
+     * 2. otherwise Prime Video, opened on its own.
+     */
+    fun playOnPrime(game: Game) {
+        val title = com.mytv.launcher.sports.NbaGames.title(game)
+        viewModelScope.launch {
+            val prime = _allApps.value.firstOrNull { com.mytv.launcher.sports.Service.PRIME_VIDEO.matches(it.packageName, it.label) }
+            if (prime == null) {
+                toast("$title · Prime Video isn't installed on this TV")
+                return@launch
+            }
+            val link = watchNext.findGame(com.mytv.launcher.sports.NbaGames.matchWords(game), listOf(prime.packageName))
+            if (link != null && watchNext.openLink(link.first, link.second)) {
+                toast("$title · starting on Prime Video")
+                return@launch
+            }
+            if (installed.launch(prime.packageName)) {
+                toast("$title · opening Prime Video, it's under NBA League Pass")
+            } else {
+                toast("Couldn't open Prime Video")
+            }
         }
     }
 

@@ -7,6 +7,8 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 
 /** Fetches games and standings from ESPN's free, key-less public API. */
@@ -85,6 +87,10 @@ class EspnClient(
             .sortedByDescending { it.startMillis }
             .take(limit)
     }
+
+    /** Every game of [league] on [date] (ESPN's US day), live scores included. */
+    suspend fun scoreboard(league: League, date: LocalDate): List<Game> =
+        fetchGames("$base/${league.sport}/${league.code}/scoreboard?dates=${date.format(DateTimeFormatter.BASIC_ISO_DATE)}", league)
 
     suspend fun standings(team: Team): Standings? {
         val league = team.standingsLeague
