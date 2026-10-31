@@ -1387,13 +1387,19 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Opens the TV's Developer options (Wireless debugging is in there). */
-    fun openDeveloperOptions() {
-        val intent = android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
-            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-        if (runCatching { context.startActivity(intent) }.isFailure) {
-            toast("Open Settings → System → Developer options (turn it on: Settings → System → About, click Android TV OS build 7 times)")
+    /**
+     * The pairing code only works while Settings' pairing screen is open, so
+     * MyTV floats a keypad over it (see PairingOverlay).
+     */
+    fun pairWithKeypad() {
+        val msg = when (val r = com.mytv.launcher.system.PairingOverlay.start(context)) {
+            com.mytv.launcher.system.PairingOverlay.Start.Shown ->
+                "In Developer options: Wireless debugging → turn it on → Pair device with pairing code. MyTV's keypad appears in the corner; type the code there."
+            is com.mytv.launcher.system.PairingOverlay.Start.NeedsPermission ->
+                if (r.pageOpened) "First allow MyTV to display over other apps (turn it on, then press Back), then choose the keypad again."
+                else "This TV won't let MyTV show its keypad over Settings. Use Bugjaeger (below) this one time."
         }
+        _system.value = systemNow(message = msg)
     }
 
     fun makeHome() = runSetup("Setting up… if the TV asks \"Allow USB debugging?\", tick Always allow and choose OK.") { homeSetup.takeOver() }

@@ -214,7 +214,7 @@ class MainActivity : ComponentActivity() {
                             onShowFantasy = vm::toggleFantasy,
                             onSignInFantrax = vm::signInToFantrax,
                             onPairWireless = vm::pairWireless,
-                            onDeveloperOptions = vm::openDeveloperOptions,
+                            onPairKeypad = vm::pairWithKeypad,
                         )
                     }
                 }

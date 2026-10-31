@@ -61,7 +61,20 @@ class WirelessAdb private constructor(private val context: Context) : AbsAdbConn
 
     /** Pairs with the code shown under Settings → Wireless debugging → Pair device with pairing code. */
     private fun pairNow(port: Int, code: String): Boolean {
-        val ok = pair(port, code.trim())
+        // The TV itself, then its own network addresses (in case pairing isn't offered on the internal one).
+        val hosts = listOf("127.0.0.1") + ownAddresses()
+        var last: Exception? = null
+        var ok = false
+        for (host in hosts) {
+            try {
+                ok = pair(host, port, code.trim())
+                break
+            } catch (e: Exception) {
+                if ((e.cause ?: e) !is java.net.ConnectException && e !is java.net.ConnectException && e.message?.contains("ECONNREFUSED") != true) throw e
+                last = e
+            }
+        }
+        if (!ok && last != null) throw last
         if (ok) context.getSharedPreferences("home_setup", Context.MODE_PRIVATE).edit().putBoolean(PAIRED, true).apply()
         return ok
     }
@@ -109,6 +122,40 @@ class WirelessAdb private constructor(private val context: Context) : AbsAdbConn
         suspend fun shell(context: Context, command: String): String? = withContext(Dispatchers.IO) {
             if (!isPaired(context)) return@withContext null
             runCatching { get(context).shellNow(command) }.getOrNull()
+        }
+
+        /** This TV's IPv4 addresses on the home network. */
+        private fun ownAddresses(): List<String> = runCatching {
+            java.net.NetworkInterface.getNetworkInterfaces().toList()
+                .filter { it.isUp && !it.isLoopback }
+                .flatMap { it.inetAddresses.toList() }
+                .filterIsInstance<java.net.Inet4Address>()
+                .mapNotNull { it.hostAddress }
+        }.getOrDefault(emptyList())
+
+        /**
+         * Watches for the TV's pairing screen (it announces itself on the network
+         * only while it's open): [onOpen] gets its port each time it shows up.
+         * Returns a function that stops watching.
+         */
+        fun watchPairing(context: Context, onOpen: (Int) -> Unit): () -> Unit {
+            val nsd = context.getSystemService(NsdManager::class.java) ?: return {}
+            val listener = object : NsdManager.DiscoveryListener {
+                override fun onServiceFound(info: NsdServiceInfo) {
+                    @Suppress("DEPRECATION")
+                    nsd.resolveService(info, object : NsdManager.ResolveListener {
+                        override fun onServiceResolved(resolved: NsdServiceInfo) = onOpen(resolved.port)
+                        override fun onResolveFailed(info: NsdServiceInfo, errorCode: Int) {}
+                    })
+                }
+                override fun onDiscoveryStarted(serviceType: String) {}
+                override fun onDiscoveryStopped(serviceType: String) {}
+                override fun onServiceLost(info: NsdServiceInfo) {}
+                override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) {}
+                override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) {}
+            }
+            if (runCatching { nsd.discoverServices("_adb-tls-pairing._tcp", NsdManager.PROTOCOL_DNS_SD, listener) }.isFailure) return {}
+            return { runCatching { nsd.stopServiceDiscovery(listener) } }
         }
 
         /** The pairing screen's port, found on the network (it's only there while that screen is open). */
