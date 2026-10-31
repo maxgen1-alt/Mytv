@@ -64,16 +64,14 @@ class GameOpener(context: Context) {
 
     /**
      * The game's own page in Prime Video, if League Pass lists it. Prime is
-     * asked first without restarting it (no profile screen if it's already
-     * open); if it ignores that, it's restarted on the game. Either way the
-     * helper presses the profile and Watch live buttons.
+     * started fresh on it (handed a game while it's already open, it quits),
+     * and the helper presses its profile and Watch live buttons for you.
      */
     suspend fun openOnLeaguePass(game: Game, title: String, primePackage: String): Boolean {
         if (game.league.sport != "basketball") return false
         val card = LeaguePass.find(leaguePass.cards(), game) ?: return false
-        val link = LeaguePass.link(card)
-        if (!watchNext.openLink(primePackage, link)) return false
-        AutoPlay.start(primePackage, card.title.split(" vs. ")) { watchNext.openFresh(primePackage, link) }
+        AutoPlay.start(primePackage, card.title.split(" vs. "))
+        if (!watchNext.openFresh(primePackage, LeaguePass.link(card))) return false
         toast("$title · opening it on League Pass")
         return true
     }
