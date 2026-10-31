@@ -332,7 +332,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             Screen.TraktLink -> startTraktLink()
             Screen.Ang -> loadAng()
             Screen.Watchlist -> refreshMine()
-            Screen.SystemSetup -> refreshSystem()
+            Screen.SystemSetup -> { refreshSystem(); checkFantraxSignIn() }
+            Screen.FantraxSignIn -> watchFantraxSignIn()
             else -> Unit
         }
     }
@@ -671,6 +672,37 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun signInToFantrax() = navigate(Screen.FantraxSignIn)
 
     /** A page loaded in the sign-in screen: once Fantrax shows the league's scores, we're done. */
+    /**
+     * Fantrax's site changes pages without reloading, so page loads alone miss
+     * the moment you're signed in: check every few seconds while its sign-in
+     * screen is open, and go back to settings once Fantrax lets us in.
+     */
+    private fun watchFantraxSignIn() {
+        viewModelScope.launch {
+            while (_screen.value == Screen.FantraxSignIn) {
+                delay(3_000L)
+                if (_screen.value == Screen.FantraxSignIn && com.mytv.launcher.fantasy.FantasyPanel.signedIn()) {
+                    android.webkit.CookieManager.getInstance().flush()
+                    settings.fantraxSignedIn = true
+                    toast("Signed in to Fantrax. Press your fantasy button in any app.")
+                    navigate(Screen.SystemSetup)
+                }
+            }
+        }
+    }
+
+    /** Settings shows whether Fantrax still lets this TV in (it may have signed in, or out, elsewhere). */
+    private fun checkFantraxSignIn() {
+        viewModelScope.launch {
+            val now = com.mytv.launcher.fantasy.FantasyPanel.signedIn()
+            if (now) android.webkit.CookieManager.getInstance().flush()
+            if (now != settings.fantraxSignedIn) {
+                settings.fantraxSignedIn = now
+                refreshSystem()
+            }
+        }
+    }
+
     fun fantraxPageLoaded(url: String) {
         if (url.contains("/login")) return
         viewModelScope.launch {
