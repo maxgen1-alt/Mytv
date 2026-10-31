@@ -1,7 +1,6 @@
 package com.mytv.launcher.fantasy
 
 import android.content.Context
-import android.content.Intent
 import android.graphics.PixelFormat
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -19,7 +18,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
-import com.mytv.launcher.MainActivity
+import com.mytv.launcher.sports.GameOpener
 import com.mytv.launcher.sports.GameState
 import com.mytv.launcher.sports.NbaGames
 import kotlinx.coroutines.CoroutineScope
@@ -248,15 +247,15 @@ object FantasyPanel {
         return "${if (home) "vs" else "@"} $them · $status"
     }
 
-    /** OK on a live player: the panel slides away and MyTV switches to their game, in whichever app has it. */
+    /**
+     * OK on a live player: the panel slides away and their game opens right
+     * from where you are (MyTV never comes to the front), in whichever app has it.
+     */
     private fun watch(context: Context, p: LineupPlayer) {
+        val game = p.game ?: return
         hide()
-        runCatching {
-            context.startActivity(
-                Intent(context, MainActivity::class.java)
-                    .putExtra(MainActivity.EXTRA_WATCH_NBA, NbaGames.espnAbbr(p.player.nbaTeam))
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-            )
+        scope.launch {
+            GameOpener(context).open(game, NbaGames.title(game), NbaGames.matchWords(game))
         }
     }
 

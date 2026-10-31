@@ -158,7 +158,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val context get() = getApplication<Application>()
     private val installed = InstalledApps(app)
     private val espn = EspnClient()
-    private val leaguePass = com.mytv.launcher.sports.LeaguePassClient()
+    private val opener = com.mytv.launcher.sports.GameOpener(app)
     private val trakt = TraktClient(app)
     private val watchNext = WatchNext(app)
     private val updater = Updater(app)
@@ -607,39 +607,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
      * Opens [game] in the app carrying it; false (after saying where it's on)
      * if none of your apps has it. [words] find its listing on the TV.
      */
-    private suspend fun openGame(game: Game, title: String, words: List<String>, option: WatchOption? = null): Boolean {
-        val options = (listOfNotNull(option) + watchOptions(game)).distinctBy { it.app.packageName }
-        // NBA on League Pass: straight to that game's page in Prime Video.
-        options.firstOrNull()?.takeIf { com.mytv.launcher.sports.Service.PRIME_VIDEO.matches(it.app.packageName, it.app.label) }?.let { prime ->
-            if (openOnLeaguePass(game, title, prime.app.packageName)) return true
-        }
-        val link = watchNext.findGame(words, options.map { it.app.packageName })
-        if (link != null && watchNext.openLink(link.first, link.second)) {
-            val app = options.firstOrNull { it.app.packageName == link.first }?.app?.label.orEmpty()
-            toast("$title · starting on $app")
-            return true
-        }
-        val first = options.firstOrNull()
-        // YouTube TV: straight onto the channel showing it (it starts playing), else its Live guide.
-        if (first != null && com.mytv.launcher.sports.Service.YOUTUBE_TV.matches(first.app.packageName, first.app.label)) {
-            val channel = com.mytv.launcher.sports.YouTubeTvChannels.linkFor(first.network)
-            if (channel != null && watchNext.openLink(first.app.packageName, channel)) {
-                toast("$title · ${first.network} on YouTube TV")
-                return true
-            }
-            if (watchNext.openLink(first.app.packageName, "https://tv.youtube.com/live")) {
-                toast("$title is on ${first.network} · YouTube TV Live")
-                return true
-            }
-        }
-        if (first != null && installed.launch(first.app.packageName)) {
-            toast("$title is on ${first.network} · opening ${first.app.label}")
-            return true
-        }
-        val where = (game.broadcasts.ifEmpty { game.league.defaultNetworks }).joinToString(", ")
-        toast("$title is on $where, which isn't one of your apps")
-        return false
-    }
+    private suspend fun openGame(game: Game, title: String, words: List<String>, option: WatchOption? = null): Boolean =
+        opener.open(game, title, words, option, _allApps.value.map { InstalledApp(it.packageName, it.label) })
 
     /** A fantasy player's ▶: today's game of their NBA team ([abbr]), wherever it's on. */
     fun watchNbaTeam(abbr: String) {
@@ -759,13 +728,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private fun primeVideo() = _allApps.value.firstOrNull { com.mytv.launcher.sports.Service.PRIME_VIDEO.matches(it.packageName, it.label) }
 
     /** Opens the game's own page in Prime Video, if League Pass lists it. */
-    private suspend fun openOnLeaguePass(game: Game, title: String, primePackage: String): Boolean {
-        if (game.league.sport != "basketball") return false
-        val card = com.mytv.launcher.sports.LeaguePass.find(leaguePass.cards(), game) ?: return false
-        if (!watchNext.openFresh(primePackage, com.mytv.launcher.sports.LeaguePass.link(card))) return false
-        toast("$title · opening it on League Pass")
-        return true
-    }
+    private suspend fun openOnLeaguePass(game: Game, title: String, primePackage: String): Boolean =
+        opener.openOnLeaguePass(game, title, primePackage)
 
     // ---- Top 10 ----
 
