@@ -92,6 +92,10 @@ class EspnClient(
     suspend fun scoreboard(league: League, date: LocalDate): List<Game> =
         fetchGames("$base/${league.sport}/${league.code}/scoreboard?dates=${date.format(DateTimeFormatter.BASIC_ISO_DATE)}", league)
 
+    /** A game's box score (raw JSON): every player's line, live while the game is on. */
+    suspend fun summary(league: League, eventId: String): String? =
+        get("$base/${league.sport}/${league.code}/summary?event=$eventId")
+
     suspend fun standings(team: Team): Standings? {
         val league = team.standingsLeague
         // Note: standings live under /apis/v2, not /apis/site/v2.

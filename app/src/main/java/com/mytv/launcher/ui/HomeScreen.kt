@@ -98,7 +98,7 @@ fun HomeScreen(
     onTeamPage: (Team) -> Unit,
     nba: com.mytv.launcher.NbaSummary,
     onNba: () -> Unit,
-    fantasy: com.mytv.launcher.fantasy.FantasyNow?,
+    fantasy: com.mytv.launcher.fantasy.FantasyMatchup?,
     onFantasy: () -> Unit,
     onAng: () -> Unit,
     onWatchItem: (WatchItem) -> Unit,
@@ -442,28 +442,38 @@ private fun NbaTile(summary: com.mytv.launcher.NbaSummary, onClick: () -> Unit) 
     }
 }
 
-/** This week's fantasy matchup and who's playing now; select slides the live panel in (your fantasy button does too, in any app). */
+/** This week's fantasy matchup: the category score, today's, and how many of yours are on. Select slides the panel in (your fantasy button does too, in any app). */
 @Composable
-private fun FantasyTile(now: com.mytv.launcher.fantasy.FantasyNow?, onClick: () -> Unit) {
-    val week = now?.week
-    val mineOn = now?.live.orEmpty().count { it.mine }
-    val live = now?.live.orEmpty().isNotEmpty()
+private fun FantasyTile(m: com.mytv.launcher.fantasy.FantasyMatchup?, onClick: () -> Unit) {
+    val mineOn = m?.live.orEmpty().count { it.mine }
     FocusCard(
         onClick = onClick,
         modifier = Modifier
             .size(TileWidth, TileHeight)
-            .then(if (live) Modifier.livePulse(Palette.Live) else Modifier),
+            .then(if (m?.live.orEmpty().isNotEmpty()) Modifier.livePulse(Palette.Live) else Modifier),
     ) {
         Column(
             Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.Center,
         ) {
-            Text("Fantasy", fontSize = 12.sp, color = Palette.InkSoft, fontWeight = FontWeight.SemiBold)
-            Text(week?.myTeam ?: "Midland Monarchs", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Palette.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (week != null) Text("vs ${week.opponent}", fontSize = 11.sp, color = Palette.InkSoft, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (mineOn > 0) Text("$mineOn of yours on now", fontSize = 11.sp, color = Color(0xFF7CD992), fontWeight = FontWeight.SemiBold, maxLines = 1)
+            Text(if (m != null) "Fantasy · vs ${m.opponent}" else "Fantasy", fontSize = 11.sp, color = Palette.InkSoft, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (m == null) {
+                Text("Midland Monarchs", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Palette.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            } else {
+                val ahead = m.week.wins - m.week.losses
+                Text(
+                    m.week.toString(),
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = when { ahead > 0 -> Color(0xFF7CD992); ahead < 0 -> Color(0xFFFF8A80); else -> Palette.Ink },
+                )
+                Text(
+                    "Today ${m.today}" + if (mineOn > 0) " · $mineOn on" else "",
+                    fontSize = 11.sp, color = Palette.InkSoft, maxLines = 1,
+                )
+            }
         }
-        if (live) LiveBadge(Modifier.align(Alignment.TopEnd).padding(8.dp))
+        if (m?.live.orEmpty().isNotEmpty()) LiveBadge(Modifier.align(Alignment.TopEnd).padding(8.dp))
     }
 }
 

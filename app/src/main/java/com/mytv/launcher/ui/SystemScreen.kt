@@ -55,7 +55,6 @@ fun SystemScreen(
     onTestNbc: () -> Unit = {},
     onChooseFantasyButton: () -> Unit = {},
     onShowFantasy: () -> Unit = {},
-    onSignInFantrax: () -> Unit = {},
     onPairWireless: (code: String, port: String) -> Unit = { _, _ -> },
     onPairKeypad: () -> Unit = {},
 ) {
@@ -105,11 +104,10 @@ fun SystemScreen(
 
             Section(
                 "Fantasy basketball",
-                "Press your fantasy button in any app: Midland Monarchs' live matchup slides in from the right. Press it again (or Back) to slide it away. " +
+                "Press your fantasy button in any app: Midland Monarchs' live matchup (week and today's categories, every starter's line) slides in from the right. Press it again (or Back) to slide it away. " +
                     "Pick a button you don't use, e.g. the YouTube or Netflix button (it stops opening that app).",
             )
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Pill(if (state.fantraxSignedIn) "Fantrax: signed in" else "Sign in to Fantrax", !state.fantraxSignedIn, onClick = onSignInFantrax)
                 Pill("Choose button (now: ${state.fantasyButton})", false, onClick = onChooseFantasyButton)
                 Pill("Show it now", false, onClick = onShowFantasy)
             }

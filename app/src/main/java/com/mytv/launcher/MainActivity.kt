@@ -147,7 +147,6 @@ class MainActivity : ComponentActivity() {
                         val detail by vm.teamDetail.collectAsStateWithLifecycle()
                         TeamScreen(team, detail, onWatch = { game, option -> vm.watchGame(team, game, option) })
                     }
-                    Screen.FantraxSignIn -> com.mytv.launcher.ui.FantraxSignInScreen(onPageLoaded = vm::fantraxPageLoaded)
                     Screen.Nba -> {
                         val nba by vm.nba.collectAsStateWithLifecycle()
                         NbaScreen(nba, onDay = vm::loadNba, onPlay = vm::playOnPrime)
@@ -212,7 +211,6 @@ class MainActivity : ComponentActivity() {
                             onTestNbc = vm::testNbc,
                             onChooseFantasyButton = vm::chooseFantasyButton,
                             onShowFantasy = vm::toggleFantasy,
-                            onSignInFantrax = vm::signInToFantrax,
                             onPairWireless = vm::pairWireless,
                             onPairKeypad = vm::pairWithKeypad,
                         )
