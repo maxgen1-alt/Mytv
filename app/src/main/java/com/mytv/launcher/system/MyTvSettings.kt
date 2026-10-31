@@ -31,6 +31,11 @@ class MyTvSettings(context: Context) {
         get() = prefs.getInt("fantasy_key", 0)
         set(v) = prefs.edit().putInt("fantasy_key", v).apply()
 
+    /** The remote button that slides the fantasy football panel in and out (0 = none chosen). */
+    var footballKey: Int
+        get() = prefs.getInt("football_key", 0)
+        set(v) = prefs.edit().putInt("football_key", v).apply()
+
     /** Who's watching: "me", "ang" or "guest". */
     var profile: String
         get() = prefs.getString("profile", "me") ?: "me"

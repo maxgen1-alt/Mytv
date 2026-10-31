@@ -65,7 +65,11 @@ object FantasyPanel {
 
     fun toggle(context: Context) = scope.launch { if (isShowing) hide() else show(context) }
 
+    /** Slides it away if it's out (the football panel opening). */
+    fun close() = scope.launch { hide() }
+
     private fun show(context: Context) {
+        FootballPanel.close()
         val app = context.applicationContext
         // A drawn-over-apps window (granted during MyTV's setup); from the home helper, its own overlay works too.
         val type = when {

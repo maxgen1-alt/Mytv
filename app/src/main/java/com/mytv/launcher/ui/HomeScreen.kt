@@ -100,6 +100,8 @@ fun HomeScreen(
     onNba: () -> Unit,
     fantasy: com.mytv.launcher.fantasy.FantasyMatchup?,
     onFantasy: () -> Unit,
+    football: com.mytv.launcher.fantasy.FootballMatchup?,
+    onFootball: () -> Unit,
     onAng: () -> Unit,
     onWatchItem: (WatchItem) -> Unit,
     onAllowWatchNext: () -> Unit,
@@ -181,6 +183,7 @@ fun HomeScreen(
                 }
                 item(key = "__nba") { NbaTile(nba, onNba) }
                 item(key = "__fantasy") { FantasyTile(fantasy, onFantasy) }
+                item(key = "__football") { FootballTile(football, onFootball) }
                 if (!guest) {
                     item(key = "__ang") { AngTile(onAng) }
                     item(key = "__watchlist") { WatchlistTile(onWatchlist) }
@@ -487,6 +490,63 @@ private fun FantasyTile(m: com.mytv.launcher.fantasy.FantasyMatchup?, onClick: (
         if (live) LiveBadge(Modifier.align(Alignment.TopEnd).padding(8.dp))
     }
 }
+
+/**
+ * Your fantasy football team: its ESPN logo with the score in the corner
+ * (green ahead, red behind); selected, it shows the opponent's score and
+ * the projection. Select slides the matchup in (your football button does too, in any app).
+ */
+@Composable
+private fun FootballTile(m: com.mytv.launcher.fantasy.FootballMatchup?, onClick: () -> Unit) {
+    var focused by remember { mutableStateOf(false) }
+    val live = m?.live.orEmpty().isNotEmpty()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    FocusCard(
+        onClick = onClick,
+        container = Color(0xFF0B1E3A),
+        modifier = Modifier
+            .size(TileWidth, TileHeight)
+            .onFocusChanged { focused = it.hasFocus }
+            .then(if (live) Modifier.livePulse(Color(0xFF2E7DF6), scale = if (focused) 1.08f else 1f) else Modifier),
+    ) {
+        val logo = m?.mine?.logo
+        if (logo != null) {
+            AsyncImage(
+                model = remember(logo) {
+                    coil.request.ImageRequest.Builder(context).data(logo).decoderFactory(coil.decode.SvgDecoder.Factory()).build()
+                },
+                contentDescription = m.mine.name,
+                modifier = Modifier.align(Alignment.Center).size(if (focused) 58.dp else 76.dp),
+                contentScale = ContentScale.Fit,
+            )
+        } else {
+            Text("🏈", fontSize = 40.sp, modifier = Modifier.align(Alignment.Center))
+        }
+        if (m != null) {
+            val diff = m.mine.points - m.theirs.points
+            val score = "${pts(m.mine.points)}–${pts(m.theirs.points)}"
+            if (!focused) Text(
+                score,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = when { diff > 0 -> Color(0xFF7CD992); diff < 0 -> Color(0xFFFF8A80); else -> Palette.Ink },
+                modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp),
+            )
+            if (focused) {
+                Column(
+                    Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Color(0xB3000000)).padding(horizontal = 8.dp, vertical = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(score, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Palette.Ink, maxLines = 1)
+                    Text("vs ${m.theirs.name}", fontSize = 11.sp, color = Palette.InkSoft, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+        if (live) LiveBadge(Modifier.align(Alignment.TopEnd).padding(8.dp))
+    }
+}
+
+private fun pts(v: Double) = String.format(java.util.Locale.US, "%.1f", v)
 
 @Composable
 private fun AngTile(onClick: () -> Unit) {

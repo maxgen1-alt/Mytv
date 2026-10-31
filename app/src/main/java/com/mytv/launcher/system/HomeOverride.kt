@@ -58,18 +58,29 @@ class HomeOverride : AccessibilityService() {
      */
     override fun onKeyEvent(event: KeyEvent): Boolean {
         val code = event.keyCode
-        if (FantasyButton.choosing) {
+        FantasyButton.choosing?.let { panel ->
             if (code in FantasyButton.reserved) return false
             if (event.action == KeyEvent.ACTION_UP) {
-                settings.fantasyKey = code
-                FantasyButton.choosing = false
+                // One button per panel: taking the other panel's button moves it here.
+                if (panel == FantasyButton.Panel.BASKETBALL) {
+                    settings.fantasyKey = code
+                    if (settings.footballKey == code) settings.footballKey = 0
+                } else {
+                    settings.footballKey = code
+                    if (settings.fantasyKey == code) settings.fantasyKey = 0
+                }
+                FantasyButton.choosing = null
                 FantasyButton.onChosen?.invoke(code)
             }
             return true
         }
-        val key = settings.fantasyKey
-        if (key == 0 || code != key) return false
-        if (event.action == KeyEvent.ACTION_UP) com.mytv.launcher.fantasy.FantasyPanel.toggle(this)
+        val panel = when (code) {
+            0 -> return false
+            settings.fantasyKey -> com.mytv.launcher.fantasy.FantasyPanel::toggle
+            settings.footballKey -> com.mytv.launcher.fantasy.FootballPanel::toggle
+            else -> return false
+        }
+        if (event.action == KeyEvent.ACTION_UP) panel(this)
         return true
     }
 

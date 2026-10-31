@@ -55,6 +55,8 @@ fun SystemScreen(
     onTestNbc: () -> Unit = {},
     onChooseFantasyButton: () -> Unit = {},
     onShowFantasy: () -> Unit = {},
+    onChooseFootballButton: () -> Unit = {},
+    onShowFootball: () -> Unit = {},
     onPairWireless: (code: String, port: String) -> Unit = { _, _ -> },
     onPairKeypad: () -> Unit = {},
 ) {
@@ -110,6 +112,15 @@ fun SystemScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Pill("Choose button (now: ${state.fantasyButton})", false, onClick = onChooseFantasyButton)
                 Pill("Show it now", false, onClick = onShowFantasy)
+            }
+
+            Section(
+                "Fantasy football",
+                "Press your football button in any app: The Skattebros' live ESPN matchup (scores, projections, every starter's points and game) slides in from the right. Press it again (or Back) to slide it away. Use a different button from basketball.",
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Pill("Choose button (now: ${state.footballButton})", false, onClick = onChooseFootballButton)
+                Pill("Show it now", false, onClick = onShowFootball)
             }
 
             Section("Game alerts", "Pop-ups over whatever you're watching. Kick-off: press OK to switch to the game.")

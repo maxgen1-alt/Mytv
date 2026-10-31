@@ -312,6 +312,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val _fantasy = MutableStateFlow<com.mytv.launcher.fantasy.FantasyMatchup?>(null)
     val fantasy = _fantasy.asStateFlow()
 
+    /** The fantasy football matchup, for the home screen's Football tile. */
+    private val _football = MutableStateFlow<com.mytv.launcher.fantasy.FootballMatchup?>(null)
+    val football = _football.asStateFlow()
+
     /** Short "Finding the Arsenal game..." message shown over the home screen. */
     private val _busy = MutableStateFlow<String?>(null)
     val busy: StateFlow<String?> = _busy.asStateFlow()
@@ -431,6 +435,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
         val nbaToday = async { nbaGames(0) }
         val fantasyNow = async { com.mytv.launcher.fantasy.FantasyPanel.fetch() }
+        val footballNow = async { com.mytv.launcher.fantasy.FootballPanel.fetch() }
         val found = live.await()
         val zone = java.time.ZoneId.systemDefault()
         val info = Teams.all.associate { team ->
@@ -446,6 +451,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
         _teams.value = info
         fantasyNow.await()?.let { _fantasy.value = it }
+        footballNow.await()?.let { _football.value = it }
         nbaToday.await()?.let { games ->
             _nbaSummary.value = NbaSummary(live = games.count { it.state == com.mytv.launcher.sports.GameState.LIVE }, today = games.size)
         }
@@ -630,8 +636,15 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     /** The Fantasy tile, or "Show it now" in settings: slides the fantasy panel in (or out). */
     fun toggleFantasy() { com.mytv.launcher.fantasy.FantasyPanel.toggle(context) }
 
-    /** MyTV settings: the next button pressed on the remote becomes the fantasy button. */
-    fun chooseFantasyButton() {
+    /** The Football tile, or "Show it now" in settings: slides the fantasy football panel in (or out). */
+    fun toggleFootball() { com.mytv.launcher.fantasy.FootballPanel.toggle(context) }
+
+    fun chooseFantasyButton() = chooseButton(com.mytv.launcher.system.FantasyButton.Panel.BASKETBALL)
+    fun chooseFootballButton() = chooseButton(com.mytv.launcher.system.FantasyButton.Panel.FOOTBALL)
+
+    /** MyTV settings: the next button pressed on the remote becomes [panel]'s button. */
+    private fun chooseButton(panel: com.mytv.launcher.system.FantasyButton.Panel) {
+        val name = if (panel == com.mytv.launcher.system.FantasyButton.Panel.FOOTBALL) "fantasy football" else "fantasy basketball"
         val helper = com.mytv.launcher.system.HomeOverride.isRunning
         if (!helper) {
             _system.value = systemNow(message = "The fantasy button needs MyTV's home helper: choose \"Make MyTV my home screen\" first.")
@@ -639,11 +652,11 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
         com.mytv.launcher.system.FantasyButton.onChosen = { code ->
             viewModelScope.launch {
-                _system.value = systemNow(message = "Fantasy button: ${com.mytv.launcher.system.FantasyButton.label(code)}. Press it in any app.")
+                _system.value = systemNow(message = "The ${name} button: ${com.mytv.launcher.system.FantasyButton.label(code)}. Press it in any app.")
             }
         }
-        com.mytv.launcher.system.FantasyButton.choosing = true
-        _system.value = systemNow(message = "Press the remote button you want for the fantasy panel (not OK, Back or the arrows)…")
+        com.mytv.launcher.system.FantasyButton.choosing = panel
+        _system.value = systemNow(message = "Press the remote button you want for $name (not OK, Back or the arrows)…")
     }
 
     private fun watchOptions(game: Game): List<WatchOption> =
@@ -1263,6 +1276,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         val phoneSetup: String? = null,
         val helper: String = "",
         val fantasyButton: String = "none",
+        val footballButton: String = "none",
         /** Paired with the TV's Wireless debugging (MyTV sets itself up without a phone). */
         val wirelessPaired: Boolean = false,
     )
@@ -1278,6 +1292,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         busy = busy,
         message = message,
         fantasyButton = com.mytv.launcher.system.FantasyButton.label(settings.fantasyKey),
+        footballButton = com.mytv.launcher.system.FantasyButton.label(settings.footballKey),
         wirelessPaired = com.mytv.launcher.system.WirelessAdb.isPaired(context),
         phoneSetup = if (homeSetup.canWriteSecure) null else com.mytv.launcher.system.HomeSetup.PHONE_COMMAND,
         helper = when {

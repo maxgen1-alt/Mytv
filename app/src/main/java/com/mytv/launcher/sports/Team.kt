@@ -28,6 +28,7 @@ object Teams {
     private val faCup = League("soccer", "eng.fa", "FA Cup", listOf("ESPN+"))
     private val leagueCup = League("soccer", "eng.league_cup", "Carabao Cup", listOf("Paramount+"))
     val nba = League("basketball", "nba", "NBA", listOf("League Pass", "ESPN", "Prime Video", "Peacock", "NBA TV"))
+    val nfl = League("football", "nfl", "NFL", listOf("CBS", "FOX", "NBC", "ESPN", "Prime Video"))
 
     val arsenal = Team(
         key = "arsenal",
