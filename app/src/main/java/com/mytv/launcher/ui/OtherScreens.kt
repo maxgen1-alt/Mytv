@@ -67,6 +67,9 @@ fun EditAppsScreen(
     onTurnOnTracking: () -> Unit,
     syncStatus: String,
     onToggle: (TvApp, Boolean) -> Unit,
+    onGetApps: () -> Unit = {},
+    nflInstalled: Boolean = true,
+    onGetNfl: () -> Unit = {},
 ) {
     val first = remember { FocusRequester() }
     LaunchedEffect(apps.isNotEmpty()) { if (apps.isNotEmpty()) runCatching { first.requestFocus() } }
@@ -75,6 +78,13 @@ fun EditAppsScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Your apps", fontSize = 30.sp, fontWeight = FontWeight.Bold, color = Palette.Ink)
             Spacer(Modifier.weight(1f))
+            // New apps come from Google Play (MyTV opens it; the NFL app straight to its page, for RedZone).
+            if (!nflInstalled) {
+                Button(onClick = onGetNfl) { Text("Get the NFL app") }
+                Spacer(Modifier.width(12.dp))
+            }
+            Button(onClick = onGetApps) { Text("Get more apps") }
+            Spacer(Modifier.width(12.dp))
             Button(onClick = onCheckUpdates) { Text("Check for updates") }
         }
         Text(
