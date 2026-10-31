@@ -98,6 +98,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("io.coil-kt:coil-compose:2.7.0")
+    // ESPN fantasy team logos are SVGs.
+    implementation("io.coil-kt:coil-svg:2.7.0")
     // QR code on the settings screen (open "Send to TV" on your phone).
     implementation("com.google.zxing:core:3.5.3")
     // Installs the baseline profiles Compose ships with, so the TV pre-compiles the

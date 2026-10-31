@@ -79,6 +79,7 @@ class MainActivity : ComponentActivity() {
                         val teams by vm.teams.collectAsStateWithLifecycle()
                         val nbaSummary by vm.nbaSummary.collectAsStateWithLifecycle()
                         val fantasy by vm.fantasy.collectAsStateWithLifecycle()
+                        val football by vm.football.collectAsStateWithLifecycle()
                         val watching by vm.watching.collectAsStateWithLifecycle()
                         val busy by vm.busy.collectAsStateWithLifecycle()
                         val updateReady by vm.updateReady.collectAsStateWithLifecycle()
@@ -128,6 +129,8 @@ class MainActivity : ComponentActivity() {
                             onNba = { vm.navigate(Screen.Nba) },
                             fantasy = fantasy,
                             onFantasy = vm::toggleFantasy,
+                            football = football,
+                            onFootball = vm::toggleFootball,
                             onAng = { vm.navigate(Screen.Ang) },
                             onWatchItem = vm::playWatchItem,
                             onAllowWatchNext = ::requestWatchNext,
@@ -211,6 +214,8 @@ class MainActivity : ComponentActivity() {
                             onTestNbc = vm::testNbc,
                             onChooseFantasyButton = vm::chooseFantasyButton,
                             onShowFantasy = vm::toggleFantasy,
+                            onChooseFootballButton = vm::chooseFootballButton,
+                            onShowFootball = vm::toggleFootball,
                             onPairWireless = vm::pairWireless,
                             onPairKeypad = vm::pairWithKeypad,
                         )

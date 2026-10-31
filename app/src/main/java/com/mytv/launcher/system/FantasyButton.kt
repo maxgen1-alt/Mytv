@@ -2,10 +2,12 @@ package com.mytv.launcher.system
 
 import android.view.KeyEvent
 
-/** Choosing the remote button for the fantasy panel (MyTV settings → Fantasy basketball). */
+/** Choosing the remote buttons for the fantasy panels (MyTV settings → Fantasy basketball / football). */
 object FantasyButton {
-    /** The next button pressed (not a reserved one) becomes the fantasy button. */
-    @Volatile var choosing = false
+    enum class Panel { BASKETBALL, FOOTBALL }
+
+    /** The next button pressed (not a reserved one) becomes this panel's button. */
+    @Volatile var choosing: Panel? = null
     @Volatile var onChosen: ((Int) -> Unit)? = null
 
     /** Buttons you need for everything else: never taken. */

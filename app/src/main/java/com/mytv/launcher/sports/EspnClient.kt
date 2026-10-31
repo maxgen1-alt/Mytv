@@ -92,6 +92,10 @@ class EspnClient(
     suspend fun scoreboard(league: League, date: LocalDate): List<Game> =
         fetchGames("$base/${league.sport}/${league.code}/scoreboard?dates=${date.format(DateTimeFormatter.BASIC_ISO_DATE)}", league)
 
+    /** One NFL week's games (regular season unless [seasonType] says otherwise), live scores included. */
+    suspend fun nflWeek(week: Int, seasonType: Int = 2): List<Game> =
+        fetchGames("$base/football/nfl/scoreboard?seasontype=$seasonType&week=$week", Teams.nfl)
+
     /** A game's box score (raw JSON): every player's line, live while the game is on. */
     suspend fun summary(league: League, eventId: String): String? =
         get("$base/${league.sport}/${league.code}/summary?event=$eventId")
