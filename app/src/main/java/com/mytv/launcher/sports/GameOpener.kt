@@ -28,8 +28,8 @@ class GameOpener(context: Context) {
         installed.cached().map { InstalledApp(it.packageName, it.label) }
     }
 
-    suspend fun open(game: Game, title: String, words: List<String>, option: WatchOption? = null, apps: List<InstalledApp> = apps()): Boolean {
-        val options = (listOfNotNull(option) + Broadcasters.optionsFor(game, apps)).distinctBy { it.app.packageName }
+    suspend fun open(game: Game, title: String, words: List<String>, option: WatchOption? = null, apps: List<InstalledApp>? = null): Boolean {
+        val options = (listOfNotNull(option) + Broadcasters.optionsFor(game, apps ?: apps())).distinctBy { it.app.packageName }
         // NBA on League Pass: straight to that game in Prime Video.
         options.firstOrNull()?.takeIf { Service.PRIME_VIDEO.matches(it.app.packageName, it.app.label) }?.let { prime ->
             if (openOnLeaguePass(game, title, prime.app.packageName)) return true
