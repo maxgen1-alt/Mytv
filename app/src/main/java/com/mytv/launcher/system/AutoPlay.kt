@@ -13,12 +13,21 @@ import android.view.accessibility.AccessibilityNodeInfo
  * only: your profile on "Who's watching?" ([PROFILE], else the one Prime has highlighted),
  * then Watch live (Watch now for a game that's over). It presses nothing
  * else, never Buy/Rent/Subscribe/Trailer, and only on the page of the game
- * you picked (both team names on screen).
+ * you picked (both team names on screen). The same for NFL RedZone in the NFL
+ * app: RedZone, then Watch.
  */
 object AutoPlay {
     private val main = Handler(Looper.getMainLooper())
 
-    private class Target(val pkg: String, val words: List<String>, var until: Long) {
+    private class Target(
+        val pkg: String,
+        val words: List<String>,
+        var until: Long,
+        /** Buttons to press in order (each a list of names), instead of the Prime game routine. */
+        val steps: List<List<String>>? = null,
+        val app: String = "Prime",
+    ) {
+        var stage = 0
         var clicks = 0
         var lastClick = 0L
         var onGamePage = false
@@ -37,14 +46,20 @@ object AutoPlay {
     private val never = listOf("trailer", "beginning", "start over", "buy", "rent", "subscribe", "trial", "sign up", "add to", "channel", "episodes", "more")
 
     /** Arms the helper for the game page MyTV is about to open in [pkg]; [teams] are its two teams as Prime writes them. */
-    fun start(pkg: String, teams: List<String>) {
-        val t = Target(pkg, teams.map { it.lowercase().trim() }.filter { it.isNotEmpty() }, SystemClock.uptimeMillis() + 40_000L)
+    fun start(pkg: String, teams: List<String>) =
+        arm(Target(pkg, teams.map { it.lowercase().trim() }.filter { it.isNotEmpty() }, SystemClock.uptimeMillis() + 40_000L))
+
+    /** Arms the helper to press [steps] in order in [app] ([pkg]), e.g. RedZone then Watch. */
+    fun startSteps(pkg: String, app: String, steps: List<List<String>>) =
+        arm(Target(pkg, emptyList(), SystemClock.uptimeMillis() + 40_000L, steps.map { names -> names.map { it.lowercase() } }, app))
+
+    private fun arm(t: Target) {
         target = t
         // Nothing to press by then: say so (and stop).
         main.postDelayed({
             if (target === t) {
                 target = null
-                if (t.clicks == 0) say("MyTV couldn't find Prime's buttons to press")
+                if (t.clicks == 0) say("MyTV couldn't find ${t.app}'s buttons to press")
             }
         }, 40_000L)
     }
@@ -67,6 +82,19 @@ object AutoPlay {
         if (root.packageName?.toString() != t.pkg) return
         val nodes = flatten(root)
         val labelled = nodes.map { it to label(it) }.filter { it.second.isNotEmpty() }
+
+        // A set routine (NFL RedZone): the next button in line, by name.
+        t.steps?.let { steps ->
+            val names = steps.getOrNull(t.stage) ?: return
+            val hit = labelled.firstOrNull { (_, text) -> text.length <= 60 && names.any { text.contains(it) } && never.none { text.contains(it) } }?.first
+            if (hit != null && click(hit)) {
+                say("MyTV pressed: ${label(hit)}")
+                t.stage++
+                done(t, now, final = t.stage >= steps.size)
+                if (t.stage >= steps.size) target = null
+            }
+            return
+        }
 
         // "Who's watching?": yours, else the profile Prime already has selected.
         if (labelled.any { (_, text) -> profileScreen.any { text.contains(it) } }) {

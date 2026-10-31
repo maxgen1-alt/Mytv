@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Listens for Google TV's home screen opening, for the one remote button you chose for the
      fantasy panel (every other button passes straight through), and, for a few seconds after
-     MyTV opens a game in Prime Video, reads Prime Video's screen to press its profile and
-     Watch live buttons for you. Reads no other app. -->
+     MyTV opens a game in Prime Video (or RedZone in the NFL app), reads that app's screen to
+     press its profile / RedZone and Watch live buttons for you. Reads no other app. -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
@@ -11,4 +11,4 @@
     android:canRetrieveWindowContent="true"
     android:description="@string/home_override_description"
     android:notificationTimeout="100"
-    android:packageNames="com.google.android.apps.tv.launcherx,com.amazon.amazonvideo.livingroom" />
+    android:packageNames="com.google.android.apps.tv.launcherx,com.amazon.amazonvideo.livingroom,com.gotv.nflgamecenter.us.lite" />

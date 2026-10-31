@@ -1,4 +1,4 @@
 <resources>
     <string name="app_name">MyTV</string>
-    <string name="home_override_description">Opens MyTV whenever Google TV\'s home screen would appear (when you press Home or turn the TV on), slides in your fantasy matchup when you press the button you chose for it, and when MyTV opens a game in Prime Video it presses Prime\'s profile and Watch live buttons for you. It reads no other app.</string>
+    <string name="home_override_description">Opens MyTV whenever Google TV\'s home screen would appear (when you press Home or turn the TV on), slides in your fantasy matchup when you press the button you chose for it, and when MyTV opens a game in Prime Video or RedZone in the NFL app it presses that app\'s profile, RedZone and Watch live buttons for you. It reads no other app.</string>
 </resources>

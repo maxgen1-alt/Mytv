@@ -153,6 +153,9 @@ object FootballPanel {
             m.mine.winChance?.let { "${(it * 100).toInt()}% to win" },
         ).joinToString("  ·  ")
         if (projection.isNotEmpty()) list.addView(text(context, projection, 15f, SOFT).apply { setPadding(0, dp(context, 4), 0, dp(context, 6)) })
+        val redZone = redZoneButton(context)
+        list.addView(redZone)
+        if (focus == redZone.tag) redZone.requestFocus()
 
         var first: View? = null
         var firstLive: View? = null
@@ -167,7 +170,7 @@ object FootballPanel {
                 if (row.tag == focus) wanted = row
             }
         }
-        (wanted ?: firstLive ?: first)?.requestFocus() ?: root?.requestFocus()
+        if (focus != redZone.tag) (wanted ?: firstLive ?: first)?.requestFocus() ?: root?.requestFocus()
     }
 
     private fun scoreLine(context: Context, name: String, points: Double, color: Int) = LinearLayout(context).apply {
@@ -176,6 +179,31 @@ object FootballPanel {
         addView(text(context, name, 22f, INK, bold = true).apply { maxLines = 1; ellipsize = TextUtils.TruncateAt.END },
             LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         addView(text(context, pts(points), 36f, color, bold = true))
+    }
+
+    /** NFL RedZone: one press opens the NFL app on it (or its Google Play page, if it isn't installed yet). */
+    private fun redZoneButton(context: Context) = TextView(context).apply {
+        val installed = com.mytv.launcher.apps.RedZone.installed(context)
+        text = if (installed) "▶  Watch NFL RedZone" else "Get the NFL app (for RedZone)"
+        tag = "redzone"
+        isFocusable = true
+        gravity = Gravity.CENTER
+        setTextColor(0xFFFFFFFF.toInt())
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+        typeface = Typeface.DEFAULT_BOLD
+        setPadding(dp(context, 16), dp(context, 10), dp(context, 16), dp(context, 10))
+        val normal = GradientDrawable().apply { cornerRadius = dp(context, 22).toFloat(); setColor(0xFFC8102E.toInt()) }
+        val selected = GradientDrawable().apply { cornerRadius = dp(context, 22).toFloat(); setColor(0xFFC8102E.toInt()); setStroke(dp(context, 3), 0xFFFFFFFF.toInt()) }
+        background = normal
+        setOnFocusChangeListener { v, has -> v.background = if (has) selected else normal }
+        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            topMargin = dp(context, 4)
+            bottomMargin = dp(context, 4)
+        }
+        setOnClickListener {
+            hide()
+            com.mytv.launcher.apps.RedZone.open(context)
+        }
     }
 
     /** One starter: slot and name, NFL game, then points and projection. OK on a live one opens the game. */

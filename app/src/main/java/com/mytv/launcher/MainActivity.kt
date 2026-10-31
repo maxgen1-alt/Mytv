@@ -174,6 +174,9 @@ class MainActivity : ComponentActivity() {
                             onTurnOnTracking = vm::allowTracking,
                             syncStatus = syncStatus,
                             onToggle = vm::setHidden,
+                            onGetApps = { com.mytv.launcher.apps.AppStore.open(this@MainActivity) },
+                            nflInstalled = remember(all) { com.mytv.launcher.apps.RedZone.installed(this@MainActivity) },
+                            onGetNfl = { com.mytv.launcher.apps.AppStore.open(this@MainActivity, com.mytv.launcher.apps.RedZone.NFL_APP) },
                         )
                     }
                     Screen.Ang -> {
