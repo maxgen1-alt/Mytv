@@ -91,8 +91,19 @@ class WirelessAdb private constructor(private val context: Context) : AbsAdbConn
         /** Pairs; [port] is the number after the colon on the pairing screen (found automatically when null). */
         suspend fun pair(context: Context, code: String, port: Int?): String? = withContext(Dispatchers.IO) {
             val p = port ?: findPairingPort(context) ?: return@withContext "Couldn't find the pairing screen: type the port shown after the colon too."
-            runCatching { if (get(context).pairNow(p, code)) null else "Pairing didn't work: check the code and try again." }
-                .getOrElse { "Pairing didn't work (${it.message ?: it.javaClass.simpleName}). Open a new pairing code and try again." }
+            // Never wait forever: a pairing screen that closed can leave the connection hanging.
+            val attempt = java.util.concurrent.Executors.newSingleThreadExecutor()
+            try {
+                val ok = attempt.submit<Boolean> { get(context).pairNow(p, code) }.get(20, java.util.concurrent.TimeUnit.SECONDS)
+                if (ok) null else "Pairing didn't work: check the code and try again."
+            } catch (e: java.util.concurrent.TimeoutException) {
+                "The TV didn't answer. Keep its pairing screen open (or open a new code) and try again."
+            } catch (e: Exception) {
+                val why = (e.cause ?: e).let { it.message ?: it.javaClass.simpleName }
+                "Pairing didn't work ($why). Open a new pairing code and try again."
+            } finally {
+                attempt.shutdownNow()
+            }
         }
 
         suspend fun shell(context: Context, command: String): String? = withContext(Dispatchers.IO) {

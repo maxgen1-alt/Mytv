@@ -1359,7 +1359,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         if (_system.value.busy) return
         _system.value = systemNow(busy = true, message = waiting)
         viewModelScope.launch {
-            val r = action()
+            // Anything unexpected still ends with a message, never a silent stop.
+            val r = runCatching { action() }.getOrElse {
+                com.mytv.launcher.system.HomeSetup.Result.NoAccess("That didn't work (${it.message ?: it.javaClass.simpleName}).")
+            }
             val msg = when (r) {
                 is com.mytv.launcher.system.HomeSetup.Result.Done -> r.message
                 is com.mytv.launcher.system.HomeSetup.Result.NoAccess -> r.message
