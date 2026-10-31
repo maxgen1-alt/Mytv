@@ -75,7 +75,7 @@ fun SystemScreen(
                 Text(state.helper, fontSize = 13.sp, color = if (state.helper.endsWith("running")) Color(0xFF7CD992) else Color(0xFFFF8A80))
                 Spacer(Modifier.height(8.dp))
             }
-            if (state.phoneSetup != null && !state.wirelessPaired) WirelessPairing(state.busy, onPairWireless, onDeveloperOptions)
+            if (state.phoneSetup != null) WirelessPairing(state.busy, state.message, state.wirelessPaired, onPairWireless, onDeveloperOptions)
             state.phoneSetup?.let { cmd ->
                 Text("Or, from your phone (Bugjaeger → Shell), then select the button below:", fontSize = 13.sp, color = Color(0xFFF5C518))
                 Spacer(Modifier.height(4.dp))
@@ -147,7 +147,7 @@ fun SystemScreen(
  * is on Settings' pairing screen; MyTV finds the port itself (type it if not).
  */
 @Composable
-private fun WirelessPairing(busy: Boolean, onPair: (String, String) -> Unit, onDeveloperOptions: () -> Unit) {
+private fun WirelessPairing(busy: Boolean, status: String, paired: Boolean, onPair: (String, String) -> Unit, onDeveloperOptions: () -> Unit) {
     var code by remember { mutableStateOf("") }
     var port by remember { mutableStateOf("") }
     Text("No phone needed (one time):", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFF5C518))
@@ -163,7 +163,12 @@ private fun WirelessPairing(busy: Boolean, onPair: (String, String) -> Unit, onD
         Pill("Open Developer options", false, onClick = onDeveloperOptions)
         Field(code, "Code", 120.dp) { code = it.filter(Char::isDigit).take(6) }
         Field(port, "Port", 100.dp) { port = it.filter(Char::isDigit).take(5) }
-        Pill("Pair", true) { if (!busy) onPair(code, port) }
+        Pill(if (busy) "Working…" else if (paired) "Pair again" else "Pair", true) { if (!busy) onPair(code, port) }
+    }
+    // What happened, right here (not just at the top of the page).
+    if (status.isNotBlank()) {
+        Spacer(Modifier.height(8.dp))
+        Text(status, fontSize = 14.sp, color = Color(0xFFF5C518))
     }
     Spacer(Modifier.height(14.dp))
 }
