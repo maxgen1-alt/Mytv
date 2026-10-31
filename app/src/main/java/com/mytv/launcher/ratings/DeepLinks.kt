@@ -65,14 +65,40 @@ object DeepLinks {
                     .thenByDescending { e -> kind.any { e.value.first.lowercase().contains(it) } },
             )
             .firstOrNull() ?: return@withContext null
-        val url = pick.value.second.replace("$1", ids.getValue(pick.key))
+        var url = pick.value.second.replace("$1", ids.getValue(pick.key))
+        var flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        // Prime Video's TV app doesn't take primevideo.com links: it takes its own link with the
+        // title's GTI, which the title's Prime page has. Started fresh (it quits if handed a link
+        // while open), like League Pass games.
+        if (app == Service.PRIME_VIDEO) {
+            val gti = primeGti(url) ?: return@withContext null
+            url = "https://app.primevideo.com/detail?gti=$gti"
+            flags = flags or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
 
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
             .setPackage(packageName)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            .addFlags(flags)
         // Netflix's TV app wants to know a launcher sent it.
         if (packageName.contains("netflix")) intent.putExtra("source", "30")
         intent.takeIf { it.resolveActivity(context.packageManager) != null }
+    }
+
+    /**
+     * A Prime Video page (primevideo.com/detail/<id>) → the title's GTI, the id
+     * Prime's own app links use: the one the page mentions most. Cached forever.
+     */
+    private fun primeGti(pageUrl: String): String? {
+        val id = Regex("/detail/([0-9A-Za-z]+)").find(pageUrl)?.groupValues?.get(1) ?: return null
+        prefs.getString("g:$id", null)?.let { return it }
+        val html = runCatching {
+            http.newCall(Request.Builder().url("https://www.primevideo.com/detail/$id").header("User-Agent", "MyTV/1.0 (Android TV)").build())
+                .execute().use { if (it.isSuccessful) it.body?.string() else null }
+        }.getOrNull() ?: return null
+        val gti = Regex("amzn1\\.dv\\.gti\\.[0-9a-f-]{36}").findAll(html).map { it.value }
+            .groupingBy { it }.eachCount().maxByOrNull { it.value }?.key ?: return null
+        prefs.edit().putString("g:$id", gti).apply()
+        return gti
     }
 
     /** TMDB id (or IMDb id) → Wikidata item, e.g. "Q12345". Cached forever. */

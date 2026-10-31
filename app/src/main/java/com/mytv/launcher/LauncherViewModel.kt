@@ -1017,7 +1017,15 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         app: com.mytv.launcher.apps.TvApp?,
     ) {
         val direct = match?.let { (service, a) -> com.mytv.launcher.ratings.DeepLinks.intentFor(context, item, service, a.packageName) }
-        if (direct != null && runCatching { context.startActivity(direct) }.isSuccess) return
+        if (direct != null) {
+            com.mytv.launcher.system.HomeOverride.holdOff(15_000L)
+            // Prime Video: the helper presses your profile and Watch now on the title's page.
+            if (match?.first == com.mytv.launcher.sports.Service.PRIME_VIDEO) {
+                val words = item.title.lowercase().split(Regex("[^a-z0-9]+")).filter { it.length >= 3 }.take(3)
+                com.mytv.launcher.system.AutoPlay.start(match.second.packageName, words.ifEmpty { listOf(item.title.lowercase()) })
+            }
+            if (runCatching { context.startActivity(direct) }.isSuccess) return
+        }
         if (Search.open(context, item.title)) return
         if (app != null && installed.launch(app.packageName)) return
         toast("Couldn't find where ${item.title} is playing")

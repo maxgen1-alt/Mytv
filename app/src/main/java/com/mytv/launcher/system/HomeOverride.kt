@@ -35,6 +35,9 @@ class HomeOverride : AccessibilityService() {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         if (event.packageName?.toString() != HomeSetup.GOOGLE_TV_HOME) return
         if (!settings.homeOverride) return
+        // MyTV just opened an app or a search itself: Google TV's own windows (its search results,
+        // the screens it shows while an app starts) aren't you pressing Home.
+        if (SystemClock.uptimeMillis() < quietUntil) return
         // Any Google TV home window except its search screens (voice search results stay put).
         val cls = event.className?.toString().orEmpty()
         if (cls.contains("search", ignoreCase = true) || cls.contains("voice", ignoreCase = true)) return
@@ -96,6 +99,13 @@ class HomeOverride : AccessibilityService() {
         val component: String get() = "com.mytv.launcher/com.mytv.launcher.system.HomeOverride"
 
         @Volatile private var instance: HomeOverride? = null
+
+        @Volatile private var quietUntil = 0L
+
+        /** MyTV is opening an app or a search: don't jump back to MyTV for [millis]. */
+        fun holdOff(millis: Long) {
+            quietUntil = maxOf(quietUntil, SystemClock.uptimeMillis() + millis)
+        }
 
         /** Running (and so catching the fantasy button)? */
         val isRunning: Boolean get() = instance != null

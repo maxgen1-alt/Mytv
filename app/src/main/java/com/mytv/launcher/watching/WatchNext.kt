@@ -114,6 +114,7 @@ class WatchNext(private val context: Context) {
             ?: Intent(Intent.ACTION_VIEW, Uri.parse(uri))
         if (intent.`package` == null && intent.component == null) intent.setPackage(pkg)
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        com.mytv.launcher.system.HomeOverride.holdOff(15_000L)
         return runCatching { context.startActivity(intent) }.isSuccess
     }
 
@@ -124,6 +125,7 @@ class WatchNext(private val context: Context) {
     fun openFresh(pkg: String, uri: String): Boolean {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(uri)).setPackage(pkg)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        com.mytv.launcher.system.HomeOverride.holdOff(15_000L)
         return runCatching { context.startActivity(intent) }.isSuccess
     }
 
@@ -134,6 +136,7 @@ class WatchNext(private val context: Context) {
             ?: Intent(Intent.ACTION_VIEW, Uri.parse(uri))
         if (intent.`package` == null && intent.component == null) item.packageName?.let(intent::setPackage)
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        com.mytv.launcher.system.HomeOverride.holdOff(15_000L)
         return runCatching { context.startActivity(intent) }.isSuccess
     }
 

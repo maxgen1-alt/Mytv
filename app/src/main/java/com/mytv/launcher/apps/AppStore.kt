@@ -11,6 +11,7 @@ object AppStore {
 
     /** Google Play: [pkg]'s page (Install button), or the store's front page. */
     fun open(context: Context, pkg: String? = null): Boolean {
+        com.mytv.launcher.system.HomeOverride.holdOff(60_000L)
         val attempts = listOfNotNull(
             pkg?.let { Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$it")).setPackage(PLAY) },
             pkg?.let { Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$it")) },
@@ -42,6 +43,7 @@ object RedZone {
         val launch = context.packageManager.getLeanbackLaunchIntentForPackage(NFL_APP)
             ?: context.packageManager.getLaunchIntentForPackage(NFL_APP)
             ?: return false
+        com.mytv.launcher.system.HomeOverride.holdOff(20_000L)
         AutoPlay.startSteps(NFL_APP, "the NFL app", listOf(listOf("redzone", "red zone"), listOf("watch live", "watch now", "watch", "play")))
         return runCatching {
             context.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
