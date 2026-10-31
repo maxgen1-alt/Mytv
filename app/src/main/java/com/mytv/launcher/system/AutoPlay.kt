@@ -18,7 +18,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 object AutoPlay {
     private val main = Handler(Looper.getMainLooper())
 
-    private class Target(val pkg: String, val words: List<String>, var until: Long, var fallback: (() -> Unit)?) {
+    private class Target(val pkg: String, val words: List<String>, var until: Long) {
         var clicks = 0
         var lastClick = 0L
         var onGamePage = false
@@ -36,22 +36,17 @@ object AutoPlay {
     private val watchButtons = listOf("watch now", "resume", "play now", "watch from")
     private val never = listOf("trailer", "beginning", "start over", "buy", "rent", "subscribe", "trial", "sign up", "add to", "channel", "episodes", "more")
 
-    /**
-     * Arms the helper for the game page MyTV just asked [pkg] to open.
-     * [teams] are the game's two team names as Prime writes them. If nothing
-     * shows up to press within a few seconds (Prime ignored the link while it
-     * was open), [fallback] reopens Prime on the game.
-     */
-    fun start(pkg: String, teams: List<String>, fallback: (() -> Unit)?) {
-        target = Target(pkg, teams.map { it.lowercase().trim() }.filter { it.isNotEmpty() }, SystemClock.uptimeMillis() + 40_000L, fallback)
+    /** Arms the helper for the game page MyTV is about to open in [pkg]; [teams] are its two teams as Prime writes them. */
+    fun start(pkg: String, teams: List<String>) {
+        val t = Target(pkg, teams.map { it.lowercase().trim() }.filter { it.isNotEmpty() }, SystemClock.uptimeMillis() + 40_000L)
+        target = t
+        // Nothing to press by then: say so (and stop).
         main.postDelayed({
-            val t = target ?: return@postDelayed
-            if (t.clicks == 0 && !t.onGamePage) {
-                t.fallback?.invoke()
-                t.until = SystemClock.uptimeMillis() + 40_000L
+            if (target === t) {
+                target = null
+                if (t.clicks == 0) say("MyTV couldn't find Prime's buttons to press")
             }
-            t.fallback = null
-        }, 5_000L)
+        }, 40_000L)
     }
 
     /** Every Prime Video screen change, while armed: look again once it settles. */
@@ -78,7 +73,7 @@ object AutoPlay {
             val pick = labelled.firstOrNull { (_, text) -> text == PROFILE || text.split(' ', ',', '.').firstOrNull() == PROFILE }?.first
                 ?: root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
                 ?: labelled.firstOrNull { (n, text) -> n.isClickable && profileScreen.none { text.contains(it) } && listOf("add", "edit", "kids", "manage").none { text.contains(it) } }?.first
-            if (pick != null && click(pick)) done(t, now, final = false)
+            if (pick != null && click(pick)) { say("MyTV pressed: ${label(pick).ifEmpty { "your profile" }}"); done(t, now, final = false) }
             return
         }
 
@@ -90,20 +85,25 @@ object AutoPlay {
         }?.first
         val live = button(liveButtons)
         if (live != null) {
-            if (click(live)) done(t, now, final = true)
+            if (click(live)) { say("MyTV pressed: Watch live"); done(t, now, final = true) }
             return
         }
         val watch = button(watchButtons)
-        if (watch != null && click(watch)) done(t, now, final = false)
+        if (watch != null && click(watch)) { say("MyTV pressed: ${label(watch)}"); done(t, now, final = false) }
     }
 
     /** After a click: a little longer for the next screen, then stop. */
     private fun done(t: Target, now: Long, final: Boolean) {
         t.clicks++
         t.lastClick = now
-        t.fallback = null
         t.until = minOf(t.until, now + if (final) 6_000L else 15_000L)
         if (t.clicks >= 4) target = null
+    }
+
+    /** A short note on screen, so you can see what the helper did. */
+    private fun say(msg: String) {
+        val ctx = service ?: return
+        main.post { android.widget.Toast.makeText(ctx.applicationContext, msg, android.widget.Toast.LENGTH_SHORT).show() }
     }
 
     private fun click(node: AccessibilityNodeInfo): Boolean {
