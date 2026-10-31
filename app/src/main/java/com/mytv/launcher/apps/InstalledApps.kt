@@ -144,6 +144,7 @@ class InstalledApps(private val context: Context) {
             ?: pm.getLaunchIntentForPackage(packageName)
             ?: return false
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        com.mytv.launcher.system.HomeOverride.holdOff(15_000L)
         return runCatching { context.startActivity(intent) }.isSuccess
     }
 

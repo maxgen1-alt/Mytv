@@ -12,6 +12,8 @@ import android.content.Intent
  */
 object Search {
     fun open(context: Context, query: String): Boolean {
+        // You'll be browsing Google TV's results for a while: they're not its home screen.
+        com.mytv.launcher.system.HomeOverride.holdOff(3 * 60_000L)
         val attempts = listOf(
             Intent("android.search.action.GLOBAL_SEARCH"),
             Intent(Intent.ACTION_SEARCH).setPackage("com.google.android.katniss"),
