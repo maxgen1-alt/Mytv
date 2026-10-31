@@ -30,6 +30,8 @@ class HomeOverride : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
+        // A game MyTV just opened in Prime Video: press its buttons (see AutoPlay).
+        AutoPlay.onEvent(this, event)
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         if (event.packageName?.toString() != HomeSetup.GOOGLE_TV_HOME) return
         if (!settings.homeOverride) return
