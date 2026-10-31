@@ -57,7 +57,7 @@ fun SystemScreen(
     onShowFantasy: () -> Unit = {},
     onSignInFantrax: () -> Unit = {},
     onPairWireless: (code: String, port: String) -> Unit = { _, _ -> },
-    onDeveloperOptions: () -> Unit = {},
+    onPairKeypad: () -> Unit = {},
 ) {
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
@@ -75,7 +75,7 @@ fun SystemScreen(
                 Text(state.helper, fontSize = 13.sp, color = if (state.helper.endsWith("running")) Color(0xFF7CD992) else Color(0xFFFF8A80))
                 Spacer(Modifier.height(8.dp))
             }
-            if (state.phoneSetup != null) WirelessPairing(state.busy, state.message, state.wirelessPaired, onPairWireless, onDeveloperOptions)
+            if (state.phoneSetup != null) WirelessPairing(state.busy, state.message, state.wirelessPaired, onPairWireless, onPairKeypad)
             state.phoneSetup?.let { cmd ->
                 Text("Or, from your phone (Bugjaeger → Shell), then select the button below:", fontSize = 13.sp, color = Color(0xFFF5C518))
                 Spacer(Modifier.height(4.dp))
@@ -147,23 +147,23 @@ fun SystemScreen(
  * is on Settings' pairing screen; MyTV finds the port itself (type it if not).
  */
 @Composable
-private fun WirelessPairing(busy: Boolean, status: String, paired: Boolean, onPair: (String, String) -> Unit, onDeveloperOptions: () -> Unit) {
+private fun WirelessPairing(busy: Boolean, status: String, paired: Boolean, onPair: (String, String) -> Unit, onKeypad: () -> Unit) {
     var code by remember { mutableStateOf("") }
     var port by remember { mutableStateOf("") }
     Text("No phone needed (one time):", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFF5C518))
     Spacer(Modifier.height(4.dp))
     Text(
-        "1. Developer options → Wireless debugging: turn it on, then choose Pair device with pairing code.\n" +
-            "2. Note the 6-digit code and the port (the number after the colon), come back here (Home → MyTV → ⚙) and type them.",
+        "Choose the keypad: MyTV opens Developer options. Go to Wireless debugging, turn it on and choose Pair device with pairing code. " +
+            "MyTV's keypad appears in the corner over it: type the 6-digit code there. (Leaving the pairing screen cancels its code.)",
         fontSize = 13.sp,
         color = Palette.InkSoft,
     )
     Spacer(Modifier.height(8.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Pill("Open Developer options", false, onClick = onDeveloperOptions)
+        Pill("Pair with on-screen keypad", true, onClick = onKeypad)
         Field(code, "Code", 120.dp) { code = it.filter(Char::isDigit).take(6) }
         Field(port, "Port", 100.dp) { port = it.filter(Char::isDigit).take(5) }
-        Pill(if (busy) "Working…" else if (paired) "Pair again" else "Pair", true) { if (!busy) onPair(code, port) }
+        Pill(if (busy) "Working…" else if (paired) "Pair again" else "Pair", false) { if (!busy) onPair(code, port) }
     }
     // What happened, right here (not just at the top of the page).
     if (status.isNotBlank()) {
