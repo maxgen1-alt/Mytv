@@ -10,7 +10,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 /**
  * One click to a game in Prime Video: after MyTV opens a game's page there,
  * the home helper presses the buttons you'd press yourself, for a few seconds
- * only: your profile on "Who's watching?" (the one Prime has highlighted),
+ * only: your profile on "Who's watching?" ([PROFILE], else the one Prime has highlighted),
  * then Watch live (Watch now for a game that's over). It presses nothing
  * else, never Buy/Rent/Subscribe/Trailer, and only on the page of the game
  * you picked (both team names on screen).
@@ -27,6 +27,9 @@ object AutoPlay {
     @Volatile private var target: Target? = null
     private var service: AccessibilityService? = null
     private val step = Runnable { service?.let(::step) }
+
+    /** Your profile on Prime Video. */
+    private const val PROFILE = "max"
 
     private val profileScreen = listOf("who's watching", "who’s watching", "who is watching", "choose a profile", "choose your profile", "select a profile")
     private val liveButtons = listOf("watch live", "join live", "live now")
@@ -70,9 +73,10 @@ object AutoPlay {
         val nodes = flatten(root)
         val labelled = nodes.map { it to label(it) }.filter { it.second.isNotEmpty() }
 
-        // "Who's watching?": the profile Prime already has selected.
+        // "Who's watching?": yours, else the profile Prime already has selected.
         if (labelled.any { (_, text) -> profileScreen.any { text.contains(it) } }) {
-            val pick = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+            val pick = labelled.firstOrNull { (_, text) -> text == PROFILE || text.split(' ', ',', '.').firstOrNull() == PROFILE }?.first
+                ?: root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
                 ?: labelled.firstOrNull { (n, text) -> n.isClickable && profileScreen.none { text.contains(it) } && listOf("add", "edit", "kids", "manage").none { text.contains(it) } }?.first
             if (pick != null && click(pick)) done(t, now, final = false)
             return
