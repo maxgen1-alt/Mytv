@@ -442,38 +442,49 @@ private fun NbaTile(summary: com.mytv.launcher.NbaSummary, onClick: () -> Unit) 
     }
 }
 
-/** This week's fantasy matchup: the category score, today's, and how many of yours are on. Select slides the panel in (your fantasy button does too, in any app). */
+/**
+ * Your fantasy team: the Midland Monarchs logo with this week's category score
+ * in the corner (green ahead, red behind); selected, it shows the opponent and
+ * today's score. Select slides the matchup in (your fantasy button does too, in any app).
+ */
 @Composable
 private fun FantasyTile(m: com.mytv.launcher.fantasy.FantasyMatchup?, onClick: () -> Unit) {
-    val mineOn = m?.live.orEmpty().count { it.mine }
+    var focused by remember { mutableStateOf(false) }
+    val live = m?.live.orEmpty().isNotEmpty()
     FocusCard(
         onClick = onClick,
+        container = Color.Black,
         modifier = Modifier
             .size(TileWidth, TileHeight)
-            .then(if (m?.live.orEmpty().isNotEmpty()) Modifier.livePulse(Palette.Live) else Modifier),
+            .onFocusChanged { focused = it.hasFocus }
+            .then(if (live) Modifier.livePulse(Color(0xFF8B2BE2), scale = if (focused) 1.08f else 1f) else Modifier),
     ) {
-        Column(
-            Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Text(if (m != null) "Fantasy · vs ${m.opponent}" else "Fantasy", fontSize = 11.sp, color = Palette.InkSoft, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (m == null) {
-                Text("Midland Monarchs", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Palette.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            } else {
-                val ahead = m.week.wins - m.week.losses
-                Text(
-                    m.week.toString(),
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = when { ahead > 0 -> Color(0xFF7CD992); ahead < 0 -> Color(0xFFFF8A80); else -> Palette.Ink },
-                )
-                Text(
-                    "Today ${m.today}" + if (mineOn > 0) " · $mineOn on" else "",
-                    fontSize = 11.sp, color = Palette.InkSoft, maxLines = 1,
-                )
+        Image(
+            painter = androidx.compose.ui.res.painterResource(com.mytv.launcher.R.drawable.monarchs_logo),
+            contentDescription = "Midland Monarchs",
+            modifier = Modifier.align(Alignment.Center).size(if (focused && m != null) 66.dp else 86.dp),
+            contentScale = ContentScale.Fit,
+        )
+        if (m != null) {
+            val ahead = m.week.wins - m.week.losses
+            if (!focused) Text(
+                m.week.toString(),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = when { ahead > 0 -> Color(0xFF7CD992); ahead < 0 -> Color(0xFFFF8A80); else -> Palette.Ink },
+                modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp),
+            )
+            if (focused) {
+                Column(
+                    Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Color(0xB3000000)).padding(horizontal = 8.dp, vertical = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text("Week ${m.week} · Today ${m.today}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Palette.Ink, maxLines = 1)
+                    Text("vs ${m.opponent}", fontSize = 11.sp, color = Palette.InkSoft, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
         }
-        if (m?.live.orEmpty().isNotEmpty()) LiveBadge(Modifier.align(Alignment.TopEnd).padding(8.dp))
+        if (live) LiveBadge(Modifier.align(Alignment.TopEnd).padding(8.dp))
     }
 }
 
