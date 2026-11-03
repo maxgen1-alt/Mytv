@@ -11,8 +11,8 @@ import kotlin.math.max
  * Nothing-style app icons: the app's own logo, cut out of its banner as a single-colour
  * shape (white, tinted red when selected). The banner's background colour (the most common
  * colour around its edge) is dropped; everything that stands out from it is the logo. When
- * the logo has a white wordmark or symbol over colour, only the white is kept, and thick
- * filled shapes are drawn as outlines. When selected, the logo lights up in the app's own brand
+ * the logo has a white wordmark or symbol over colour, only the white is kept. A logo with
+ * big filled shapes isn't cut out at all (the tile shows its banner in black and white). When selected, the logo lights up in the app's own brand
  * colour (worked out from the banner). Made once per app picture, off the main thread,
  * and kept in memory.
  */
@@ -40,7 +40,7 @@ object NothingIcons {
         val b = c and 0xFF
         val lo = minOf(r, minOf(g, b))
         val spread = max(r, max(g, b)) - lo
-        val bright = ((lo - 150) * 255 / 60).coerceIn(0, 255)
+        val bright = ((lo - 190) * 255 / 45).coerceIn(0, 255)
         val grey = ((90 - spread) * 255 / 50).coerceIn(0, 255)
         return bright * grey / 255
     }
@@ -136,8 +136,8 @@ object NothingIcons {
             for (i in px.indices) strength[i] = strength[i] * whiteness(px[i]) / 255
         }
 
-        // 3. Only really big filled areas (a shield's white panel) become outlines; letters and
-        // bold symbols (Apple's apple, "tv") stay solid.
+        // 3. Big filled shapes (a shield's panel, a solid box) don't cut out cleanly: then the
+        // tile shows the original banner in black and white instead. Letters stay as they are.
         val r = max(8, minOf(w, h) / 9)
         val solid = BooleanArray(px.size) { strength[it] > 128 }
         fun on(x: Int, y: Int) = x in 0 until w && y in 0 until h && solid[y * w + x]
@@ -148,7 +148,7 @@ object NothingIcons {
         var lit = 0
         for (y in 0 until h) for (x in 0 until w) {
             val i = y * w + x
-            if (solid[i] && dirs.all { d -> on(x + d[0], y + d[1]) }) strength[i] = 0
+            if (solid[i] && dirs.all { d -> on(x + d[0], y + d[1]) }) return Glyph(null, brandColour)
             if (strength[i] > 128) lit++
         }
         // Crisp edges, no haze: faint shading and reflections under a logo are dropped.

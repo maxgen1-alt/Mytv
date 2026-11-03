@@ -397,20 +397,18 @@ private fun AppTile(app: TvApp, modifier: Modifier, onClick: () -> Unit, onLongC
 }
 
 /**
- * Nothing look: the app's own logo as a white shape on black (cut out of its banner),
- * turning Nothing red when you're on it. Apps whose logo can't be cut out cleanly show
- * their name in monospace instead.
+ * Nothing look: black and white until you're on it, then the app's real banner in full colour.
+ * Not selected: the app's logo as a clean white shape on black (cut out of its banner), or,
+ * when the logo doesn't cut out cleanly, the banner itself in black and white.
  */
 @Composable
 private fun NothingAppTile(app: TvApp, modifier: Modifier, onClick: () -> Unit, onLongClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
     val art = app.banner ?: app.icon
-    // (made yet?, the logo shape and brand colour): worked out off the main thread, once per picture.
+    // (made yet?, the logo shape): worked out off the main thread, once per picture.
     val glyph by androidx.compose.runtime.produceState<Pair<Boolean, NothingIcons.Glyph?>>(false to null, art) {
         value = true to art?.let { a -> kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { NothingIcons.glyph(a) } }
     }
-    // Selected: the app's own colour (Prime blue, Netflix red); Nothing red if its logo has none.
-    val ink = if (focused) glyph.second?.brand?.let { Color(it) } ?: NothingLook.Red else Color.White
     FocusCard(
         onClick = onClick,
         onLongClick = onLongClick,
@@ -420,18 +418,11 @@ private fun NothingAppTile(app: TvApp, modifier: Modifier, onClick: () -> Unit, 
     ) {
         val (made, g) = glyph
         val shape = g?.shape
-        if (shape != null) {
-            Image(
-                shape,
-                app.label,
-                Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 14.dp),
-                contentScale = ContentScale.Fit,
-                colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(ink),
-            )
-        } else if (made) {
-            Text(
+        val banner = app.banner != null
+        when {
+            art == null -> Text(
                 remember(app.label) { nothingName(app.label) },
-                color = ink,
+                color = Color.White,
                 fontSize = 15.sp,
                 fontFamily = NothingLook.Mono,
                 fontWeight = FontWeight.Bold,
@@ -439,6 +430,24 @@ private fun NothingAppTile(app: TvApp, modifier: Modifier, onClick: () -> Unit, 
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.align(Alignment.Center).padding(horizontal = 12.dp),
+            )
+            // On it: the real thing, in colour.
+            focused -> Image(
+                art, app.label,
+                if (banner) Modifier.fillMaxSize() else Modifier.align(Alignment.Center).size(56.dp),
+                contentScale = if (banner) ContentScale.Crop else ContentScale.Fit,
+            )
+            shape != null -> Image(
+                shape, app.label,
+                Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 14.dp),
+                contentScale = ContentScale.Fit,
+                colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.White),
+            )
+            made -> Image(
+                art, app.label,
+                if (banner) Modifier.fillMaxSize() else Modifier.align(Alignment.Center).size(56.dp),
+                contentScale = if (banner) ContentScale.Crop else ContentScale.Fit,
+                colorFilter = MonoFilter,
             )
         }
     }
