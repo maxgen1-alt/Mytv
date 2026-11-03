@@ -35,6 +35,8 @@ class GameOpener(context: Context) {
             if (openOnLeaguePass(game, title, prime.app.packageName)) return true
         }
         val link = watchNext.findGame(words, options.map { it.app.packageName })
+        // Prime, Peacock and YouTube TV: the helper presses the profile and Watch live buttons for you.
+        link?.let { (pkg, _) -> helped(pkg, options)?.let { name -> AutoPlay.start(pkg, words, name, onGame = true) } }
         if (link != null && watchNext.openLink(link.first, link.second)) {
             val label = options.firstOrNull { it.app.packageName == link.first }?.app?.label.orEmpty()
             toast("$title · starting on $label")
@@ -44,15 +46,19 @@ class GameOpener(context: Context) {
         // YouTube TV: straight onto the channel showing it (it starts playing), else its Live guide.
         if (first != null && Service.YOUTUBE_TV.matches(first.app.packageName, first.app.label)) {
             val channel = YouTubeTvChannels.linkFor(first.network)
+            if (channel != null) AutoPlay.start(first.app.packageName, emptyList(), "YouTube TV", onGame = true)
             if (channel != null && watchNext.openLink(first.app.packageName, channel)) {
                 toast("$title · ${first.network} on YouTube TV")
                 return true
             }
+            AutoPlay.cancel() // the Live guide: you pick the channel there, nothing to press
             if (watchNext.openLink(first.app.packageName, "https://tv.youtube.com/live")) {
                 toast("$title is on ${first.network} · YouTube TV Live")
                 return true
             }
         }
+        // Just the app: the helper finds the game's tile (both teams) on its home screen, then Watch live.
+        if (first != null) helped(first.app.packageName, options)?.let { name -> AutoPlay.start(first.app.packageName, words, name, onGame = false) }
         if (first != null && installed.launch(first.app.packageName)) {
             toast("$title is on ${first.network} · opening ${first.app.label}")
             return true
@@ -74,6 +80,17 @@ class GameOpener(context: Context) {
         if (!watchNext.openFresh(primePackage, LeaguePass.link(card))) return false
         toast("$title · opening it on League Pass")
         return true
+    }
+
+    /** The helper's name for [pkg] if it's one of the apps it presses buttons in (Prime, Peacock, YouTube TV). */
+    private fun helped(pkg: String, options: List<WatchOption>): String? {
+        val label = options.firstOrNull { it.app.packageName == pkg }?.app?.label.orEmpty()
+        return when {
+            Service.PRIME_VIDEO.matches(pkg, label) -> "Prime"
+            Service.PEACOCK.matches(pkg, label) -> "Peacock"
+            Service.YOUTUBE_TV.matches(pkg, label) -> "YouTube TV"
+            else -> null
+        }
     }
 
     private fun toast(msg: String) = Handler(Looper.getMainLooper()).post { Toast.makeText(app, msg, Toast.LENGTH_LONG).show() }

@@ -16,7 +16,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 /**
- * One click to a game in Prime Video: after MyTV opens a game's page there,
+ * One click to a game in Prime Video, Peacock or YouTube TV: after MyTV opens a game there,
  * the home helper presses the buttons you'd press yourself, for a few seconds
  * only: your profile on "Who's watching?" ([PROFILE], else the one Prime has highlighted),
  * then Watch / Watch live. It presses nothing else, never Buy/Rent/Subscribe/Trailer.
@@ -38,6 +38,10 @@ object AutoPlay {
         /** Buttons to press in order (each a list of names), instead of the Prime game routine. */
         val steps: List<List<String>>? = null,
         val app: String = "Prime",
+        /** Opened on the game (or channel) itself: OK may be pressed when the screen can't be read. */
+        val blindOk: Boolean = true,
+        /** Opened on the app's home screen: first find the game's tile (both teams) and select it. */
+        val findTile: Boolean = false,
     ) {
         var stage = 0
         var clicks = 0
@@ -78,13 +82,21 @@ object AutoPlay {
     private val watchButtons = listOf("watch now", "watch", "resume", "play now", "play", "watch from")
     private val never = listOf("trailer", "beginning", "start over", "buy", "rent", "subscribe", "trial", "sign up", "add to", "channel", "episodes", "more", "watchlist")
 
-    /** Arms the helper for the game page MyTV is about to open in [pkg]; [teams] are its two teams as Prime writes them. */
-    fun start(pkg: String, teams: List<String>) =
-        arm(Target(pkg, teams.map { it.lowercase().trim() }.filter { it.isNotEmpty() }, SystemClock.uptimeMillis() + 45_000L))
+    /**
+     * Arms the helper for the game MyTV is about to open in [pkg] ([app]: Prime, Peacock, YouTube TV);
+     * [teams] are its two teams as the app writes them. [onGame]: MyTV is opening the game (or its
+     * channel) itself; false: just the app, so the helper finds the game's tile first.
+     */
+    fun start(pkg: String, teams: List<String>, app: String = "Prime", onGame: Boolean = true) =
+        arm(Target(pkg, teams.map { it.lowercase().trim() }.filter { it.isNotEmpty() }, SystemClock.uptimeMillis() + 45_000L,
+            app = app, blindOk = onGame, findTile = !onGame))
 
     /** Arms the helper to press [steps] in order in [app] ([pkg]), e.g. RedZone then Watch. */
     fun startSteps(pkg: String, app: String, steps: List<List<String>>) =
         arm(Target(pkg, emptyList(), SystemClock.uptimeMillis() + 45_000L, steps.map { names -> names.map { it.lowercase() } }, app))
+
+    /** Stop: MyTV went somewhere else after all (nothing should be pressed there). */
+    fun cancel() = main.post { target = null }
 
     private fun arm(t: Target) {
         main.post {
@@ -154,6 +166,17 @@ object AutoPlay {
                 ?: root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
                 ?: labelled.firstOrNull { (n, text) -> n.isClickable && profileScreen.none { text.contains(it) } && listOf("add", "edit", "kids", "manage").none { text.contains(it) } }?.first
             if (pick != null && click(pick)) { say("MyTV pressed: ${label(pick).ifEmpty { "your profile" }}"); done(t, now, final = false); return }
+        } else if (t.findTile && !t.onGamePage) {
+            // The app's home screen: select the game's tile (both teams in one label).
+            val tile = if (t.words.size >= 2) labelled.firstOrNull { (_, text) ->
+                text.length <= 160 && t.words.all { text.contains(it) } && never.none { text.contains(it) }
+            }?.first else null
+            if (tile != null && click(tile)) {
+                t.onGamePage = true
+                say("MyTV pressed: ${label(tile).take(40)}")
+                done(t, now, final = false)
+                return
+            }
         } else {
             // The game's page: both teams on screen. Then Watch live (or Watch, which asks live or from the start).
             if (t.words.isNotEmpty() && t.words.all { w -> labelled.any { it.second.contains(w) } }) t.onGamePage = true
@@ -177,7 +200,7 @@ object AutoPlay {
         // profile, then Watch, then Watch live). A few times at most, spaced out.
         val since = maxOf(t.frontSince, t.lastClick)
         val wait = if (t.clicks == 0) FIRST_BLIND_WAIT else NEXT_BLIND_WAIT
-        if (t.blind < MAX_BLIND && t.clicks < 4 && now - since >= wait) {
+        if (t.blindOk && t.blind < MAX_BLIND && t.clicks < 4 && now - since >= wait) {
             t.blind++
             pressOk(svc)
             say("MyTV pressed OK")
@@ -197,7 +220,7 @@ object AutoPlay {
             return
         }
         t.until = minOf(t.until, now + 15_000L)
-        if (t.clicks >= 4) target = null
+        if (t.clicks >= 5) target = null
     }
 
     /** The remote's OK button: the helper's own (Android 13+), else over the TV's debugging connection. */
