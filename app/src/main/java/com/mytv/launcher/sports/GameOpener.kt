@@ -76,6 +76,17 @@ class GameOpener(context: Context) {
     suspend fun openOnLeaguePass(game: Game, title: String, primePackage: String): Boolean {
         if (game.league.sport != "basketball") return false
         val card = LeaguePass.find(leaguePass.cards(), game) ?: return false
+        // Already watching Prime (the fantasy panel over a game): handed a new game while it's on
+        // screen, Prime quits to the home screen. Put it in the background first, like pressing
+        // Home, then start it on the game, the way that works from MyTV's own buttons.
+        com.mytv.launcher.system.HomeOverride.service?.let { svc ->
+            val front = runCatching { svc.rootInActiveWindow?.packageName?.toString() }.getOrNull()
+            if (front == primePackage) {
+                com.mytv.launcher.system.HomeOverride.holdOff(15_000L)
+                svc.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME)
+                kotlinx.coroutines.delay(1_000L)
+            }
+        }
         AutoPlay.start(primePackage, card.title.split(" vs. "))
         if (!watchNext.openFresh(primePackage, LeaguePass.link(card))) return false
         toast("$title · opening it on League Pass")

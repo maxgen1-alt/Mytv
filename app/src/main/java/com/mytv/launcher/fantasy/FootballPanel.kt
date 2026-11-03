@@ -39,7 +39,9 @@ import java.util.Locale
  * Back) slides it away again.
  */
 object FootballPanel {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    // A failed fetch or game lookup must never take MyTV down (it would drop you out of the app you're in).
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main +
+        kotlinx.coroutines.CoroutineExceptionHandler { _, e -> android.util.Log.w("MyTV", "panel", e) })
     private val live = FootballLive()
     private var root: FrameLayout? = null
     private var content: LinearLayout? = null
@@ -261,6 +263,7 @@ object FootballPanel {
         val game = p.game ?: return
         hide()
         scope.launch {
+            delay(350) // the panel is gone: the app underneath is in front again
             GameOpener(context).open(
                 game,
                 "${game.away.abbreviation} @ ${game.home.abbreviation}",

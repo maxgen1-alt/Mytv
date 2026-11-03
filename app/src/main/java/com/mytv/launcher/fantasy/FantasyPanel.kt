@@ -40,7 +40,9 @@ import java.time.format.DateTimeFormatter
  * (or Back) slides it away again.
  */
 object FantasyPanel {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    // A failed fetch or game lookup must never take MyTV down (it would drop you out of the app you're in).
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main +
+        kotlinx.coroutines.CoroutineExceptionHandler { _, e -> android.util.Log.w("MyTV", "panel", e) })
     private val live = FantasyLive()
     private var root: FrameLayout? = null
     private var content: LinearLayout? = null
@@ -263,6 +265,7 @@ object FantasyPanel {
         val game = p.game ?: return
         hide()
         scope.launch {
+            delay(350) // the panel is gone: the app underneath is in front again
             GameOpener(context).open(game, NbaGames.title(game), NbaGames.matchWords(game))
         }
     }
