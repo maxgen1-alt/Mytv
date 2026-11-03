@@ -41,6 +41,7 @@
     </queries>
 
     <application
+        android:name=".MyTvApp"
         android:allowBackup="true"
         android:banner="@drawable/banner"
         android:icon="@drawable/ic_launcher"
