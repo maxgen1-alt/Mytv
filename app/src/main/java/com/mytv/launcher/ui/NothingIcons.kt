@@ -10,8 +10,10 @@ import kotlin.math.max
 /**
  * Nothing-style app icons: the app's own logo, cut out of its banner as a single-colour
  * shape (white, tinted red when selected). The banner's background colour (the most common
- * colour around its edge) is dropped; everything that stands out from it is the logo.
- * Made once per app picture, off the main thread, and kept in memory.
+ * colour around its edge) is dropped; everything that stands out from it is the logo. When
+ * the logo has a white wordmark or symbol over colour, only the white is kept, and thick
+ * filled shapes are drawn as outlines. Made once per app picture, off the main thread,
+ * and kept in memory.
  */
 object NothingIcons {
     private val cache = HashMap<ImageBitmap, ImageBitmap?>()
@@ -25,6 +27,18 @@ object NothingIcons {
             cache[art] = out
         }
         return out
+    }
+
+    /** How white a pixel is (0-255): bright and without colour. */
+    private fun whiteness(c: Int): Int {
+        val r = (c shr 16) and 0xFF
+        val g = (c shr 8) and 0xFF
+        val b = c and 0xFF
+        val lo = minOf(r, minOf(g, b))
+        val spread = max(r, max(g, b)) - lo
+        val bright = ((lo - 150) * 255 / 60).coerceIn(0, 255)
+        val grey = ((90 - spread) * 255 / 50).coerceIn(0, 255)
+        return bright * grey / 255
     }
 
     private fun make(art: ImageBitmap): ImageBitmap? {
@@ -47,35 +61,65 @@ object NothingIcons {
         val bgKey = counts.maxByOrNull { it.value }?.key ?: -1
         val transparentBg = bgKey == -1
         // The background's real average colour (not the coarse key).
-        var br = 0L; var bgG = 0L; var bb = 0L; var n = 0
+        var sr = 0L; var sg = 0L; var sb = 0L; var n = 0
         if (!transparentBg) {
             fun add(c: Int) {
                 if ((c ushr 24) >= 64 && (c and 0xF0F0F0) == bgKey) {
-                    br += (c shr 16) and 0xFF; bgG += (c shr 8) and 0xFF; bb += c and 0xFF; n++
+                    sr += (c shr 16) and 0xFF; sg += (c shr 8) and 0xFF; sb += c and 0xFF; n++
                 }
             }
             for (x in 0 until w) { add(px[x]); add(px[(h - 1) * w + x]) }
             for (y in 0 until h) { add(px[y * w]); add(px[y * w + w - 1]) }
         }
-        val r0 = if (n > 0) (br / n).toInt() else 0
-        val g0 = if (n > 0) (bgG / n).toInt() else 0
-        val b0 = if (n > 0) (bb / n).toInt() else 0
+        val r0 = if (n > 0) (sr / n).toInt() else 0
+        val g0 = if (n > 0) (sg / n).toInt() else 0
+        val b0 = if (n > 0) (sb / n).toInt() else 0
 
-        var lit = 0
+        // 1. Everything that stands out from the background.
+        val strength = IntArray(px.size)
+        var litAll = 0
+        var litWhite = 0
         for (i in px.indices) {
             val c = px[i]
             val a = c ushr 24
-            val strength = if (a < 40) 0 else if (transparentBg) a else {
+            strength[i] = if (a < 40) 0 else if (transparentBg) a else {
                 val d = max(abs(((c shr 16) and 0xFF) - r0), max(abs(((c shr 8) and 0xFF) - g0), abs((c and 0xFF) - b0)))
                 // Soft edge: under 28 is background, over 110 fully logo.
                 ((d - 28) * 255 / 82).coerceIn(0, 255) * a / 255
             }
-            if (strength > 128) lit++
-            px[i] = (strength shl 24) or 0xFFFFFF
+            if (strength[i] > 128) {
+                litAll++
+                if (whiteness(c) > 128) litWhite++
+            }
         }
+
+        // 2. Most streaming logos have a white wordmark or symbol over colour (a gradient,
+        // a red play box, a blue panel): when there's a real white wordmark on a dark
+        // background, keep just the white.
+        val bgLuma = (299 * r0 + 587 * g0 + 114 * b0) / 1000
+        if (!transparentBg && bgLuma < 150 && litWhite >= px.size * 0.004f) {
+            for (i in px.indices) strength[i] = strength[i] * whiteness(px[i]) / 255
+        }
+
+        // 3. Thick shapes become outlines (Nothing-style); thin strokes like letters stay solid.
+        val r = max(4, minOf(w, h) / 32)
+        val solid = BooleanArray(px.size) { strength[it] > 128 }
+        fun on(x: Int, y: Int) = x in 0 until w && y in 0 until h && solid[y * w + x]
+        val dirs = arrayOf(
+            intArrayOf(r, 0), intArrayOf(-r, 0), intArrayOf(0, r), intArrayOf(0, -r),
+            intArrayOf(r, r), intArrayOf(-r, r), intArrayOf(r, -r), intArrayOf(-r, -r),
+        )
+        var lit = 0
+        for (y in 0 until h) for (x in 0 until w) {
+            val i = y * w + x
+            if (solid[i] && dirs.all { d -> on(x + d[0], y + d[1]) }) strength[i] = 0
+            if (strength[i] > 128) lit++
+        }
+        for (i in px.indices) px[i] = (strength[i] shl 24) or 0xFFFFFF
+
         // Nothing (or almost everything) stood out: no clean logo, use the app's name instead.
         val share = lit.toFloat() / px.size
-        if (share < 0.01f || share > 0.75f) return null
+        if (share < 0.005f || share > 0.75f) return null
         return Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888).asImageBitmap().also { it.prepareToDraw() }
     }
 }
