@@ -405,11 +405,12 @@ private fun AppTile(app: TvApp, modifier: Modifier, onClick: () -> Unit, onLongC
 private fun NothingAppTile(app: TvApp, modifier: Modifier, onClick: () -> Unit, onLongClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
     val art = app.banner ?: app.icon
-    // (made yet?, the logo shape): worked out off the main thread, once per picture.
-    val glyph by androidx.compose.runtime.produceState<Pair<Boolean, androidx.compose.ui.graphics.ImageBitmap?>>(false to null, art) {
+    // (made yet?, the logo shape and brand colour): worked out off the main thread, once per picture.
+    val glyph by androidx.compose.runtime.produceState<Pair<Boolean, NothingIcons.Glyph?>>(false to null, art) {
         value = true to art?.let { a -> kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { NothingIcons.glyph(a) } }
     }
-    val ink = if (focused) NothingLook.Red else Color.White
+    // Selected: the app's own colour (Prime blue, Netflix red); Nothing red if its logo has none.
+    val ink = if (focused) glyph.second?.brand?.let { Color(it) } ?: NothingLook.Red else Color.White
     FocusCard(
         onClick = onClick,
         onLongClick = onLongClick,
@@ -417,7 +418,8 @@ private fun NothingAppTile(app: TvApp, modifier: Modifier, onClick: () -> Unit, 
             .size(TileWidth, TileHeight)
             .onFocusChanged { focused = it.hasFocus },
     ) {
-        val (made, shape) = glyph
+        val (made, g) = glyph
+        val shape = g?.shape
         if (shape != null) {
             Image(
                 shape,
