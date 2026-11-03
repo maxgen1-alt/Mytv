@@ -31,19 +31,25 @@ import com.mytv.launcher.LauncherViewModel.Profile
 /** "Who's watching?": you, Ang (her TV becomes Home), or a guest (just the apps). */
 @Composable
 fun ProfilePicker(current: Profile, onPick: (Profile) -> Unit, onDismiss: () -> Unit) {
+    val nothing = LocalNothing.current
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Column(
-            Modifier.fillMaxSize().background(Color(0xF0050506)),
+            Modifier.fillMaxSize().background(if (nothing) Color.Black else Color(0xF0050506)).then(if (nothing) Modifier.dotGrid() else Modifier),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Text("Who's watching?", fontSize = 34.sp, fontWeight = FontWeight.Bold, color = Palette.Ink)
+            if (nothing) Text("WHO'S WATCHING", fontSize = 48.sp, fontFamily = NothingLook.Dot, fontWeight = FontWeight.ExtraBold, color = Palette.Ink)
+            else Text("Who's watching?", fontSize = 34.sp, fontWeight = FontWeight.Bold, color = Palette.Ink)
             Spacer(Modifier.height(32.dp))
             val focus = remember { FocusRequester() }
             LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
             Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
                 Profile.entries.forEach { p ->
-                    val (bg, mark) = when (p) {
+                    val (bg, mark) = if (nothing) {
+                        // Round dot-matrix buttons: white for whoever's watching now.
+                        androidx.compose.ui.graphics.SolidColor(if (p == current) Color.White else NothingLook.Tile) to
+                            when (p) { Profile.ME -> "ME"; Profile.ANG -> "ANG"; Profile.GUEST -> "G" }
+                    } else when (p) {
                         Profile.ME -> Brush.linearGradient(listOf(Color(0xFF2B2D35), Color(0xFF4A4D55))) to "▶"
                         Profile.ANG -> AngPalette.Tile to "♥"
                         Profile.GUEST -> Brush.linearGradient(listOf(Color(0xFF1B1C20), Color(0xFF2B2D35))) to "☺"
@@ -51,16 +57,18 @@ fun ProfilePicker(current: Profile, onPick: (Profile) -> Unit, onDismiss: () -> 
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         FocusCard(
                             onClick = { onPick(p) },
-                            corner = 28.dp,
+                            corner = if (nothing) 85.dp else 28.dp,
                             focusedScale = 1.1f,
                             modifier = Modifier.size(170.dp).ignoreHeldSelect().let { if (p == current) it.focusRequester(focus) else it },
                         ) {
                             androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().background(bg), contentAlignment = Alignment.Center) {
-                                Text(mark, fontSize = 54.sp, color = Color.White)
+                                if (nothing) Text(mark, fontSize = 44.sp, fontFamily = NothingLook.Dot, fontWeight = FontWeight.ExtraBold, color = if (p == current) Color.Black else Color.White)
+                                else Text(mark, fontSize = 54.sp, color = Color.White)
                             }
                         }
                         Spacer(Modifier.height(12.dp))
-                        Text(p.label, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = Palette.Ink)
+                        if (nothing) Text(p.label.uppercase(), fontSize = 14.sp, fontFamily = NothingLook.Mono, letterSpacing = 2.sp, color = Palette.Ink)
+                        else Text(p.label, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = Palette.Ink)
                     }
                 }
             }

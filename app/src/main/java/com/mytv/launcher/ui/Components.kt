@@ -54,6 +54,10 @@ fun FocusCard(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val shape = RoundedCornerShape(corner)
+    // Nothing look: plain cards turn near-black with a thin grey outline.
+    val nothing = LocalNothing.current
+    val plain = container == Palette.Card || container == Palette.CardSoft
+    val fill = if (nothing && plain) NothingLook.Tile else container
     // Holding select must ONLY long-press: the built-in handling also fires a
     // click when the button comes back up, which opened the app. So with a
     // long-press action we read the select key ourselves: a quick press
@@ -81,15 +85,16 @@ fun FocusCard(
         modifier = keys,
         shape = ClickableSurfaceDefaults.shape(shape = shape),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = container,
+            containerColor = fill,
             contentColor = Palette.Ink,
-            focusedContainerColor = container,
+            focusedContainerColor = fill,
             focusedContentColor = Palette.Ink,
-            pressedContainerColor = container,
+            pressedContainerColor = fill,
             pressedContentColor = Palette.Ink,
         ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = focusedScale),
         border = ClickableSurfaceDefaults.border(
+            border = if (nothing && plain) Border(BorderStroke(1.dp, NothingLook.Line), shape = shape) else Border.None,
             focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape),
         ),
         // No glow: blurred shadows are expensive on a Chromecast's GPU. Scale + border is enough.
@@ -100,6 +105,18 @@ fun FocusCard(
 
 @Composable
 fun SectionTitle(text: String, modifier: Modifier = Modifier) {
+    if (LocalNothing.current) {
+        // "CONTINUE WATCHING" in small spaced-out monospace capitals.
+        Text(
+            text = text.uppercase(),
+            modifier = modifier.padding(bottom = 10.dp),
+            color = NothingLook.Grey,
+            fontSize = 13.sp,
+            fontFamily = NothingLook.Mono,
+            letterSpacing = 3.sp,
+        )
+        return
+    }
     Text(
         text = text,
         modifier = modifier.padding(bottom = 10.dp),
@@ -111,6 +128,17 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier) {
 
 @Composable
 fun LiveBadge(modifier: Modifier = Modifier) {
+    if (LocalNothing.current) {
+        Box(
+            modifier = modifier
+                .background(NothingLook.Red, RoundedCornerShape(10.dp))
+                .padding(horizontal = 8.dp, vertical = 2.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("LIVE", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, fontFamily = NothingLook.Mono, letterSpacing = 1.sp)
+        }
+        return
+    }
     Box(
         modifier = modifier
             .background(Palette.Live, RoundedCornerShape(6.dp))

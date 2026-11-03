@@ -41,6 +41,11 @@ class MyTvSettings(context: Context) {
         get() = prefs.getString("profile", "me") ?: "me"
         set(v) = prefs.edit().putString("profile", v).apply()
 
+    /** The Nothing look on your profile (black, dot-matrix, monospace). */
+    var nothingTheme: Boolean
+        get() = prefs.getBoolean("nothing_theme", true)
+        set(v) = prefs.edit().putBoolean("nothing_theme", v).apply()
+
     /** Sleep timer: when to put the TV to sleep (0 = off), or at the end of the current episode. */
     var sleepAt: Long
         get() = prefs.getLong("sleep_at", 0L)

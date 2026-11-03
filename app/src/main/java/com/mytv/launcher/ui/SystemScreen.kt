@@ -59,6 +59,8 @@ fun SystemScreen(
     onShowFootball: () -> Unit = {},
     onPairWireless: (code: String, port: String) -> Unit = { _, _ -> },
     onPairKeypad: () -> Unit = {},
+    nothingTheme: Boolean = false,
+    onNothingTheme: (Boolean) -> Unit = {},
 ) {
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
@@ -99,6 +101,12 @@ fun SystemScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Pill("Google (Google Photos)", !state.myScreensaver) { if (!state.busy) onScreensaver(false) }
                 Pill("MyTV", state.myScreensaver) { if (!state.busy) onScreensaver(true) }
+            }
+
+            Section("Look", "Your profile only: Nothing is black with a dot grid, dot-matrix numbers and Lakers gold, fantasy purple and football blue. Ang's TV doesn't change.")
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Pill("Nothing", nothingTheme) { onNothingTheme(true) }
+                Pill("Classic", !nothingTheme) { onNothingTheme(false) }
             }
 
             Section("Games on NBC", "Open YouTube TV on NBC, the way the team buttons do when a game is on NBC.")

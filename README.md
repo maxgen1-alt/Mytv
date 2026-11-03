@@ -15,6 +15,8 @@ A clean, Apple TV-style launcher on a black-to-graphite gradient:
 
 A clock and a ⚙ settings button sit in the top-right.
 
+**Nothing look** (your profile only, on by default): pure black with a faint dot grid, a dot-matrix clock, monospace labels and a red LIVE tag, with the Lakers in gold, fantasy basketball in purple and fantasy football in blue (the slide-in panels get a matching strip). Switch back under ⚙ MyTV settings → **Look → Classic**. Ang's TV and Guest don't change.
+
 > Works on **Chromecast with Google TV** and **Google TV Streamer**. Older
 > cast-only Chromecasts (the puck that plugs in with no remote) can't run apps.
 

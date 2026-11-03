@@ -96,7 +96,7 @@ object FantasyPanel {
                 return true
             }
         }.apply {
-            setBackgroundColor(0xF50E0E12.toInt())
+            background = PanelLook.background(ctx, PanelLook.FANTASY)
             isFocusable = true
             descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
             addView(ScrollView(ctx).apply { isFillViewport = true; isVerticalScrollBarEnabled = false; addView(list) })

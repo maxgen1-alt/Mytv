@@ -48,13 +48,14 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val gameDay by vm.gameDay.collectAsStateWithLifecycle()
-            MyTvTheme(gameDay) {
+            val profile by vm.profile.collectAsStateWithLifecycle()
+            val nothingTheme by vm.nothingTheme.collectAsStateWithLifecycle()
+            MyTvTheme(gameDay, nothing = nothingTheme && profile == LauncherViewModel.Profile.ME) {
                 val screen by vm.screen.collectAsStateWithLifecycle()
 
                 // We're the home screen: Back from Home does nothing, Back elsewhere returns Home.
                 BackHandler(enabled = true) { if (screen != Screen.Home) vm.back() }
 
-                val profile by vm.profile.collectAsStateWithLifecycle()
                 val pickProfile by vm.pickProfile.collectAsStateWithLifecycle()
 
                 when (val s = screen) {
@@ -221,6 +222,8 @@ class MainActivity : ComponentActivity() {
                             onShowFootball = vm::toggleFootball,
                             onPairWireless = vm::pairWireless,
                             onPairKeypad = vm::pairWithKeypad,
+                            nothingTheme = nothingTheme,
+                            onNothingTheme = vm::setNothingTheme,
                         )
                     }
                 }

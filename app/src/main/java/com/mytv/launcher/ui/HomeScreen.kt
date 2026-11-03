@@ -135,7 +135,8 @@ fun HomeScreen(
         if (apps.isNotEmpty()) runCatching { firstApp.requestFocus() }
     }
 
-    Box(Modifier.fillMaxSize().background(LocalBackground.current)) {
+    val nothing = LocalNothing.current
+    Box(Modifier.fillMaxSize().background(LocalBackground.current).then(if (nothing) Modifier.dotGrid() else Modifier)) {
         PreviewBackdrop(preview)
         Column(
             Modifier
@@ -147,6 +148,7 @@ fun HomeScreen(
             Spacer(Modifier.height(18.dp))
 
             // Row 1: streaming apps
+            if (nothing) SectionTitle("01 — Apps", Modifier.padding(start = 48.dp))
             LazyRow(
                 contentPadding = RowPadding,
                 horizontalArrangement = Arrangement.spacedBy(18.dp),
@@ -167,6 +169,7 @@ fun HomeScreen(
             Spacer(Modifier.height(14.dp))
 
             // Row 2: team buttons
+            if (nothing) SectionTitle("02 — Teams", Modifier.padding(start = 48.dp))
             LazyRow(
                 contentPadding = RowPadding,
                 horizontalArrangement = Arrangement.spacedBy(18.dp),
@@ -266,13 +269,22 @@ private fun TopBar(
             delay(15_000)
         }
     }
+    val nothing = LocalNothing.current
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 48.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (profileLabel.isNotBlank()) {
             FocusCard(onClick = onProfile, corner = 18.dp, container = Palette.CardSoft, focusedScale = 1.06f, modifier = Modifier.height(36.dp)) {
-                Text(
+                if (nothing) Text(
+                    profileLabel.uppercase(),
+                    color = Palette.Ink,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = NothingLook.Mono,
+                    letterSpacing = 1.sp,
+                    modifier = Modifier.align(Alignment.Center).padding(horizontal = 14.dp),
+                ) else Text(
                     "👤 $profileLabel",
                     color = Palette.Ink,
                     fontSize = 14.sp,
@@ -299,7 +311,24 @@ private fun TopBar(
             }
             Spacer(Modifier.width(16.dp))
         }
-        Text(
+        if (nothing) {
+            // "TUE 03 NOV" and a big dot-matrix clock.
+            Text(
+                java.text.SimpleDateFormat("EEE dd MMM", java.util.Locale.getDefault()).format(now).uppercase(),
+                color = NothingLook.Grey,
+                fontSize = 13.sp,
+                fontFamily = NothingLook.Mono,
+                letterSpacing = 2.sp,
+            )
+            Spacer(Modifier.width(18.dp))
+            Text(
+                DateFormat.getTimeInstance(DateFormat.SHORT).format(now),
+                color = Palette.Ink,
+                fontSize = 38.sp,
+                fontFamily = NothingLook.Dot,
+                fontWeight = FontWeight.ExtraBold,
+            )
+        } else Text(
             DateFormat.getTimeInstance(DateFormat.SHORT).format(now),
             color = Palette.Ink,
             fontSize = 20.sp,
@@ -354,8 +383,9 @@ private fun EditTile(onClick: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Text("+", fontSize = 30.sp, color = Palette.Ink)
-            Text("Apps", fontSize = 12.sp, color = Palette.InkSoft)
+            val nothing = LocalNothing.current
+            Text("+", fontSize = 30.sp, color = Palette.Ink, fontFamily = if (nothing) NothingLook.Dot else null)
+            Text(if (nothing) "APPS" else "Apps", fontSize = 12.sp, color = Palette.InkSoft, fontFamily = if (nothing) NothingLook.Mono else null)
         }
     }
 }
@@ -365,13 +395,16 @@ private fun TeamTile(team: Team, info: TeamInfo?, onClick: () -> Unit, onLongCli
     val live = info?.live
     var focused by remember { mutableStateOf(false) }
     val pulseColor = if (team.key == Teams.lakers.key) Palette.LakersGold else Palette.ArsenalRed
+    val nothing = LocalNothing.current
     FocusCard(
         onClick = onClick,
         onLongClick = onLongClick,
+        // Nothing look: the Lakers stay Lakers gold (and pulse white when live, to show on the gold).
+        container = if (nothing && team.key == Teams.lakers.key) NothingLook.Lakers else Palette.Card,
         modifier = Modifier
             .size(TileWidth, TileHeight)
             .onFocusChanged { focused = it.hasFocus }
-            .then(if (live != null) Modifier.livePulse(pulseColor, scale = if (focused) 1.08f else 1f) else Modifier),
+            .then(if (live != null) Modifier.livePulse(if (nothing && team.key == Teams.lakers.key) Color.White else pulseColor, scale = if (focused) 1.08f else 1f) else Modifier),
     ) {
         AsyncImage(
             model = team.logoUrl,
@@ -454,13 +487,14 @@ private fun NbaTile(summary: com.mytv.launcher.NbaSummary, onClick: () -> Unit) 
 private fun FantasyTile(m: com.mytv.launcher.fantasy.FantasyMatchup?, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
     val live = m?.live.orEmpty().isNotEmpty()
+    val nothing = LocalNothing.current
     FocusCard(
         onClick = onClick,
-        container = Color.Black,
+        container = if (nothing) NothingLook.Fantasy else Color.Black,
         modifier = Modifier
             .size(TileWidth, TileHeight)
             .onFocusChanged { focused = it.hasFocus }
-            .then(if (live) Modifier.livePulse(Color(0xFF8B2BE2), scale = if (focused) 1.08f else 1f) else Modifier),
+            .then(if (live) Modifier.livePulse(if (nothing) Color.White else Color(0xFF8B2BE2), scale = if (focused) 1.08f else 1f) else Modifier),
     ) {
         Image(
             painter = androidx.compose.ui.res.painterResource(com.mytv.launcher.R.drawable.monarchs_logo),
@@ -474,7 +508,7 @@ private fun FantasyTile(m: com.mytv.launcher.fantasy.FantasyMatchup?, onClick: (
                 m.week.toString(),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
-                color = when { ahead > 0 -> Color(0xFF7CD992); ahead < 0 -> Color(0xFFFF8A80); else -> Palette.Ink },
+                color = when { nothing -> Color.White; ahead > 0 -> Color(0xFF7CD992); ahead < 0 -> Color(0xFFFF8A80); else -> Palette.Ink },
                 modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp),
             )
             if (focused) {
@@ -501,13 +535,14 @@ private fun FootballTile(m: com.mytv.launcher.fantasy.FootballMatchup?, onClick:
     var focused by remember { mutableStateOf(false) }
     val live = m?.live.orEmpty().isNotEmpty()
     val context = androidx.compose.ui.platform.LocalContext.current
+    val nothing = LocalNothing.current
     FocusCard(
         onClick = onClick,
-        container = Color(0xFF0B1E3A),
+        container = if (nothing) NothingLook.Football else Color(0xFF0B1E3A),
         modifier = Modifier
             .size(TileWidth, TileHeight)
             .onFocusChanged { focused = it.hasFocus }
-            .then(if (live) Modifier.livePulse(Color(0xFF2E7DF6), scale = if (focused) 1.08f else 1f) else Modifier),
+            .then(if (live) Modifier.livePulse(if (nothing) Color.White else Color(0xFF2E7DF6), scale = if (focused) 1.08f else 1f) else Modifier),
     ) {
         val logo = m?.mine?.logo
         if (logo != null) {
@@ -529,7 +564,7 @@ private fun FootballTile(m: com.mytv.launcher.fantasy.FootballMatchup?, onClick:
                 score,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
-                color = when { diff > 0 -> Color(0xFF7CD992); diff < 0 -> Color(0xFFFF8A80); else -> Palette.Ink },
+                color = when { nothing -> Color.White; diff > 0 -> Color(0xFF7CD992); diff < 0 -> Color(0xFFFF8A80); else -> Palette.Ink },
                 modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp),
             )
             if (focused) {
@@ -644,7 +679,24 @@ private fun WatchCard(item: WatchItem, onClick: () -> Unit, onLongClick: (() -> 
                     modifier = Modifier.align(Alignment.Center).padding(12.dp),
                 )
             }
+            val nothing = LocalNothing.current
             item.progress?.let { p ->
+                if (nothing) {
+                    // A row of little dashes, filled up to where you are.
+                    val filled = (p.coerceIn(0f, 1f) * 22).toInt().coerceAtLeast(1)
+                    Row(
+                        Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(10.dp).height(3.dp),
+                        horizontalArrangement = Arrangement.spacedBy(3.dp),
+                    ) {
+                        repeat(22) { i ->
+                            Box(
+                                Modifier.weight(1f).fillMaxHeight()
+                                    .background(if (i < filled) Color.White else Color(0x66FFFFFF), RoundedCornerShape(2.dp)),
+                            )
+                        }
+                    }
+                    return@let
+                }
                 Box(
                     Modifier
                         .align(Alignment.BottomStart)

@@ -1239,6 +1239,11 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val _profile = MutableStateFlow(Profile.entries.firstOrNull { it.key == settings.profile } ?: Profile.ME)
     val profile = _profile.asStateFlow()
 
+    /** The Nothing look (applies to your profile only). */
+    private val _nothingTheme = MutableStateFlow(settings.nothingTheme)
+    val nothingTheme = _nothingTheme.asStateFlow()
+    fun setNothingTheme(on: Boolean) { settings.nothingTheme = on; _nothingTheme.value = on }
+
     /** "Who's watching?" only opens from the profile button: MyTV stays on whoever watched last. */
     private val _pickProfile = MutableStateFlow(false)
     val pickProfile = _pickProfile.asStateFlow()

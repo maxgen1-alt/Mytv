@@ -5,9 +5,19 @@ package com.mytv.launcher.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PointMode
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.mytv.launcher.R
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.darkColorScheme
@@ -56,12 +66,55 @@ object Palette {
     val Live = Color(0xFFE5383B)
 }
 
-/** The app background: graphite normally, team colours on game days. */
+/**
+ * The "Nothing" look (your profile only, ⚙ MyTV settings → Look): pure black
+ * with a faint dot grid, dot-matrix numbers, monospace labels, one red accent,
+ * and the Lakers gold, fantasy basketball purple and fantasy football blue.
+ */
+object NothingLook {
+    val Dot = FontFamily(Font(R.font.doto_extrabold, FontWeight.ExtraBold))
+    val Mono = FontFamily(
+        Font(R.font.space_mono_regular, FontWeight.Normal),
+        Font(R.font.space_mono_bold, FontWeight.Bold),
+    )
+    val Red = Color(0xFFD71921)
+    val Tile = Color(0xFF0B0B0B)
+    val Line = Color(0xFF2E2E2E)
+    val Grey = Color(0xFF9A9A9A)
+    val GridDot = Color(0xFF1E1E1E)
+    val Lakers = Color(0xFFFDB927)
+    val Fantasy = Color(0xFF7C3AED)
+    val Football = Color(0xFF2563EB)
+}
+
+/** True when the Nothing look is on. */
+val LocalNothing = staticCompositionLocalOf { false }
+
+/** The faint dot grid behind the Nothing look (one cached draw call). */
+fun Modifier.dotGrid(): Modifier = drawWithCache {
+    val step = 14.dp.toPx()
+    val points = ArrayList<Offset>()
+    var y = step / 2
+    while (y < size.height) {
+        var x = step / 2
+        while (x < size.width) { points += Offset(x, y); x += step }
+        y += step
+    }
+    val r = 2.4.dp.toPx()
+    onDrawBehind {
+        drawPoints(points, PointMode.Points, NothingLook.GridDot, strokeWidth = r, cap = StrokeCap.Round)
+    }
+}
+
+/** The app background: graphite normally, team colours on game days, black in the Nothing look. */
 val LocalBackground = staticCompositionLocalOf<Brush> { Palette.Background }
 
 @Composable
-fun MyTvTheme(gameDay: GameDayTheme = GameDayTheme.NONE, content: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalBackground provides Palette.backgroundFor(gameDay)) {
+fun MyTvTheme(gameDay: GameDayTheme = GameDayTheme.NONE, nothing: Boolean = false, content: @Composable () -> Unit) {
+    CompositionLocalProvider(
+        LocalBackground provides if (nothing) SolidColor(Color.Black) else Palette.backgroundFor(gameDay),
+        LocalNothing provides nothing,
+    ) {
         MaterialTheme(
             colorScheme = darkColorScheme(
                 primary = Palette.Ink,
