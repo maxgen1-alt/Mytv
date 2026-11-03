@@ -97,14 +97,14 @@ fun AngScreen(
 
     // Her rows, in order. The first one with something in it gets the first selection.
     val shelves: List<Triple<String, List<AngItem>, (AngItem) -> String?>> = listOf(
-        Triple("Tonight", state.tonight) { a: AngItem -> a.badge },
-        Triple("Watch later", state.watchLater) { _: AngItem -> null },
-        Triple("Watch now", guide.watchNow) { a: AngItem -> a.badge },
-        Triple("Easy Watch", guide.easyWatch) { a: AngItem -> a.badge },
-        Triple("New shows you might like", guide.newShows) { a: AngItem -> a.badge },
-        Triple("Shows you might have missed", guide.missed) { a: AngItem -> a.badge },
-        Triple("Movies for you", guide.movies) { a: AngItem -> a.badge },
-        Triple("Coming soon", guide.upcoming) { a: AngItem -> a.date?.let(::comingLabel) ?: "Date TBA" },
+        Triple("Tonight", state.tonight, { a: AngItem -> a.badge }),
+        Triple("Watch later", state.watchLater, { _: AngItem -> null }),
+        Triple("Watch now", guide.watchNow, { a: AngItem -> a.badge }),
+        Triple("Easy Watch", guide.easyWatch, { a: AngItem -> a.badge }),
+        Triple("New shows you might like", guide.newShows, { a: AngItem -> a.badge }),
+        Triple("Shows you might have missed", guide.missed, { a: AngItem -> a.badge }),
+        Triple("Movies for you", guide.movies, { a: AngItem -> a.badge }),
+        Triple("Coming soon", guide.upcoming, { a: AngItem -> a.date?.let(::comingLabel) ?: "Date TBA" }),
     )
     val firstShelf = if (continueWatching.isNotEmpty()) "Continue watching" else shelves.firstOrNull { it.second.isNotEmpty() }?.first
     fun focusFor(title: String): () -> Modifier = { if (title == firstShelf) Modifier.focusRequester(first) else Modifier }
