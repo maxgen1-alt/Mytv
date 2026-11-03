@@ -248,7 +248,11 @@ object FantasyPanel {
             GameState.LIVE -> g.statusText.ifBlank { "Live" }
             GameState.FINISHED -> "Final"
         }
-        return "${if (home) "vs" else "@"} $them · $status"
+        if (g.state == GameState.UPCOMING) return "${if (home) "vs" else "@"} $them · $status"
+        // The game itself: their team's score first ("LAL 88–92 BOS · Q3 5:21").
+        val us = if (home) g.home else g.away
+        val other = if (home) g.away else g.home
+        return "${us.abbreviation} ${us.score ?: "0"}–${other.score ?: "0"} ${other.abbreviation} · $status"
     }
 
     /**
