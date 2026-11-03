@@ -225,7 +225,7 @@ Pop-ups over any app 10 minutes before a game (OK opens it), plus goals and fina
 
 ## Profiles
 
-👤 in the top-left: **Me**, **Ang** (her TV becomes Home, with her apps on top) or **Guest** (apps and teams only). MyTV asks "Who's watching?" when the TV comes back after 3+ hours.
+👤 in the top-left: **Me**, **Ang** (her TV becomes Home, with her apps on top) or **Guest** (apps and teams only). MyTV remembers who watched last and opens straight to that profile when the TV comes back on; use 👤 to switch.
 
 ## Send to TV
 

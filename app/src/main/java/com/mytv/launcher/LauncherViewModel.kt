@@ -1239,10 +1239,9 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val _profile = MutableStateFlow(Profile.entries.firstOrNull { it.key == settings.profile } ?: Profile.ME)
     val profile = _profile.asStateFlow()
 
-    /** "Who's watching?" shows when the TV comes back after a few hours, or from the profile button. */
+    /** "Who's watching?" only opens from the profile button: MyTV stays on whoever watched last. */
     private val _pickProfile = MutableStateFlow(false)
     val pickProfile = _pickProfile.asStateFlow()
-    private var lastAway = 0L
 
     fun openProfilePicker() { _pickProfile.value = true }
     fun closeProfilePicker() { _pickProfile.value = false }
@@ -1255,16 +1254,12 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         goHome()
     }
 
-    /** Called from onResume / onStop to decide when to ask "Who's watching?". */
+    /** Called from onResume / onStop. The last profile is kept; nobody is asked "Who's watching?". */
     private fun profileOnResume() {
-        if (lastAway > 0 && System.currentTimeMillis() - lastAway > 3 * 3600_000L) _pickProfile.value = true
-        lastAway = 0
         if (_profile.value == Profile.ANG && _ang.value.guide == com.mytv.launcher.ang.AngGuide()) loadAng()
     }
 
-    private fun profileOnStop() {
-        lastAway = System.currentTimeMillis()
-    }
+    private fun profileOnStop() {}
 
     // ---- System: home screen, screensaver, alerts, sleep timer, updates ----
 
