@@ -8,6 +8,11 @@ import coil.memory.MemoryCache
 
 /** App-wide picture loading, tuned for a TV that should feel instant. */
 class MyTvApp : Application(), ImageLoaderFactory {
+    override fun onCreate() {
+        super.onCreate()
+        com.mytv.launcher.system.AutoPlay.appContext = applicationContext
+    }
+
     override fun newImageLoader(): ImageLoader = ImageLoader.Builder(this)
         // Posters and backdrops have no transparency: half the memory and faster to decode.
         // (Logos with transparency keep full colour.)

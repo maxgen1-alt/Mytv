@@ -107,6 +107,9 @@ class HomeOverride : AccessibilityService() {
             quietUntil = maxOf(quietUntil, SystemClock.uptimeMillis() + millis)
         }
 
+        /** The running helper, for pressing buttons in other apps (AutoPlay). */
+        val service: android.accessibilityservice.AccessibilityService? get() = instance
+
         /** Running (and so catching the fantasy button)? */
         val isRunning: Boolean get() = instance != null
 
