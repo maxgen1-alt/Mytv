@@ -101,8 +101,9 @@ object NothingIcons {
             for (i in px.indices) strength[i] = strength[i] * whiteness(px[i]) / 255
         }
 
-        // 3. Thick shapes become outlines (Nothing-style); thin strokes like letters stay solid.
-        val r = max(4, minOf(w, h) / 32)
+        // 3. Only really big filled areas (a shield's white panel) become outlines; letters and
+        // bold symbols (Apple's apple, "tv") stay solid.
+        val r = max(8, minOf(w, h) / 9)
         val solid = BooleanArray(px.size) { strength[it] > 128 }
         fun on(x: Int, y: Int) = x in 0 until w && y in 0 until h && solid[y * w + x]
         val dirs = arrayOf(
@@ -115,7 +116,8 @@ object NothingIcons {
             if (solid[i] && dirs.all { d -> on(x + d[0], y + d[1]) }) strength[i] = 0
             if (strength[i] > 128) lit++
         }
-        for (i in px.indices) px[i] = (strength[i] shl 24) or 0xFFFFFF
+        // Crisp edges, no haze: faint shading and reflections under a logo are dropped.
+        for (i in px.indices) px[i] = (((strength[i] - 90) * 255 / 80).coerceIn(0, 255) shl 24) or 0xFFFFFF
 
         // Nothing (or almost everything) stood out: no clean logo, use the app's name instead.
         val share = lit.toFloat() / px.size
