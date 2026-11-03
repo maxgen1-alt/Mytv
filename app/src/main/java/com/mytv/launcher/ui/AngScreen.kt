@@ -16,11 +16,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -96,13 +95,28 @@ fun AngScreen(
         }
     }
 
+    // Her rows, in order. The first one with something in it gets the first selection.
+    val shelves: List<Triple<String, List<AngItem>, (AngItem) -> String?>> = listOf(
+        Triple("Tonight", state.tonight) { a: AngItem -> a.badge },
+        Triple("Watch later", state.watchLater) { _: AngItem -> null },
+        Triple("Watch now", guide.watchNow) { a: AngItem -> a.badge },
+        Triple("Easy Watch", guide.easyWatch) { a: AngItem -> a.badge },
+        Triple("New shows you might like", guide.newShows) { a: AngItem -> a.badge },
+        Triple("Shows you might have missed", guide.missed) { a: AngItem -> a.badge },
+        Triple("Movies for you", guide.movies) { a: AngItem -> a.badge },
+        Triple("Coming soon", guide.upcoming) { a: AngItem -> a.date?.let(::comingLabel) ?: "Date TBA" },
+    )
+    val firstShelf = if (continueWatching.isNotEmpty()) "Continue watching" else shelves.firstOrNull { it.second.isNotEmpty() }?.first
+    fun focusFor(title: String): () -> Modifier = { if (title == firstShelf) Modifier.focusRequester(first) else Modifier }
+    val hold: (AngItem) -> Unit = { menuFor = it }
+
     Box(Modifier.fillMaxSize().background(AngPalette.Background)) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(vertical = 32.dp),
+        // Lazy, top to bottom: only the rows on screen are built and load their pictures.
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(vertical = 32.dp),
         ) {
+          item(key = "top", contentType = "top") { Column {
             Row(Modifier.padding(horizontal = 48.dp), verticalAlignment = Alignment.Bottom) {
                 Text("Ang's TV", fontSize = 34.sp, fontWeight = FontWeight.Bold, color = AngPalette.Ink)
                 Spacer(Modifier.width(12.dp))
@@ -141,7 +155,8 @@ fun AngScreen(
                 }
             }
             Spacer(Modifier.height(20.dp))
-            if (!apps.isNullOrEmpty()) {
+          } }
+          if (!apps.isNullOrEmpty()) item(key = "apps", contentType = "apps") { Column {
                 androidx.compose.foundation.lazy.LazyRow(
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 48.dp, vertical = 8.dp),
                     horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(16.dp),
@@ -157,9 +172,9 @@ fun AngScreen(
                     }
                 }
                 Spacer(Modifier.height(12.dp))
-            }
+          } }
 
-            if (!state.loading && !state.discovering && continueWatching.isEmpty() && all.isEmpty()) {
+          if (!state.loading && !state.discovering && continueWatching.isEmpty() && all.isEmpty()) item(key = "empty") {
                 Text(
                     "Couldn't load shows right now. Check the internet connection.",
                     color = AngPalette.Ink,
@@ -168,22 +183,16 @@ fun AngScreen(
                 )
             }
 
-            var focusUsed = false
-            fun firstFocus(): Modifier =
-                if (!focusUsed) { focusUsed = true; Modifier.focusRequester(first) } else Modifier
-            val hold: (AngItem) -> Unit = { menuFor = it }
-
-            ContinueShelf(continueWatching, onResume, ::firstFocus) { wi ->
+          if (continueWatching.isNotEmpty()) item(key = "continue", contentType = "continue") { Column {
+            ContinueShelf(continueWatching, onResume, focusFor("Continue watching")) { wi ->
                 state.watchingNow.firstOrNull { MANUAL_PREFIX + it.key == wi.key }?.let { menuFor = it }
             }
-            Shelf("Tonight", state.tonight, onShow, ::firstFocus, onLongClick = hold) { it.badge }
-            Shelf("Watch later", state.watchLater, onShow, ::firstFocus, onLongClick = hold) { null }
-            Shelf("Watch now", guide.watchNow, onShow, ::firstFocus, onLongClick = hold) { it.badge }
-            Shelf("Easy Watch", guide.easyWatch, onShow, ::firstFocus, onLongClick = hold) { it.badge }
-            Shelf("New shows you might like", guide.newShows, onShow, ::firstFocus, onLongClick = hold) { it.badge }
-            Shelf("Shows you might have missed", guide.missed, onShow, ::firstFocus, onLongClick = hold) { it.badge }
-            Shelf("Movies for you", guide.movies, onShow, ::firstFocus, onLongClick = hold) { it.badge }
-            Shelf("Coming soon", guide.upcoming, onShow, ::firstFocus, dated = true, onLongClick = hold) { it.date?.let(::comingLabel) ?: "Date TBA" }
+          } }
+          shelves.forEach { (title, list, label) ->
+            if (list.isNotEmpty()) item(key = title, contentType = "shelf") { Column {
+                Shelf(title, list, onShow, focusFor(title), dated = title == "Coming soon", onLongClick = hold, label = label)
+            } }
+          }
         }
     }
 
