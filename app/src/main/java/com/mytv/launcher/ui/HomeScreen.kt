@@ -6,8 +6,6 @@ import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -399,33 +397,48 @@ private fun AppTile(app: TvApp, modifier: Modifier, onClick: () -> Unit, onLongC
 }
 
 /**
- * Nothing look: no colourful banner, just the app's name in white monospace capitals on
- * black; the one you're on turns white with black text and a red dot.
+ * Nothing look: the app's own logo as a white shape on black (cut out of its banner),
+ * turning Nothing red when you're on it. Apps whose logo can't be cut out cleanly show
+ * their name in monospace instead.
  */
 @Composable
 private fun NothingAppTile(app: TvApp, modifier: Modifier, onClick: () -> Unit, onLongClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
+    val art = app.banner ?: app.icon
+    // (made yet?, the logo shape): worked out off the main thread, once per picture.
+    val glyph by androidx.compose.runtime.produceState<Pair<Boolean, androidx.compose.ui.graphics.ImageBitmap?>>(false to null, art) {
+        value = true to art?.let { a -> kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { NothingIcons.glyph(a) } }
+    }
+    val ink = if (focused) NothingLook.Red else Color.White
     FocusCard(
         onClick = onClick,
         onLongClick = onLongClick,
-        container = if (focused) Color.White else NothingLook.Tile,
         modifier = modifier
             .size(TileWidth, TileHeight)
-            .onFocusChanged { focused = it.hasFocus }
-            .then(if (focused) Modifier else Modifier.border(1.dp, NothingLook.Line, RoundedCornerShape(14.dp))),
+            .onFocusChanged { focused = it.hasFocus },
     ) {
-        if (focused) Box(Modifier.align(Alignment.TopStart).padding(14.dp).size(8.dp).background(NothingLook.Red, CircleShape))
-        Text(
-            remember(app.label) { nothingName(app.label) },
-            color = if (focused) Color.Black else Color.White,
-            fontSize = 15.sp,
-            fontFamily = NothingLook.Mono,
-            fontWeight = if (focused) FontWeight.Bold else FontWeight.Normal,
-            letterSpacing = 1.sp,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.align(Alignment.BottomStart).padding(horizontal = 14.dp, vertical = 12.dp),
-        )
+        val (made, shape) = glyph
+        if (shape != null) {
+            Image(
+                shape,
+                app.label,
+                Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 14.dp),
+                contentScale = ContentScale.Fit,
+                colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(ink),
+            )
+        } else if (made) {
+            Text(
+                remember(app.label) { nothingName(app.label) },
+                color = ink,
+                fontSize = 15.sp,
+                fontFamily = NothingLook.Mono,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.align(Alignment.Center).padding(horizontal = 12.dp),
+            )
+        }
     }
 }
 
