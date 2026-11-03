@@ -19,11 +19,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -129,7 +128,7 @@ fun HomeScreen(
     val onTitleFocus: (AngItem?) -> Unit = { focusedTitle = it }
     var menuFor by remember { mutableStateOf<TvApp?>(null) }
     var rateFor by remember { mutableStateOf<AngItem?>(null) }
-    val scroll = rememberScrollState()
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
 
     LaunchedEffect(apps.isNotEmpty()) {
         if (apps.isNotEmpty()) runCatching { firstApp.requestFocus() }
@@ -138,87 +137,107 @@ fun HomeScreen(
     val nothing = LocalNothing.current
     Box(Modifier.fillMaxSize().background(LocalBackground.current).then(if (nothing) Modifier.dotGrid() else Modifier)) {
         PreviewBackdrop(preview)
-        Column(
-            Modifier
-                .fillMaxSize()
-                .verticalScroll(scroll)
-                .padding(vertical = 28.dp),
+        // Watch Later, shows and movies apart (tidier with a long list).
+        val (laterMovies, laterShows) = remember(watchLater) { watchLater.partition { it.isMovie } }
+        // Lazy, top to bottom too: only the rows on screen (and just below) are built and load
+        // their pictures; the rest are made as you scroll down. Much faster to open and to move in.
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(vertical = 28.dp),
         ) {
-            TopBar(updateReady, onUpdate, profileLabel, onProfile, weather)
-            Spacer(Modifier.height(18.dp))
+            item(key = "top", contentType = "top") {
+                Column {
+                    TopBar(updateReady, onUpdate, profileLabel, onProfile, weather)
+                    Spacer(Modifier.height(18.dp))
+                }
+            }
 
             // Row 1: streaming apps
-            if (nothing) SectionTitle("01 — Apps", Modifier.padding(start = 48.dp))
-            LazyRow(
-                contentPadding = RowPadding,
-                horizontalArrangement = Arrangement.spacedBy(18.dp),
-                modifier = Modifier.height(TileHeight + 24.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                items(apps, key = { it.packageName }) { app ->
-                    AppTile(
-                        app = app,
-                        modifier = if (app == apps.first()) Modifier.focusRequester(firstApp) else Modifier,
-                        onClick = { onApp(app) },
-                        onLongClick = { menuFor = app },
-                    )
+            item(key = "apps", contentType = "apps") {
+                Column {
+                    if (nothing) SectionTitle("01 — Apps", Modifier.padding(start = 48.dp))
+                    LazyRow(
+                        contentPadding = RowPadding,
+                        horizontalArrangement = Arrangement.spacedBy(18.dp),
+                        modifier = Modifier.height(TileHeight + 24.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        items(apps, key = { it.packageName }) { app ->
+                            AppTile(
+                                app = app,
+                                modifier = if (app == apps.first()) Modifier.focusRequester(firstApp) else Modifier,
+                                onClick = { onApp(app) },
+                                onLongClick = { menuFor = app },
+                            )
+                        }
+                        item(key = "__edit") { EditTile(onEditApps) }
+                    }
+                    Spacer(Modifier.height(14.dp))
                 }
-                item(key = "__edit") { EditTile(onEditApps) }
             }
-
-            Spacer(Modifier.height(14.dp))
 
             // Row 2: team buttons
-            if (nothing) SectionTitle("02 — Teams", Modifier.padding(start = 48.dp))
-            LazyRow(
-                contentPadding = RowPadding,
-                horizontalArrangement = Arrangement.spacedBy(18.dp),
-                modifier = Modifier.height(TileHeight + 24.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                items(Teams.all, key = { it.key }) { team ->
-                    TeamTile(
-                        team = team,
-                        info = teams[team.key],
-                        onClick = { onTeam(team) },
-                        onLongClick = { onTeamPage(team) },
-                    )
-                }
-                item(key = "__nba") { NbaTile(nba, onNba) }
-                item(key = "__fantasy") { FantasyTile(fantasy, onFantasy) }
-                item(key = "__football") { FootballTile(football, onFootball) }
-                if (!guest) {
-                    item(key = "__ang") { AngTile(onAng) }
-                    item(key = "__watchlist") { WatchlistTile(onWatchlist) }
+            item(key = "teams", contentType = "teams") {
+                Column {
+                    if (nothing) SectionTitle("02 — Teams", Modifier.padding(start = 48.dp))
+                    LazyRow(
+                        contentPadding = RowPadding,
+                        horizontalArrangement = Arrangement.spacedBy(18.dp),
+                        modifier = Modifier.height(TileHeight + 24.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        items(Teams.all, key = { it.key }) { team ->
+                            TeamTile(
+                                team = team,
+                                info = teams[team.key],
+                                onClick = { onTeam(team) },
+                                onLongClick = { onTeamPage(team) },
+                            )
+                        }
+                        item(key = "__nba") { NbaTile(nba, onNba) }
+                        item(key = "__fantasy") { FantasyTile(fantasy, onFantasy) }
+                        item(key = "__football") { FootballTile(football, onFootball) }
+                        if (!guest) {
+                            item(key = "__ang") { AngTile(onAng) }
+                            item(key = "__watchlist") { WatchlistTile(onWatchlist) }
+                        }
+                    }
+                    Spacer(Modifier.height(18.dp))
                 }
             }
 
-            if (guest) {
-                Spacer(Modifier.height(18.dp))
-                QuickSettingsRow(onSystemSettings) { sleepMenu = true }
-                return@Column
+            if (!guest) {
+                // Row 3: continue watching
+                item(key = "continue", contentType = "continue") {
+                    Column {
+                        SectionTitle("Continue Watching", Modifier.padding(start = 48.dp))
+                        ContinueWatchingRow(watching, onWatchItem, onAllowWatchNext, onTurnOnTracking, onLinkTrakt) { wi -> watchingNow[wi.key]?.let { rateFor = it } }
+                    }
+                }
+                // What's hot across the apps you have, then picks from what you watched and rated.
+                listOf(
+                    "Tonight" to tonight,
+                    "Watch Later · Shows" to laterShows,
+                    "Watch Later · Movies" to laterMovies,
+                    "Popular on Your Apps" to popular,
+                    "New Shows for You" to newForYou,
+                    "Shows You Might Have Missed" to missedForYou,
+                    "New Movies for You" to newMovies,
+                    "Movies You Might Have Missed" to missedMovies,
+                ).forEach { (title, list) ->
+                    if (list.isNotEmpty()) item(key = title, contentType = "titles") {
+                        Column { TitleRow(title, list, onOpenTitle, onTitleFocus) { rateFor = it } }
+                    }
+                }
             }
 
-            Spacer(Modifier.height(18.dp))
-
-            // Row 3: continue watching
-            SectionTitle("Continue Watching", Modifier.padding(start = 48.dp))
-            ContinueWatchingRow(watching, onWatchItem, onAllowWatchNext, onTurnOnTracking, onLinkTrakt) { wi -> watchingNow[wi.key]?.let { rateFor = it } }
-            TitleRow("Tonight", tonight, onOpenTitle, onTitleFocus) { rateFor = it }
-            // Watch Later, shows and movies apart (tidier with a long list).
-            val (laterMovies, laterShows) = remember(watchLater) { watchLater.partition { it.isMovie } }
-            TitleRow("Watch Later · Shows", laterShows, onOpenTitle, onTitleFocus) { rateFor = it }
-            TitleRow("Watch Later · Movies", laterMovies, onOpenTitle, onTitleFocus) { rateFor = it }
-
-            // What's hot across the apps you have, then picks from what you watched and rated.
-            TitleRow("Popular on Your Apps", popular, onOpenTitle, onTitleFocus) { rateFor = it }
-            TitleRow("New Shows for You", newForYou, onOpenTitle, onTitleFocus) { rateFor = it }
-            TitleRow("Shows You Might Have Missed", missedForYou, onOpenTitle, onTitleFocus) { rateFor = it }
-            TitleRow("New Movies for You", newMovies, onOpenTitle, onTitleFocus) { rateFor = it }
-            TitleRow("Movies You Might Have Missed", missedMovies, onOpenTitle, onTitleFocus) { rateFor = it }
-
-            Spacer(Modifier.height(18.dp))
-            QuickSettingsRow(onSystemSettings) { sleepMenu = true }
+            item(key = "settings", contentType = "settings") {
+                Column {
+                    Spacer(Modifier.height(18.dp))
+                    QuickSettingsRow(onSystemSettings) { sleepMenu = true }
+                }
+            }
         }
 
         PreviewInfo(preview, Modifier.align(Alignment.TopEnd))
