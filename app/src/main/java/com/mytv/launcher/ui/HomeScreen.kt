@@ -29,6 +29,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlinx.coroutines.flow.collectLatest
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -117,15 +120,19 @@ fun HomeScreen(
 ) {
     val firstApp = remember { FocusRequester() }
     // The title in focus, for the preview at the top (after a short pause, so moving fast stays smooth).
-    var focusedTitle by remember { mutableStateOf<AngItem?>(null) }
-    var preview by remember { mutableStateOf<AngItem?>(null) }
-    LaunchedEffect(focusedTitle) {
-        if (focusedTitle == null) { preview = null; return@LaunchedEffect }
-        delay(350)
-        preview = focusedTitle
+    // Kept as state objects read only by the preview itself: moving between titles must not
+    // rebuild the whole home screen.
+    val focusedTitle = remember { mutableStateOf<AngItem?>(null) }
+    val preview = remember { mutableStateOf<AngItem?>(null) }
+    LaunchedEffect(Unit) {
+        snapshotFlow { focusedTitle.value }.collectLatest { item ->
+            if (item == null) { preview.value = null; return@collectLatest }
+            delay(350)
+            preview.value = item
+        }
     }
     var sleepMenu by remember { mutableStateOf(false) }
-    val onTitleFocus: (AngItem?) -> Unit = { focusedTitle = it }
+    val onTitleFocus: (AngItem?) -> Unit = remember { { focusedTitle.value = it } }
     var menuFor by remember { mutableStateOf<TvApp?>(null) }
     var rateFor by remember { mutableStateOf<AngItem?>(null) }
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
@@ -135,7 +142,9 @@ fun HomeScreen(
     }
 
     val nothing = LocalNothing.current
-    Box(Modifier.fillMaxSize().background(LocalBackground.current).then(if (nothing) Modifier.dotGrid() else Modifier)) {
+    Box(Modifier.fillMaxSize().background(LocalBackground.current)) {
+        // The dot grid in its own layer: drawn once, not again on every frame you scroll.
+        if (nothing) Box(Modifier.fillMaxSize().graphicsLayer().dotGrid())
         PreviewBackdrop(preview)
         // Watch Later, shows and movies apart (tidier with a long list).
         val (laterMovies, laterShows) = remember(watchLater) { watchLater.partition { it.isMovie } }
@@ -858,8 +867,8 @@ private fun WatchlistTile(onClick: () -> Unit) {
  * background (dimmed, so the rows stay readable).
  */
 @Composable
-private fun PreviewBackdrop(item: AngItem?) {
-    val url = item?.backdropUrl ?: return
+private fun PreviewBackdrop(state: androidx.compose.runtime.State<AngItem?>) {
+    val url = state.value?.backdropUrl ?: return
     AsyncImage(
         model = coil.request.ImageRequest.Builder(LocalContext.current).data(url).size(960, 540).crossfade(300).build(),
         contentDescription = null,
@@ -870,8 +879,8 @@ private fun PreviewBackdrop(item: AngItem?) {
 
 /** Title, IMDb rating, what's new and a short description of the focused title, top-right. */
 @Composable
-private fun PreviewInfo(item: AngItem?, modifier: Modifier) {
-    item ?: return
+private fun PreviewInfo(state: androidx.compose.runtime.State<AngItem?>, modifier: Modifier) {
+    val item = state.value ?: return
     Column(
         modifier
             .padding(top = 20.dp, end = 40.dp)

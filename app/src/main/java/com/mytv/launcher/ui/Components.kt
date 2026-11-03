@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -161,7 +162,8 @@ fun Modifier.livePulse(color: Color, scale: Float = 1f): Modifier = composed {
         animationSpec = infiniteRepeatable(tween(1400, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "pulseAlpha",
     )
-    drawWithContent {
+    // Its own layer: the breathing ring redraws just this card, not the whole screen, every frame.
+    graphicsLayer().drawWithContent {
         drawContent()
         // Around the card as drawn: a focused card is scaled up by [scale].
         val stroke = 4.dp.toPx()

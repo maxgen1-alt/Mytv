@@ -235,6 +235,26 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private var lastMove = 0L
+
+    /**
+     * Smooth remote scrolling: when you hold (or rapidly press) a direction, Android queues
+     * repeats faster than the screen can draw, then plays the whole backlog at once and the
+     * selection flies to the end of the row. Repeats that are already late, or come faster
+     * than about 12 a second, are dropped, so the selection moves steadily and stops when you let go.
+     */
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        val code = event.keyCode
+        val dpad = code == android.view.KeyEvent.KEYCODE_DPAD_LEFT || code == android.view.KeyEvent.KEYCODE_DPAD_RIGHT ||
+            code == android.view.KeyEvent.KEYCODE_DPAD_UP || code == android.view.KeyEvent.KEYCODE_DPAD_DOWN
+        if (dpad && event.action == android.view.KeyEvent.ACTION_DOWN) {
+            val now = android.os.SystemClock.uptimeMillis()
+            if (event.repeatCount > 0 && (now - event.eventTime > 120 || now - lastMove < 80)) return true
+            lastMove = now
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
     override fun onResume() {
         super.onResume()
         vm.onResume()
