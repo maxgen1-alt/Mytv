@@ -6,6 +6,8 @@ import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -314,7 +316,8 @@ private fun TopBar(
             Spacer(Modifier.width(16.dp))
         }
         weather?.let { w ->
-            Text("${w.icon} ${w.tempText}", color = Palette.Ink, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+            if (nothing) Text(w.tempText, color = Palette.Ink, fontSize = 18.sp, fontFamily = NothingLook.Mono)
+            else Text("${w.icon} ${w.tempText}", color = Palette.Ink, fontSize = 18.sp, fontWeight = FontWeight.Medium)
             if (w.place.isNotBlank()) Text("  ${w.place}", color = Palette.InkSoft, fontSize = 14.sp)
         }
         Spacer(Modifier.weight(1f))
@@ -372,6 +375,7 @@ private fun TopBar(
 
 @Composable
 private fun AppTile(app: TvApp, modifier: Modifier, onClick: () -> Unit, onLongClick: () -> Unit) {
+    if (LocalNothing.current) { NothingAppTile(app, modifier, onClick, onLongClick); return }
     FocusCard(
         onClick = onClick,
         onLongClick = onLongClick,
@@ -393,6 +397,44 @@ private fun AppTile(app: TvApp, modifier: Modifier, onClick: () -> Unit, onLongC
         }
     }
 }
+
+/**
+ * Nothing look: no colourful banner, just the app's name in white monospace capitals on
+ * black; the one you're on turns white with black text and a red dot.
+ */
+@Composable
+private fun NothingAppTile(app: TvApp, modifier: Modifier, onClick: () -> Unit, onLongClick: () -> Unit) {
+    var focused by remember { mutableStateOf(false) }
+    FocusCard(
+        onClick = onClick,
+        onLongClick = onLongClick,
+        container = if (focused) Color.White else NothingLook.Tile,
+        modifier = modifier
+            .size(TileWidth, TileHeight)
+            .onFocusChanged { focused = it.hasFocus }
+            .then(if (focused) Modifier else Modifier.border(1.dp, NothingLook.Line, RoundedCornerShape(14.dp))),
+    ) {
+        if (focused) Box(Modifier.align(Alignment.TopStart).padding(14.dp).size(8.dp).background(NothingLook.Red, CircleShape))
+        Text(
+            remember(app.label) { nothingName(app.label) },
+            color = if (focused) Color.Black else Color.White,
+            fontSize = 15.sp,
+            fontFamily = NothingLook.Mono,
+            fontWeight = if (focused) FontWeight.Bold else FontWeight.Normal,
+            letterSpacing = 1.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.align(Alignment.BottomStart).padding(horizontal = 14.dp, vertical = 12.dp),
+        )
+    }
+}
+
+/** "Prime Video" → "PRIME VIDEO", "Disney+" → "DISNEY+", without the vendor's extras ("for Android TV"). */
+private fun nothingName(label: String): String =
+    label.replace(Regex("(?i)\\s*(for|on) (android|google) tv.*$"), "").replace(Regex("(?i)\\s*-\\s*android tv.*$"), "").trim().uppercase()
+
+/** Nothing look: pictures in black and white. */
+private val MonoFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(0f) })
 
 @Composable
 private fun EditTile(onClick: () -> Unit) {
@@ -478,6 +520,7 @@ private fun NbaTile(summary: com.mytv.launcher.NbaSummary, onClick: () -> Unit) 
             contentDescription = "NBA",
             modifier = Modifier.align(Alignment.Center).size(60.dp),
             contentScale = ContentScale.Fit,
+            colorFilter = if (LocalNothing.current) MonoFilter else null,
         )
         if (summary.live > 0) LiveBadge(Modifier.align(Alignment.TopEnd).padding(8.dp))
         val games = when {
@@ -604,6 +647,12 @@ private fun pts(v: Double) = String.format(java.util.Locale.US, "%.1f", v)
 
 @Composable
 private fun AngTile(onClick: () -> Unit) {
+    if (LocalNothing.current) {
+        FocusCard(onClick = onClick, modifier = Modifier.size(TileWidth, TileHeight)) {
+            Text("ANG ♥", fontSize = 26.sp, fontFamily = NothingLook.Dot, fontWeight = FontWeight.ExtraBold, color = Color.White, modifier = Modifier.align(Alignment.Center))
+        }
+        return
+    }
     FocusCard(onClick = onClick, modifier = Modifier.size(TileWidth, TileHeight)) {
         Box(Modifier.fillMaxSize().background(AngPalette.Tile), contentAlignment = Alignment.Center) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -772,8 +821,10 @@ private fun TitleRow(
 private fun WatchlistTile(onClick: () -> Unit) {
     FocusCard(onClick = onClick, modifier = Modifier.size(TileWidth, TileHeight)) {
         Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("★", fontSize = 26.sp, color = Color(0xFFF5C518))
-            Text("My Watchlist", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Palette.Ink)
+            val nothing = LocalNothing.current
+            Text("★", fontSize = 26.sp, color = if (nothing) Color.White else Color(0xFFF5C518))
+            if (nothing) Text("WATCHLIST", fontSize = 14.sp, fontFamily = NothingLook.Mono, letterSpacing = 1.sp, color = Palette.Ink)
+            else Text("My Watchlist", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Palette.Ink)
         }
     }
 }
@@ -846,8 +897,13 @@ private fun QuickSettingsRow(onSystemSettings: () -> Unit, onSleep: () -> Unit) 
 private fun QuickTile(icon: String, label: String, onClick: () -> Unit) {
     FocusCard(onClick = onClick, container = Palette.CardSoft, modifier = Modifier.size(150.dp, 84.dp)) {
         Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(icon, fontSize = 22.sp)
-            Text(label, fontSize = 13.sp, color = Palette.Ink, maxLines = 1)
+            if (LocalNothing.current) {
+                // Colour emoji can't be made black and white: the label alone, Nothing-style.
+                Text(label.uppercase(), fontSize = 13.sp, fontFamily = NothingLook.Mono, letterSpacing = 1.sp, color = Palette.Ink, maxLines = 1)
+            } else {
+                Text(icon, fontSize = 22.sp)
+                Text(label, fontSize = 13.sp, color = Palette.Ink, maxLines = 1)
+            }
         }
     }
 }
