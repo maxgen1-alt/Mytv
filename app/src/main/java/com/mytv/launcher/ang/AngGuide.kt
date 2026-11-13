@@ -71,7 +71,7 @@ data class AngInputs(
 )
 
 object AngGuideBuilder {
-    private const val ROW_SIZE = 20
+    private const val ROW_SIZE = 40
 
     /** [isAvailable]: whether a network / service name is on an app you have. */
     fun build(today: LocalDate, inputs: AngInputs, isAvailable: (String?) -> Boolean = { true }): AngGuide {

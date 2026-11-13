@@ -860,20 +860,28 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
      * you marked "Watching now" (unless the TV already lists it).
      */
     fun withWatchingNow(fromTv: List<WatchItem>, watchingNow: List<AngItem>): List<WatchItem> {
-        val tvTitles = fromTv.map { AngGuideBuilder.normalize(it.title) }.toSet()
-        val manual = watchingNow.filter { AngGuideBuilder.normalize(it.title) !in tvTitles }.map { i ->
-            val app = WhereToWatch.servicesFor(i.service).firstNotNullOfOrNull { s ->
-                _allApps.value.firstOrNull { s.matches(it.packageName, it.label) }
-            }
+        val norm = AngGuideBuilder::normalize
+        val tvTitles = fromTv.map { norm(it.title) }.toSet()
+        // Where it actually plays on this TV (e.g. Modern Family in Peacock, not the Hulu
+        // the databases suggest): the app MyTV last saw it playing in wins.
+        val played = com.mytv.launcher.watching.PlayHistory.entries(context).value
+        val manual = watchingNow.filter { norm(it.title) !in tvTitles }.distinctBy { norm(it.title) }.map { i ->
+            val seen = played.firstOrNull { norm(it.show) == norm(i.title) }
+            val app = seen?.let { e -> _allApps.value.firstOrNull { it.packageName == e.packageName } }
+                ?: WhereToWatch.servicesFor(i.service).firstNotNullOfOrNull { s ->
+                    _allApps.value.firstOrNull { s.matches(it.packageName, it.label) }
+                }
+            val service = seen?.app ?: i.service
             WatchItem(
                 key = MANUAL_PREFIX + i.key,
                 title = i.title,
-                subtitle = listOfNotNull("Watching", i.service).joinToString(" · "),
-                imageUrl = i.imageUrl,
+                subtitle = listOfNotNull("Watching", service).joinToString(" · "),
+                imageUrl = i.imageUrl ?: seen?.imageUrl,
                 progress = null,
-                lastWatchedMillis = i.date?.atStartOfDay(java.time.ZoneId.systemDefault())?.toInstant()?.toEpochMilli() ?: 0L,
+                lastWatchedMillis = seen?.at
+                    ?: i.date?.atStartOfDay(java.time.ZoneId.systemDefault())?.toInstant()?.toEpochMilli() ?: 0L,
                 searchQuery = i.title,
-                source = i.service.orEmpty(),
+                source = service.orEmpty(),
                 packageName = app?.packageName,
             )
         }
@@ -983,7 +991,17 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             angInputs.curated.map { it.second.name } +
             (g.watchNow + g.easyWatch + g.newShows + g.missed + g.movies + g.upcoming).map { it.title }).map(norm).toSet()
         val items = _watching.value.items.ifEmpty { watchNext.load() }
-        items.filter { norm(it.title) !in no && angRepo.isHers(it.title, titles) }
+        val fromTv = items.filter { norm(it.title) !in no && angRepo.isHers(it.title, titles) }
+        // What you marked "Watching now" on your profile: if it's her kind of show, you're
+        // watching it together, so it's in her Continue watching too, in the app you use.
+        val tvTitles = fromTv.map { norm(it.title) }.toSet()
+        val together = myStore.all()
+            .filter { it.rating == com.mytv.launcher.ang.Rating.WATCHING && it.title.isNotBlank() }
+            .filter { norm(it.title) !in no && norm(it.title) !in tvTitles }
+            .filter { angRepo.isHers(it.title, titles) }
+            .sortedByDescending { it.date }
+            .map { it.toItem().copy(date = it.date) }
+        withWatchingNow(fromTv, together)
     }
 
     /** Hold select → Like / Already watched / Dislike / Won't watch (null clears it). */
@@ -1148,9 +1166,17 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         if (item.key.startsWith(MANUAL_PREFIX)) {
             val key = item.key.removePrefix(MANUAL_PREFIX)
             (_my.value.guide.watching + _ang.value.watchingNow).firstOrNull { it.key == key }?.let {
-                openAngShow(it)
+                openAngShow(if (item.source.isNotBlank()) it.copy(service = item.source) else it)
                 return
             }
+            // One of yours shown on Ang's TV ("watching together"): open it where you watch it.
+            openAngShow(
+                com.mytv.launcher.ang.AngItem(
+                    key = key, title = item.title, detail = "", imageUrl = item.imageUrl,
+                    service = item.source.ifBlank { null }, date = null, badge = null,
+                ),
+            )
+            return
         }
         if (watchNext.open(item)) return
         if (item.packageName != null && installed.launch(item.packageName)) return

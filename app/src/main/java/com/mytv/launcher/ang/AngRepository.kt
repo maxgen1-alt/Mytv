@@ -107,7 +107,7 @@ class AngRepository(context: Context) {
     // ---- Suggestions (TMDB discover) ----
 
     private companion object {
-        val PAGES = 1..3
+        val PAGES = 1..5
     }
 
     private data class Pools(val shows: List<AngItem>, val movies: List<AngItem>, val upcoming: List<AngItem>, val sitcoms: List<AngItem>)
@@ -136,7 +136,7 @@ class AngRepository(context: Context) {
         val sitcomKeyword = keywordId("sitcom")
         val (shows, movies, upcoming, sitcoms) = coroutineScope {
             val shows = providers.flatMap { p ->
-                // 3 pages per app and row: a deep bench, so when she likes or hides a show
+                // 5 pages per app and row: a deep bench (rows hold up to 40), so when she likes or hides a show
                 // the next one slides in instead of the row shrinking.
                 val paths = PAGES.map { page -> AngDiscovery.newShowsPath(today, p.tmdbIds, wanted, blocked, page) } +
                     PAGES.map { page -> AngDiscovery.missedShowsPath(today, p.tmdbIds, wanted, blocked, page) }

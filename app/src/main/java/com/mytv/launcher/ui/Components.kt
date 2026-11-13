@@ -52,6 +52,9 @@ fun FocusCard(
     corner: Dp = 14.dp,
     container: Color = Palette.Card,
     focusedScale: Float = 1.08f,
+    /** Glass cards: a fill for when focused, and a thin light edge when not. */
+    focusedContainer: Color? = null,
+    edge: androidx.compose.ui.graphics.Brush? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val shape = RoundedCornerShape(corner)
@@ -88,14 +91,18 @@ fun FocusCard(
         colors = ClickableSurfaceDefaults.colors(
             containerColor = fill,
             contentColor = Palette.Ink,
-            focusedContainerColor = fill,
+            focusedContainerColor = focusedContainer ?: fill,
             focusedContentColor = Palette.Ink,
-            pressedContainerColor = fill,
+            pressedContainerColor = focusedContainer ?: fill,
             pressedContentColor = Palette.Ink,
         ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = focusedScale),
         border = ClickableSurfaceDefaults.border(
-            border = if (nothing && plain) Border(BorderStroke(1.dp, NothingLook.Line), shape = shape) else Border.None,
+            border = when {
+                edge != null -> Border(BorderStroke(1.dp, edge), shape = shape)
+                nothing && plain -> Border(BorderStroke(1.dp, NothingLook.Line), shape = shape)
+                else -> Border.None
+            },
             focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape),
         ),
         // No glow: blurred shadows are expensive on a Chromecast's GPU. Scale + border is enough.

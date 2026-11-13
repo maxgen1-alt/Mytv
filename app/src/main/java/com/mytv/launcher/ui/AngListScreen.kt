@@ -68,7 +68,7 @@ fun AngListScreen(state: AngState, onOpen: (AngItem) -> Unit, onRate: (AngItem, 
         .sortedByDescending { it.date }
         .map { it.toItem() }
 
-    Column(Modifier.fillMaxSize().background(AngPalette.Background).padding(horizontal = 48.dp, vertical = 28.dp)) {
+    Column(Modifier.fillMaxSize().angBackdrop().padding(horizontal = 48.dp, vertical = 28.dp)) {
         Row(verticalAlignment = Alignment.Bottom) {
             Text("Her List", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = AngPalette.Ink)
             Spacer(Modifier.width(10.dp))
@@ -83,7 +83,9 @@ fun AngListScreen(state: AngState, onOpen: (AngItem) -> Unit, onRate: (AngItem, 
                 val count = state.rated.count { it.rating == t.rating }
                 FocusCard(
                     onClick = { tab = t },
-                    container = if (selected) AngPalette.Pink else Color.White.copy(alpha = 0.16f),
+                    container = if (selected) AngPalette.Pink.copy(alpha = 0.55f) else AngPalette.Glass,
+                    focusedContainer = if (selected) AngPalette.Pink.copy(alpha = 0.75f) else AngPalette.GlassFocused,
+                    edge = AngPalette.Edge,
                     corner = 20.dp,
                     focusedScale = 1.06f,
                     modifier = (if (i == 0) Modifier.focusRequester(firstTab) else Modifier)
@@ -123,7 +125,7 @@ fun AngListScreen(state: AngState, onOpen: (AngItem) -> Unit, onRate: (AngItem, 
         TasteMenu(
             title = item.title,
             current = state.ratings[item.key],
-            container = AngPalette.DeepTeal,
+            container = AngPalette.Sheet,
             accent = AngPalette.Pink,
             onPick = { r -> onRate(item, r); menuFor = null },
             onDismiss = { menuFor = null },
@@ -138,7 +140,9 @@ private fun HerPoster(item: AngItem, onClick: () -> Unit, onHold: () -> Unit) {
         FocusCard(
             onClick = onClick,
             onLongClick = onHold,
-            container = AngPalette.DeepTeal,
+            container = AngPalette.Glass,
+            edge = AngPalette.Edge,
+            corner = 16.dp,
             modifier = Modifier.size(126.dp, 189.dp).onFocusChanged { focused = it.isFocused || it.hasFocus },
         ) {
             if (item.imageUrl != null) {

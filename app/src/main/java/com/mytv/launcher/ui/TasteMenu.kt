@@ -3,6 +3,7 @@
 package com.mytv.launcher.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -49,7 +50,8 @@ fun TasteMenu(
             Modifier
                 .ignoreHeldSelect()
                 .width(320.dp)
-                .background(container, RoundedCornerShape(20.dp))
+                .background(container, RoundedCornerShape(24.dp))
+                .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(24.dp))
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {

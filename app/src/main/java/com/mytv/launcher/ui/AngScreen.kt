@@ -3,6 +3,7 @@
 package com.mytv.launcher.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,19 +52,6 @@ import com.mytv.launcher.watching.WatchItem
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-/** Love Island colours. */
-object AngPalette {
-    val Teal = Color(0xFF14C3C0)
-    val DeepTeal = Color(0xFF0A8F9E)
-    val Pink = Color(0xFFFF4FA3)
-    val Yellow = Color(0xFFFFD447)
-    /** Text on the teal background: black reads far better than white. */
-    val Ink = Color(0xFF0D0D0D)
-    val InkSoft = Color(0xFF1F3A40)
-    val Background = Brush.verticalGradient(listOf(Teal, DeepTeal))
-    val Tile = Brush.linearGradient(listOf(Pink, Teal))
-}
-
 private val dateFormat = DateTimeFormatter.ofPattern("EEE, MMM d")
 
 @Composable
@@ -110,48 +98,43 @@ fun AngScreen(
     fun focusFor(title: String): () -> Modifier = { if (title == firstShelf) Modifier.focusRequester(first) else Modifier }
     val hold: (AngItem) -> Unit = { menuFor = it }
 
-    Box(Modifier.fillMaxSize().background(AngPalette.Background)) {
+    Box(Modifier.fillMaxSize().angBackdrop()) {
         // Lazy, top to bottom: only the rows on screen are built and load their pictures.
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(vertical = 32.dp),
         ) {
           item(key = "top", contentType = "top") { Column {
-            Row(Modifier.padding(horizontal = 48.dp), verticalAlignment = Alignment.Bottom) {
-                Text("Ang's TV", fontSize = 34.sp, fontWeight = FontWeight.Bold, color = AngPalette.Ink)
-                Spacer(Modifier.width(12.dp))
-                Text("♥", fontSize = 28.sp, color = AngPalette.Pink, modifier = Modifier.padding(bottom = 2.dp))
+            Row(Modifier.padding(horizontal = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column {
+                    Text(
+                        java.time.format.DateTimeFormatter.ofPattern("EEEE, MMMM d").format(LocalDate.now()).uppercase(),
+                        fontSize = 12.sp,
+                        letterSpacing = 2.5.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = AngPalette.InkFaint,
+                    )
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(greeting(), fontSize = 32.sp, fontWeight = FontWeight.Bold, color = AngPalette.Ink)
+                        Spacer(Modifier.width(10.dp))
+                        Text("♥", fontSize = 24.sp, color = AngPalette.Pink, modifier = Modifier.padding(bottom = 3.dp))
+                    }
+                }
                 Spacer(Modifier.weight(1f))
                 Text(
                     when {
                         state.loading -> "Updating…"
                         state.discovering -> "Finding shows for you…"
-                        else -> "Hold select on anything to like it, dislike it, or mark it watched"
+                        else -> "Hold select on anything to like it, save it, or hide it"
                     },
-                    fontSize = 13.sp,
-                    color = AngPalette.InkSoft,
+                    fontSize = 12.sp,
+                    color = AngPalette.InkFaint,
                 )
-                Spacer(Modifier.width(16.dp))
-                FocusCard(onClick = onOpenList, container = AngPalette.Pink, corner = 18.dp, focusedScale = 1.06f, modifier = Modifier.height(36.dp)) {
-                    Text(
-                        "♥ Her List",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        modifier = Modifier.align(Alignment.Center).padding(horizontal = 16.dp),
-                    )
-                }
+                Spacer(Modifier.width(18.dp))
+                GlassPill("♥  Her List", onOpenList)
                 onSwitchProfile?.let { switch ->
                     Spacer(Modifier.width(12.dp))
-                    FocusCard(onClick = switch, container = AngPalette.DeepTeal, corner = 18.dp, focusedScale = 1.06f, modifier = Modifier.height(36.dp)) {
-                        Text(
-                            "👤 Switch",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            modifier = Modifier.align(Alignment.Center).padding(horizontal = 16.dp),
-                        )
-                    }
+                    GlassPill("Switch", switch)
                 }
             }
             Spacer(Modifier.height(20.dp))
@@ -163,7 +146,7 @@ fun AngScreen(
                 ) {
                     items(apps.size, key = { apps[it].packageName }) { i ->
                         val app = apps[i]
-                        FocusCard(onClick = { onApp(app) }, container = AngPalette.DeepTeal, modifier = Modifier.size(150.dp, 84.dp)) {
+                        FocusCard(onClick = { onApp(app) }, container = AngPalette.Glass, edge = AngPalette.Edge, corner = 18.dp, focusedScale = 1.07f, modifier = Modifier.size(150.dp, 84.dp)) {
                             val art = app.banner ?: app.icon
                             if (art != null) androidx.compose.foundation.Image(art, app.label, Modifier.fillMaxSize(),
                                 contentScale = if (app.banner != null) androidx.compose.ui.layout.ContentScale.Crop else androidx.compose.ui.layout.ContentScale.Inside)
@@ -188,6 +171,7 @@ fun AngScreen(
                 state.watchingNow.firstOrNull { MANUAL_PREFIX + it.key == wi.key }?.let { menuFor = it }
             }
           } }
+          item(key = "today", contentType = "today") { Column { AngTodayRow() } }
           shelves.forEach { (title, list, label) ->
             if (list.isNotEmpty()) item(key = title, contentType = "shelf") { Column {
                 Shelf(title, list, onShow, focusFor(title), dated = title == "Coming soon", onLongClick = hold, label = label)
@@ -200,7 +184,7 @@ fun AngScreen(
         TasteMenu(
             title = item.title,
             current = state.ratings[item.key],
-            container = AngPalette.DeepTeal,
+            container = AngPalette.Sheet,
             accent = AngPalette.Pink,
             onPick = { rating -> onRate(item, rating); menuFor = null },
             onDismiss = { menuFor = null },
@@ -233,7 +217,7 @@ private fun Shelf(
         title,
         fontSize = 19.sp,
         fontWeight = FontWeight.SemiBold,
-        color = AngPalette.Ink,
+        color = AngPalette.Ink.copy(alpha = 0.92f),
         modifier = Modifier.padding(start = 48.dp, bottom = 10.dp),
     )
     val focusFirst = firstFocus()
@@ -270,7 +254,7 @@ private fun ContinueShelf(
         "Continue watching",
         fontSize = 19.sp,
         fontWeight = FontWeight.SemiBold,
-        color = AngPalette.Ink,
+        color = AngPalette.Ink.copy(alpha = 0.92f),
         modifier = Modifier.padding(start = 48.dp, bottom = 10.dp),
     )
     val focusFirst = firstFocus()
@@ -286,7 +270,9 @@ private fun ContinueShelf(
                     onClick = { onResume(item) },
                     onLongClick = if (item.key.startsWith(MANUAL_PREFIX)) ({ onHold(item) }) else null,
                     modifier = (if (item == items.first()) focusFirst else Modifier).size(220.dp, 124.dp),
-                    container = AngPalette.DeepTeal,
+                    container = AngPalette.Glass,
+                    edge = AngPalette.Edge,
+                    corner = 16.dp,
                 ) {
                     if (item.imageUrl != null) {
                         AsyncImage(item.imageUrl, item.title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
@@ -306,7 +292,7 @@ private fun ContinueShelf(
                                 .padding(10.dp)
                                 .fillMaxWidth()
                                 .height(4.dp)
-                                .background(Color.White.copy(alpha = 0.4f), RoundedCornerShape(2.dp)),
+                                .background(Color.White.copy(alpha = 0.28f), RoundedCornerShape(2.dp)),
                         ) {
                             Box(
                                 Modifier
@@ -341,7 +327,9 @@ private fun PosterCard(
             onClick = onClick,
             onLongClick = onLongClick,
             modifier = modifier.size(134.dp, 196.dp).onFocusChanged { focused = it.isFocused || it.hasFocus },
-            container = AngPalette.DeepTeal,
+            container = AngPalette.Glass,
+            edge = AngPalette.Edge,
+            corner = 16.dp,
         ) {
             if (item.imageUrl != null) {
                 AsyncImage(item.imageUrl, item.title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
@@ -360,14 +348,15 @@ private fun PosterCard(
                     Modifier
                         .align(if (dated) Alignment.BottomCenter else Alignment.TopStart)
                         .padding(8.dp)
-                        .background(if (dated) AngPalette.Yellow else AngPalette.Pink, RoundedCornerShape(8.dp))
+                        .background(Color(0xCC12181D), RoundedCornerShape(10.dp))
+                        .border(1.dp, AngPalette.Edge, RoundedCornerShape(10.dp))
                         .padding(horizontal = 8.dp, vertical = 3.dp),
                 ) {
                     Text(
                         label,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (dated) Color(0xFF3A2A00) else Color.White,
+                        color = if (dated) AngPalette.Yellow else Color.White,
                         maxLines = 1,
                     )
                 }
@@ -377,5 +366,33 @@ private fun PosterCard(
         Spacer(Modifier.height(8.dp))
         Text(item.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = AngPalette.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(item.detail, fontSize = 11.sp, color = AngPalette.InkSoft, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+private fun greeting(): String = when (java.time.LocalTime.now().hour) {
+    in 5..11 -> "Good morning, Ang"
+    in 12..16 -> "Good afternoon, Ang"
+    else -> "Good evening, Ang"
+}
+
+/** A frosted pill button (Her List, Switch). */
+@Composable
+private fun GlassPill(text: String, onClick: () -> Unit) {
+    FocusCard(
+        onClick = onClick,
+        container = AngPalette.Glass,
+        focusedContainer = AngPalette.GlassFocused,
+        edge = AngPalette.Edge,
+        corner = 20.dp,
+        focusedScale = 1.06f,
+        modifier = Modifier.height(40.dp),
+    ) {
+        Text(
+            text,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White,
+            modifier = Modifier.align(Alignment.Center).padding(horizontal = 18.dp),
+        )
     }
 }
