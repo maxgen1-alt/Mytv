@@ -109,11 +109,37 @@ fun Modifier.dotGrid(): Modifier = drawWithCache {
 /** The app background: graphite normally, team colours on game days, black in the Nothing look. */
 val LocalBackground = staticCompositionLocalOf<Brush> { Palette.Background }
 
+/**
+ * How rows scroll to follow the selection, everywhere: a short, decisive glide (no springy
+ * drift), and nothing moves while the selected card is already fully on screen. When it
+ * isn't, it's brought fully in with a little room around it, so the next row is always
+ * properly on screen before you move to it.
+ */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+private val SnappyScroll = object : androidx.compose.foundation.gestures.BringIntoViewSpec {
+    @Suppress("OVERRIDE_DEPRECATION")
+    override val scrollAnimationSpec: androidx.compose.animation.core.AnimationSpec<Float> =
+        androidx.compose.animation.core.tween(durationMillis = 200, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+
+    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
+        val end = offset + size
+        if (offset >= 0f && end <= containerSize) return 0f // already fully visible
+        val margin = containerSize * 0.06f
+        return when {
+            size + 2 * margin > containerSize -> offset - margin // too big to fit: show its start
+            offset < 0f -> offset - margin // cut off at the start: bring it in, with a little room
+            else -> end - (containerSize - margin) // cut off at the end: same, at the end
+        }
+    }
+}
+
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun MyTvTheme(gameDay: GameDayTheme = GameDayTheme.NONE, nothing: Boolean = false, content: @Composable () -> Unit) {
     CompositionLocalProvider(
         LocalBackground provides if (nothing) SolidColor(Color.Black) else Palette.backgroundFor(gameDay),
         LocalNothing provides nothing,
+        androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides SnappyScroll,
     ) {
         MaterialTheme(
             colorScheme = darkColorScheme(

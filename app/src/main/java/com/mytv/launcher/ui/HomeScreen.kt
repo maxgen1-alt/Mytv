@@ -352,7 +352,7 @@ private fun TopBar(
             Spacer(Modifier.width(18.dp))
             Text(
                 DateFormat.getTimeInstance(DateFormat.SHORT).format(now),
-                color = Palette.Ink,
+                color = NothingLook.Red,
                 fontSize = 38.sp,
                 fontFamily = NothingLook.Dot,
                 fontWeight = FontWeight.ExtraBold,
@@ -406,18 +406,15 @@ private fun AppTile(app: TvApp, modifier: Modifier, onClick: () -> Unit, onLongC
 }
 
 /**
- * Nothing look: black and white until you're on it, then the app's real banner in full colour.
- * Not selected: the app's logo as a clean white shape on black (cut out of its banner), or,
- * when the logo doesn't cut out cleanly, the banner itself in black and white.
+ * Nothing look: every app in black and white until you're on it, then its real banner in
+ * full colour. One picture per tile; selecting only swaps its colour filter (nothing is
+ * worked out or redrawn from scratch), so moving along the row stays instant.
  */
 @Composable
 private fun NothingAppTile(app: TvApp, modifier: Modifier, onClick: () -> Unit, onLongClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
     val art = app.banner ?: app.icon
-    // (made yet?, the logo shape): worked out off the main thread, once per picture.
-    val glyph by androidx.compose.runtime.produceState<Pair<Boolean, NothingIcons.Glyph?>>(false to null, art) {
-        value = true to art?.let { a -> kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { NothingIcons.glyph(a) } }
-    }
+    val banner = app.banner != null
     FocusCard(
         onClick = onClick,
         onLongClick = onLongClick,
@@ -425,40 +422,22 @@ private fun NothingAppTile(app: TvApp, modifier: Modifier, onClick: () -> Unit, 
             .size(TileWidth, TileHeight)
             .onFocusChanged { focused = it.hasFocus },
     ) {
-        val (made, g) = glyph
-        val shape = g?.shape
-        val banner = app.banner != null
-        when {
-            art == null -> Text(
-                remember(app.label) { nothingName(app.label) },
-                color = Color.White,
-                fontSize = 15.sp,
-                fontFamily = NothingLook.Mono,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.align(Alignment.Center).padding(horizontal = 12.dp),
-            )
-            // On it: the real thing, in colour.
-            focused -> Image(
-                art, app.label,
-                if (banner) Modifier.fillMaxSize() else Modifier.align(Alignment.Center).size(56.dp),
-                contentScale = if (banner) ContentScale.Crop else ContentScale.Fit,
-            )
-            shape != null -> Image(
-                shape, app.label,
-                Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 14.dp),
-                contentScale = ContentScale.Fit,
-                colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.White),
-            )
-            made -> Image(
-                art, app.label,
-                if (banner) Modifier.fillMaxSize() else Modifier.align(Alignment.Center).size(56.dp),
-                contentScale = if (banner) ContentScale.Crop else ContentScale.Fit,
-                colorFilter = MonoFilter,
-            )
-        }
+        if (art == null) Text(
+            remember(app.label) { nothingName(app.label) },
+            color = Color.White,
+            fontSize = 15.sp,
+            fontFamily = NothingLook.Mono,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.align(Alignment.Center).padding(horizontal = 12.dp),
+        ) else Image(
+            art, app.label,
+            if (banner) Modifier.fillMaxSize() else Modifier.align(Alignment.Center).size(56.dp),
+            contentScale = if (banner) ContentScale.Crop else ContentScale.Fit,
+            colorFilter = if (focused) null else MonoFilter,
+        )
     }
 }
 

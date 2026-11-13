@@ -250,6 +250,10 @@ class MainActivity : ComponentActivity() {
         if (dpad && event.action == android.view.KeyEvent.ACTION_DOWN) {
             val now = android.os.SystemClock.uptimeMillis()
             if (event.repeatCount > 0 && (now - event.eventTime > 120 || now - lastMove < 80)) return true
+            // Separate presses that piled up while the screen was busy: the first late one
+            // still moves, the backlog behind it is dropped. Otherwise a press seems to do
+            // nothing and then the selection shoots down several rows at once.
+            if (event.repeatCount == 0 && now - event.eventTime > 180 && now - lastMove < 260) return true
             lastMove = now
         }
         return super.dispatchKeyEvent(event)
