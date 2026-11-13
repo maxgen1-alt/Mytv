@@ -62,6 +62,8 @@ class FantraxDataTest {
         // Week 2 started Oct 26 evening: league days 7..11 so far, today is 11.
         assertEquals(11, w.days.last().number)
         assertEquals(7, w.days.first().number)
+        // The rest of the week (for games left to play): later days only, none already counted.
+        assertTrue(w.upcomingDays.all { it.number > 11 && it.start > now })
     }
 
     @Test fun startersForADay() {

@@ -154,6 +154,7 @@ object FantasyPanel {
         list.addView(text(context, "Week ${m.period}  ·  updated ${time(updatedAt)}", 13f, SOFT))
         list.addView(scoreRow(context, m.myTeam, m.week.toString(), "vs", m.opponent, winning(m.week)))
         list.addView(text(context, "Today ${m.today}", 18f, colorFor(m.today), bold = true).apply { setPadding(0, dp(context, 2), 0, dp(context, 10)) })
+        m.games?.let { list.addView(gamesRow(context, m, it)) }
 
         // Every category this week: yours · theirs, the winner's side bright.
         val grid = GridLayout(context).apply { columnCount = 2 }
@@ -195,6 +196,31 @@ object FantasyPanel {
             addView(text(context, record, 40f, when (ahead) { true -> GREEN; false -> RED; null -> INK }, bold = true))
         })
         addView(text(context, "$vs $them", 15f, SOFT).apply { maxLines = 1; ellipsize = TextUtils.TruncateAt.END })
+    }
+
+    /** Starter games this week, both sides: played so far, and left to play. More left = brighter. */
+    private fun gamesRow(context: Context, m: FantasyMatchup, g: GameCount) = LinearLayout(context).apply {
+        orientation = LinearLayout.HORIZONTAL
+        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(context, 10) }
+        val edge = if (g.myLeft != null && g.theirLeft != null) g.myLeft.compareTo(g.theirLeft) else 0
+        fun side(team: String, played: Int, left: Int?, ahead: Boolean?) = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(context, 12), dp(context, 8), dp(context, 12), dp(context, 8))
+            background = GradientDrawable().apply { cornerRadius = dp(context, 10).toFloat(); setColor(0x14FFFFFF) }
+            addView(text(context, team, 12f, SOFT, bold = true).apply { maxLines = 1; ellipsize = TextUtils.TruncateAt.END })
+            addView(LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.BOTTOM
+                addView(text(context, "$played", 22f, INK, bold = true))
+                addView(text(context, " played   ", 13f, SOFT))
+                addView(text(context, left?.toString() ?: "–", 22f, when (ahead) { true -> GREEN; false -> RED; null -> INK }, bold = true))
+                addView(text(context, " left", 13f, SOFT))
+            })
+        }
+        addView(side(m.myTeam, g.myPlayed, g.myLeft, if (edge == 0) null else edge > 0),
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(context, 8) })
+        addView(side(m.opponent, g.theirPlayed, g.theirLeft, if (edge == 0) null else edge < 0),
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
     }
 
     private fun categoryCell(context: Context, c: CategoryResult) = LinearLayout(context).apply {

@@ -50,11 +50,16 @@ data class FantasyMatchup(
     val todayCategories: List<CategoryResult>,
     /** Today's starters, yours first, playing now first. */
     val players: List<LineupPlayer>,
+    /** Starter games this week: played so far and still to play, both sides (null: not worked out yet). */
+    val games: GameCount? = null,
 ) {
     val live: List<LineupPlayer> get() = players.filter { it.live }
 }
 
 /** A day of the league (Fantrax sets lineups per day): its number and when it starts and ends. */
+/** Starter games this week: how many each side has played and has left. [myLeft]/[theirLeft] null if the schedule couldn't be read. */
+data class GameCount(val myPlayed: Int, val myLeft: Int?, val theirPlayed: Int, val theirLeft: Int?)
+
 data class LeagueDay(val number: Int, val start: Long, val end: Long)
 
 /** What the league info says about this week's matchup. */
@@ -67,6 +72,8 @@ data class WeekSetup(
     val categories: List<Category>,
     /** The league days of this week that have started. */
     val days: List<LeagueDay>,
+    /** The rest of the week: league days that haven't started yet. */
+    val upcomingDays: List<LeagueDay> = emptyList(),
 )
 
 /** Reads Fantrax's public league data (no sign-in needed). */
@@ -95,11 +102,13 @@ object FantraxData {
             ?: return null
         val them = pair.optJSONObject("home")?.optString("id")?.takeIf { it != mine } ?: pair.optJSONObject("away")?.optString("id").orEmpty()
 
-        val days = info.optJSONArray("rosterPeriods").objects().mapNotNull { d ->
+        val week = info.optJSONArray("rosterPeriods").objects().mapNotNull { d ->
             val start = time(d.optString("startDate")) ?: return@mapNotNull null
             val end = time(d.optString("endDate")) ?: return@mapNotNull null
-            LeagueDay(d.optInt("number"), start, end).takeIf { start >= weekStart - 60_000L && start <= weekEnd && start <= now }
+            LeagueDay(d.optInt("number"), start, end).takeIf { start >= weekStart - 60_000L && start <= weekEnd }
         }.sortedBy { it.number }
+        val days = week.filter { it.start <= now }
+        val upcomingDays = week.filter { it.start > now }
 
         // The league's own categories, in the order Fantrax lists them.
         val categories = info.optJSONObject("scoringSystem")?.optJSONArray("scoringCategorySettings").objects()
@@ -116,6 +125,7 @@ object FantraxData {
             period = period,
             categories = categories,
             days = days,
+            upcomingDays = upcomingDays,
         )
     }
 
@@ -207,6 +217,16 @@ class FantasyLive(
         val weekCats = Scoring.compare(sum { it.total(it.mine) }, sum { it.total(it.theirs) }, setup.categories)
         val todayCats = Scoring.compare(today.total(today.mine), today.total(today.theirs), setup.categories)
         val order = compareBy<LineupPlayer>({ !it.mine }, { if (it.live) 0 else if (it.game?.state == GameState.UPCOMING) 1 else if (it.game != null) 2 else 3 }, { -(it.line?.pts ?: 0) })
+        // Starter games: played = got into a box score; left = today's not tipped off yet + the rest of the week.
+        fun played(list: List<LineupPlayer>) = list.count { it.line != null && it.game?.state != GameState.UPCOMING }
+        fun waiting(list: List<LineupPlayer>) = list.count { it.game?.state == GameState.UPCOMING }
+        val ahead = upcoming(setup, playersJson, now)
+        val games = GameCount(
+            myPlayed = all.sumOf { played(it.mine) },
+            myLeft = ahead?.let { it.first + waiting(today.mine) },
+            theirPlayed = all.sumOf { played(it.theirs) },
+            theirLeft = ahead?.let { it.second + waiting(today.theirs) },
+        )
         FantasyMatchup(
             myTeam = setup.myName,
             opponent = setup.opponentName,
@@ -216,7 +236,39 @@ class FantasyLive(
             today = Scoring.record(todayCats),
             todayCategories = todayCats,
             players = (today.mine + today.theirs).sortedWith(order),
+            games = games,
         )
+    }
+
+    /** The rest of the week (days not started), as (my starter games, their starter games). */
+    private var ahead: Triple<Int, Long, Pair<Int, Int>>? = null // period, when, counts
+
+    /**
+     * Starter games still to come after today: each future day's set lineup against the
+     * NBA schedule. Lineups can change, so it's looked up again every 15 minutes at most.
+     */
+    private suspend fun upcoming(setup: WeekSetup, playersJson: String, now: Long): Pair<Int, Int>? = coroutineScope {
+        if (setup.upcomingDays.isEmpty()) return@coroutineScope 0 to 0
+        ahead?.let { (period, at, counts) -> if (period == setup.period && now - at < 15 * 60_000L) return@coroutineScope counts }
+        val perDay = setup.upcomingDays.map { d ->
+            async {
+                val rosters = get("$base/getTeamRosters?leagueId=$leagueId&period=${d.number}") ?: return@async null
+                val mine = FantraxData.starters(rosters, setup.myId, playersJson)
+                val theirs = FantraxData.starters(rosters, setup.opponentId, playersJson)
+                val first = Instant.ofEpochMilli(d.start).atZone(eastern).toLocalDate()
+                val last = Instant.ofEpochMilli(d.end).atZone(eastern).toLocalDate()
+                val dates = generateSequence(first) { it.plusDays(1) }.takeWhile { !it.isAfter(last) }.toList()
+                val games = dates.flatMap { espn.scoreboard(Teams.nba, it) }
+                    .filter { it.startMillis in d.start..d.end }
+                    .distinctBy { it.id }
+                fun plays(p: FantasyPlayer) = p.nbaTeam.isNotBlank() && NbaGames.gameFor(games, p.nbaTeam) != null
+                mine.count(::plays) to theirs.count(::plays)
+            }
+        }.awaitAll()
+        if (perDay.any { it == null }) return@coroutineScope ahead?.takeIf { it.first == setup.period }?.third
+        val counts = perDay.filterNotNull().fold(0 to 0) { a, b -> (a.first + b.first) to (a.second + b.second) }
+        ahead = Triple(setup.period, now, counts)
+        counts
     }
 
     /** One league day: both lineups, their games and their lines. Null if it couldn't be fetched. */
