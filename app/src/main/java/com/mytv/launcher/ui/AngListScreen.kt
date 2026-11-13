@@ -30,6 +30,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -68,7 +69,10 @@ fun AngListScreen(state: AngState, onOpen: (AngItem) -> Unit, onRate: (AngItem, 
         .sortedByDescending { it.date }
         .map { it.toItem() }
 
-    Column(Modifier.fillMaxSize().angBackdrop().padding(horizontal = 48.dp, vertical = 28.dp)) {
+    // The backdrop in its own layer, drawn once: scrolling the grid doesn't repaint it.
+    Box(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize().graphicsLayer().angBackdrop())
+    Column(Modifier.fillMaxSize().padding(horizontal = 48.dp, vertical = 28.dp)) {
         Row(verticalAlignment = Alignment.Bottom) {
             Text("Her List", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = AngPalette.Ink)
             Spacer(Modifier.width(10.dp))
@@ -119,6 +123,7 @@ fun AngListScreen(state: AngState, onOpen: (AngItem) -> Unit, onRate: (AngItem, 
                 }
             }
         }
+    }
     }
 
     menuFor?.let { item ->

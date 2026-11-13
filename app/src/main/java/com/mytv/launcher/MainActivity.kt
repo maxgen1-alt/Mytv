@@ -66,7 +66,7 @@ class MainActivity : ComponentActivity() {
                         AngScreen(
                             ang,
                             onOpenList = vm::openAngList,
-                            continueWatching = vm.withWatchingNow(ang.continueWatching, ang.watchingNow),
+                            continueWatching = remember(ang.continueWatching, ang.watchingNow) { vm.withWatchingNow(ang.continueWatching, ang.watchingNow) },
                             onShow = vm::openAngShow,
                             onRate = vm::angRate,
                             onResume = vm::playWatchItem,
@@ -185,7 +185,7 @@ class MainActivity : ComponentActivity() {
                         AngScreen(
                             ang,
                             onOpenList = vm::openAngList,
-                            continueWatching = vm.withWatchingNow(ang.continueWatching, ang.watchingNow),
+                            continueWatching = remember(ang.continueWatching, ang.watchingNow) { vm.withWatchingNow(ang.continueWatching, ang.watchingNow) },
                             onShow = vm::openAngShow,
                             onRate = vm::angRate,
                             onResume = vm::playWatchItem,

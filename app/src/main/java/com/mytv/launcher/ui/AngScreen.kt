@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -84,21 +86,32 @@ fun AngScreen(
     }
 
     // Her rows, in order. The first one with something in it gets the first selection.
-    val shelves: List<Triple<String, List<AngItem>, (AngItem) -> String?>> = listOf(
-        Triple("Tonight", state.tonight, { a: AngItem -> a.badge }),
-        Triple("Watch later", state.watchLater, { _: AngItem -> null }),
-        Triple("Watch now", guide.watchNow, { a: AngItem -> a.badge }),
-        Triple("Easy Watch", guide.easyWatch, { a: AngItem -> a.badge }),
-        Triple("New shows you might like", guide.newShows, { a: AngItem -> a.badge }),
-        Triple("Shows you might have missed", guide.missed, { a: AngItem -> a.badge }),
-        Triple("Movies for you", guide.movies, { a: AngItem -> a.badge }),
-        Triple("Coming soon", guide.upcoming, { a: AngItem -> a.date?.let(::comingLabel) ?: "Date TBA" }),
-    )
+    // Remembered, with lambdas that never change: an update to one part of her TV (Continue
+    // watching arriving, a rating) must not rebuild every row on screen.
+    val shelves: List<Triple<String, List<AngItem>, (AngItem) -> String?>> = remember(state.tonight, state.watchLater, guide) {
+        listOf(
+            Triple("Tonight", state.tonight, BadgeLabel),
+            Triple("Watch later", state.watchLater, NoLabel),
+            Triple("Watch now", guide.watchNow, BadgeLabel),
+            Triple("Easy Watch", guide.easyWatch, BadgeLabel),
+            Triple("New shows you might like", guide.newShows, BadgeLabel),
+            Triple("Shows you might have missed", guide.missed, BadgeLabel),
+            Triple("Movies for you", guide.movies, BadgeLabel),
+            Triple("Coming soon", guide.upcoming, DateLabel),
+        )
+    }
     val firstShelf = if (continueWatching.isNotEmpty()) "Continue watching" else shelves.firstOrNull { it.second.isNotEmpty() }?.first
-    fun focusFor(title: String): () -> Modifier = { if (title == firstShelf) Modifier.focusRequester(first) else Modifier }
-    val hold: (AngItem) -> Unit = { menuFor = it }
+    val focusFirst: () -> Modifier = remember { { Modifier.focusRequester(first) } }
+    val focusNone: () -> Modifier = remember { { Modifier } }
+    fun focusFor(title: String): () -> Modifier = if (title == firstShelf) focusFirst else focusNone
+    val hold: (AngItem) -> Unit = remember { { menuFor = it } }
+    val onHoldWatching: (WatchItem) -> Unit = remember(state.watchingNow) {
+        { wi -> state.watchingNow.firstOrNull { MANUAL_PREFIX + it.key == wi.key }?.let { menuFor = it } }
+    }
 
-    Box(Modifier.fillMaxSize().angBackdrop()) {
+    Box(Modifier.fillMaxSize()) {
+        // The backdrop in its own layer: drawn once, not again on every frame of a scroll.
+        Box(Modifier.fillMaxSize().graphicsLayer().angBackdrop())
         // Lazy, top to bottom: only the rows on screen are built and load their pictures.
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -167,9 +180,7 @@ fun AngScreen(
             }
 
           if (continueWatching.isNotEmpty()) item(key = "continue", contentType = "continue") { Column {
-            ContinueShelf(continueWatching, onResume, focusFor("Continue watching")) { wi ->
-                state.watchingNow.firstOrNull { MANUAL_PREFIX + it.key == wi.key }?.let { menuFor = it }
-            }
+            ContinueShelf(continueWatching, onResume, focusFor("Continue watching"), onHoldWatching)
           } }
           item(key = "today", contentType = "today") { Column { AngTodayRow() } }
           shelves.forEach { (title, list, label) ->
@@ -191,6 +202,10 @@ fun AngScreen(
         )
     }
 }
+
+private val BadgeLabel: (AngItem) -> String? = { it.badge }
+private val NoLabel: (AngItem) -> String? = { null }
+private val DateLabel: (AngItem) -> String? = { a -> a.date?.let(::comingLabel) ?: "Date TBA" }
 
 private fun comingLabel(date: LocalDate): String {
     val days = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), date)
@@ -227,12 +242,12 @@ private fun Shelf(
         modifier = Modifier.height(268.dp),
         verticalAlignment = Alignment.Top,
     ) {
-        items(items, key = { it.key }) { item ->
+        itemsIndexed(items, key = { _, it -> it.key }, contentType = { _, _ -> "poster" }) { i, item ->
             PosterCard(
                 item = item,
                 label = label(item),
                 dated = dated,
-                modifier = if (item == items.first()) focusFirst else Modifier,
+                modifier = if (i == 0) focusFirst else Modifier,
                 onClick = { onShow(item) },
                 onLongClick = onLongClick?.let { f -> { f(item) } },
             )
@@ -264,12 +279,12 @@ private fun ContinueShelf(
         modifier = Modifier.height(186.dp),
         verticalAlignment = Alignment.Top,
     ) {
-        items(items, key = { it.key }) { item ->
+        itemsIndexed(items, key = { _, it -> it.key }, contentType = { _, _ -> "watching" }) { i, item ->
             Column(Modifier.width(220.dp).padding(top = 8.dp)) {
                 FocusCard(
                     onClick = { onResume(item) },
                     onLongClick = if (item.key.startsWith(MANUAL_PREFIX)) ({ onHold(item) }) else null,
-                    modifier = (if (item == items.first()) focusFirst else Modifier).size(220.dp, 124.dp),
+                    modifier = (if (i == 0) focusFirst else Modifier).size(220.dp, 124.dp),
                     container = AngPalette.Glass,
                     edge = AngPalette.Edge,
                     corner = 16.dp,
