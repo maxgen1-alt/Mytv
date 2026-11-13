@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
+import kotlinx.coroutines.launch
 import com.mytv.launcher.AngState
 import com.mytv.launcher.MANUAL_PREFIX
 import com.mytv.launcher.ang.AngItem
@@ -109,11 +110,23 @@ fun AngScreen(
         { wi -> state.watchingNow.firstOrNull { MANUAL_PREFIX + it.key == wi.key }?.let { menuFor = it } }
     }
 
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    // Back on the top rows: glide all the way to the top, so her greeting is fully in view.
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val backToTop: Modifier = remember {
+        Modifier.onFocusChanged { f ->
+            if (f.hasFocus && (listState.firstVisibleItemIndex != 0 || listState.firstVisibleItemScrollOffset != 0)) {
+                scope.launch { androidx.compose.runtime.withFrameNanos { }; listState.animateScrollToItem(0) }
+            }
+        }
+    }
+
     Box(Modifier.fillMaxSize()) {
         // The backdrop in its own layer: drawn once, not again on every frame of a scroll.
         Box(Modifier.fillMaxSize().graphicsLayer().angBackdrop())
         // Lazy, top to bottom: only the rows on screen are built and load their pictures.
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(vertical = 32.dp),
         ) {
@@ -152,7 +165,7 @@ fun AngScreen(
             }
             Spacer(Modifier.height(20.dp))
           } }
-          if (!apps.isNullOrEmpty()) item(key = "apps", contentType = "apps") { Column {
+          if (!apps.isNullOrEmpty()) item(key = "apps", contentType = "apps") { Column(backToTop) {
                 androidx.compose.foundation.lazy.LazyRow(
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 48.dp, vertical = 8.dp),
                     horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(16.dp),
@@ -179,7 +192,7 @@ fun AngScreen(
                 )
             }
 
-          if (continueWatching.isNotEmpty()) item(key = "continue", contentType = "continue") { Column {
+          if (continueWatching.isNotEmpty()) item(key = "continue", contentType = "continue") { Column(backToTop) {
             ContinueShelf(continueWatching, onResume, focusFor("Continue watching"), onHoldWatching)
           } }
           item(key = "today", contentType = "today") { Column { AngTodayRow() } }

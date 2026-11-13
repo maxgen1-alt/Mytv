@@ -65,6 +65,7 @@ import com.mytv.launcher.topten.TopTenService
 import com.mytv.launcher.topten.TopTitle
 import com.mytv.launcher.watching.WatchItem
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
 
@@ -136,6 +137,16 @@ fun HomeScreen(
     var menuFor by remember { mutableStateOf<TvApp?>(null) }
     var rateFor by remember { mutableStateOf<AngItem?>(null) }
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    // Back on the top rows (apps, teams): the whole screen glides back to the very top, so
+    // the clock and header are fully in view and the framing is the same as when it opened.
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val backToTop: Modifier = remember {
+        Modifier.onFocusChanged { f ->
+            if (f.hasFocus && (listState.firstVisibleItemIndex != 0 || listState.firstVisibleItemScrollOffset != 0)) {
+                scope.launch { androidx.compose.runtime.withFrameNanos { }; listState.animateScrollToItem(0) }
+            }
+        }
+    }
 
     LaunchedEffect(apps.isNotEmpty()) {
         if (apps.isNotEmpty()) runCatching { firstApp.requestFocus() }
@@ -164,7 +175,7 @@ fun HomeScreen(
 
             // Row 1: streaming apps
             item(key = "apps", contentType = "apps") {
-                Column {
+                Column(backToTop) {
                     if (nothing) SectionTitle("01 — Apps", Modifier.padding(start = 48.dp))
                     LazyRow(
                         contentPadding = RowPadding,
@@ -188,7 +199,7 @@ fun HomeScreen(
 
             // Row 2: team buttons
             item(key = "teams", contentType = "teams") {
-                Column {
+                Column(backToTop) {
                     if (nothing) SectionTitle("02 — Teams", Modifier.padding(start = 48.dp))
                     LazyRow(
                         contentPadding = RowPadding,
