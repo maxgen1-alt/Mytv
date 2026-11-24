@@ -261,6 +261,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        com.mytv.launcher.system.HomeKeeper.ensure(this)
         vm.onResume()
     }
 

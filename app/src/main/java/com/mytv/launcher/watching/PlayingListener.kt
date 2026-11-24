@@ -58,8 +58,15 @@ class PlayingListener : NotificationListenerService() {
             watched.values.forEach { (c, _) -> if (c.playbackState?.state == PlaybackState.STATE_PLAYING) note(c, flush = false) }
             val at = settings.sleepAt
             if (at > 0 && System.currentTimeMillis() >= at) sleepNow()
+            com.mytv.launcher.system.HomeKeeper.ensure(this@PlayingListener)
             main.postDelayed(this, 30_000)
         }
+    }
+
+    /** TV woke up: make sure the Fire TV home helper is still on (HomeKeeper). */
+    private val screenOn = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: android.content.Context, intent: android.content.Intent) =
+            com.mytv.launcher.system.HomeKeeper.ensure(context)
     }
 
     override fun onListenerConnected() {
@@ -75,6 +82,13 @@ class PlayingListener : NotificationListenerService() {
             main.postDelayed(tick, 30_000)
         }
         alerts.start()
+        com.mytv.launcher.system.HomeKeeper.ensure(this)
+        runCatching {
+            androidx.core.content.ContextCompat.registerReceiver(
+                this, screenOn, android.content.IntentFilter(android.content.Intent.ACTION_SCREEN_ON),
+                androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
+            )
+        }
         runCatching {
             androidx.core.content.ContextCompat.registerReceiver(
                 this, screenOff, android.content.IntentFilter(android.content.Intent.ACTION_SCREEN_OFF),
@@ -118,6 +132,7 @@ class PlayingListener : NotificationListenerService() {
     private fun stop() {
         alerts.stop()
         runCatching { unregisterReceiver(screenOff) }
+        runCatching { unregisterReceiver(screenOn) }
         main.removeCallbacks(tick)
         runCatching { sessions?.removeOnActiveSessionsChangedListener(onSessions) }
         watched.values.forEach { (c, cb) -> note(c, flush = true); c.unregisterCallback(cb) }
