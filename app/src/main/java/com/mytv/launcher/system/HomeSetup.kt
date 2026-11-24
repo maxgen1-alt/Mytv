@@ -74,16 +74,38 @@ class HomeSetup(private val context: Context) {
     suspend fun shell(cmd: String): String? = withContext(Dispatchers.IO) {
         if (WirelessAdb.isPaired(context)) WirelessAdb.shell(context, cmd)?.let { return@withContext it }
         runCatching { adb.run(cmd) }
-            .onFailure { e ->
-                lastError = when {
-                    e is java.net.ConnectException -> "refused"
-                    e is java.net.SocketTimeoutException -> "timeout"
-                    e.message == "tls" -> "tls"
-                    else -> e.javaClass.simpleName + ": " + e.message
-                }
-            }
+            .onFailure { e -> lastError = describe(e) }
             .getOrNull()
+            ?.let { return@withContext it }
+        // Fire TV: some Fire OS versions refuse 127.0.0.1 but take the same connection on the
+        // stick's own Wi-Fi / Ethernet address.
+        if (!fireTv || lastError == "timeout") return@withContext null
+        for (ip in localAddresses()) {
+            val out = runCatching { AdbShell(java.io.File(context.filesDir, "adb"), ip).run(cmd) }
+                .onFailure { e -> lastError = describe(e) + " (also tried $ip)" }
+                .getOrNull()
+            if (out != null) return@withContext out
+            if (lastError.startsWith("timeout")) break
+        }
+        null
     }
+
+    private fun describe(e: Throwable): String = when {
+        e is java.net.ConnectException -> "refused"
+        e is java.net.SocketTimeoutException -> "timeout"
+        e.message == "tls" -> "tls"
+        else -> e.javaClass.simpleName + ": " + e.message
+    }
+
+    /** This box's own IPv4 addresses on its network (Wi-Fi, Ethernet), not 127.0.0.1. */
+    private fun localAddresses(): List<String> = runCatching {
+        java.net.NetworkInterface.getNetworkInterfaces().toList()
+            .filter { it.isUp && !it.isLoopback }
+            .flatMap { it.inetAddresses.toList() }
+            .filterIsInstance<java.net.Inet4Address>()
+            .map { it.hostAddress.orEmpty() }
+            .filter { it.isNotBlank() }
+    }.getOrDefault(emptyList())
 
     /** Fire TV: Amazon's home screen can't be switched off, so only the home helper is used. */
     private val fireTv get() = Device.isFireTv(context)
@@ -102,7 +124,7 @@ class HomeSetup(private val context: Context) {
             return@withContext Result.Done("MyTV is now your home screen. Press Home to try it.")
         }
         // Never switch Amazon's home screen off: Fire OS can't run without it.
-        if (fireTv) return@withContext if (lastError == "timeout") noAccess() else Result.NoAccess(FIRE_TV_SETUP)
+        if (fireTv) return@withContext if (lastError.startsWith("timeout")) noAccess() else Result.NoAccess(fireTvSetup())
         val enabled = shell("pm list packages -e") ?: return@withContext noAccess()
         val enabledSet = enabled.lines().map { it.removePrefix("package:").trim() }.toSet()
         val off = disabled.toMutableSet()
@@ -181,6 +203,17 @@ class HomeSetup(private val context: Context) {
             ?.let { ComponentName(it.packageName, it.name) }
     }
 
+    /** The Fire TV steps, with why the connection failed (so a photo of the screen says it all). */
+    private fun fireTvSetup(): String {
+        val why = when {
+            lastError.startsWith("refused") -> "the Fire TV refused the connection: ADB debugging is off, or this Fire OS blocks apps from using it"
+            lastError.startsWith("tls") -> "this Fire OS only allows paired (Wireless debugging) connections"
+            lastError.isBlank() -> "no connection was tried"
+            else -> lastError
+        }
+        return "MyTV couldn't connect ($why${if (lastError.contains("also tried")) ", " + lastError.substringAfter("(").removeSuffix(")") else ""}). $FIRE_TV_SETUP"
+    }
+
     private fun noAccess() = Result.NoAccess(
         when (lastError) {
             "timeout" -> "The TV didn't answer in time. Try again: when it asks \"Allow USB debugging?\", tick Always allow and choose OK."
@@ -197,7 +230,7 @@ class HomeSetup(private val context: Context) {
         private const val SCREENSAVER = "screensaver_components"
 
         /** What to do when a Fire TV won't take MyTV's own debugging connection. */
-        const val FIRE_TV_SETUP =
+        private const val FIRE_TV_SETUP =
             "One-time step: Settings → My Fire TV → Developer options → turn ADB debugging on, then select this button again " +
                 "and choose OK when it asks \"Allow USB debugging?\" (tick Always allow). No Developer options? Settings → My Fire TV → About: " +
                 "click your Fire TV's name 7 times. Or run   adb shell \"" + "pm grant com.mytv.launcher android.permission.WRITE_SECURE_SETTINGS" + "\"   from a computer."
