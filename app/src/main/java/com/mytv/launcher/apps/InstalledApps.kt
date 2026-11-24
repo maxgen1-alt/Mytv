@@ -38,7 +38,7 @@ class InstalledApps(private val context: Context) {
     fun load(): List<TvApp> {
         val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER)
         val current = HashSet<String>()
-        val found = pm.queryIntentActivities(intent, 0)
+        val found = (pm.queryIntentActivities(intent, 0) + fireTvOnlyApps())
             .map { it.activityInfo }
             .filter { it.packageName != context.packageName }
             .distinctBy { it.packageName }
@@ -58,6 +58,26 @@ class InstalledApps(private val context: Context) {
         rendered.keys.retainAll(current)
         runCatching { saveIndex(found, current) }
         return sort(found)
+    }
+
+    /**
+     * Fire TV: many apps there (Prime Video included) only have a phone-style launcher entry,
+     * which Amazon's home screen shows too. Amazon's own system parts (Settings, Appstore...)
+     * are left out, except streaming apps. Nothing on Google TV.
+     */
+    private fun fireTvOnlyApps(): List<android.content.pm.ResolveInfo> {
+        if (!com.mytv.launcher.system.Device.isFireTv(context)) return emptyList()
+        val all = runCatching {
+            pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
+        }.getOrDefault(emptyList())
+        return all.filter { r ->
+            val ai = r.activityInfo.applicationInfo
+            val system = ai.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM != 0 &&
+                ai.flags and android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP == 0
+            if (!system) return@filter true
+            val key = (r.activityInfo.packageName + " " + runCatching { r.loadLabel(pm).toString() }.getOrDefault("")).lowercase()
+            FIRE_TV_STREAMING.any { key.contains(it) } && FIRE_TV_SYSTEM.none { key.contains(it) }
+        }
     }
 
     // ---- Saved copy, so the apps row is there instantly after a reboot ----
@@ -176,6 +196,12 @@ class InstalledApps(private val context: Context) {
         private const val KEY_HIDDEN = "hidden"
         private const val KEY_ORDER = "order"
         private const val KEY_CHANGED = "layout_changed_at"
+
+        /** Fire TV system parts whose names contain a streaming keyword, never shown. */
+        private val FIRE_TV_SYSTEM = listOf("com.amazon.tv.launcher", "com.amazon.tv.settings", "com.amazon.venezia")
+
+        /** Built-in Fire TV apps that are streaming apps ("amazon" alone would match all of Fire OS). */
+        private val FIRE_TV_STREAMING get() = DEFAULT_ORDER.filter { it != "amazon" } + listOf("firebat", "avod", "freevee")
 
         /** Keywords (matched against package name + label) for the out-of-the-box order. */
         private val DEFAULT_ORDER = listOf(

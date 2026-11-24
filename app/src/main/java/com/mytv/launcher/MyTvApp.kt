@@ -11,6 +11,7 @@ class MyTvApp : Application(), ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
         com.mytv.launcher.system.AutoPlay.appContext = applicationContext
+        if (com.mytv.launcher.system.Device.isFireTv(this)) com.mytv.launcher.sync.CloudSync.layoutKey = "layout-firetv"
     }
 
     override fun newImageLoader(): ImageLoader = ImageLoader.Builder(this)

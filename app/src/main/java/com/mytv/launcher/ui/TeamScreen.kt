@@ -100,7 +100,7 @@ fun TeamScreen(
                     GameCard(
                         team = team,
                         game = live,
-                        trailing = opt?.let { "Watch on ${it.app.label}" } ?: "Find it on Google TV",
+                        trailing = opt?.let { "Watch on ${it.app.label}" } ?: "Find it on ${com.mytv.launcher.system.Device.homeName(androidx.compose.ui.platform.LocalContext.current)}",
                         modifier = Modifier.padding(bottom = 10.dp).let { if (i == 0) it.firstFocusable() else it },
                         onClick = { onWatch(live, opt) },
                     )

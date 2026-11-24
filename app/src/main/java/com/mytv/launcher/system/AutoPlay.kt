@@ -102,6 +102,8 @@ object AutoPlay {
         main.post {
             target = t
             service = HomeOverride.service ?: service
+            // The app's Fire TV version has its own package name: make sure the helper hears it.
+            (service as? HomeOverride)?.watch(t.pkg)
             service?.let { svc -> t.before = playingSessions(svc, t.pkg) }
             if (service == null) {
                 // Without the helper nothing can be pressed: say how to turn it on.

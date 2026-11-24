@@ -21,6 +21,12 @@ class WatchNext(private val context: Context) {
         context.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED
     }
 
+    /**
+     * Worth asking for access? Not on a Fire TV: Fire OS doesn't keep the shared list, so
+     * watch tracking (PlayingListener) fills Continue Watching there instead.
+     */
+    fun needsPermission(): Boolean = !hasPermission() && !com.mytv.launcher.system.Device.isFireTv(context)
+
     /** False if the last read was refused or failed (for the status line on the apps screen). */
     @Volatile var lastReadOk: Boolean = true
         private set

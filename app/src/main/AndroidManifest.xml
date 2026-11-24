@@ -29,6 +29,13 @@
             <action android:name="android.search.action.GLOBAL_SEARCH" />
         </intent>
         <package android:name="com.google.android.apps.tv.launcherx" />
+        <!-- Fire TV: apps with only a phone-style launcher entry, and Amazon's home screen and Appstore. -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <package android:name="com.amazon.tv.launcher" />
+        <package android:name="com.amazon.venezia" />
         <!-- Finding Google TV's home screen again, for "Undo everything". -->
         <intent>
             <action android:name="android.intent.action.MAIN" />

@@ -64,6 +64,9 @@ fun SystemScreen(
 ) {
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val fireTv = remember { com.mytv.launcher.system.Device.isFireTv(context) }
+    val homeName = if (fireTv) "Fire TV" else "Google TV"
     Row(Modifier.fillMaxSize().background(LocalBackground.current).padding(horizontal = 48.dp, vertical = 28.dp)) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             Text("MyTV settings", fontSize = 30.sp, fontWeight = FontWeight.Bold, color = Palette.Ink)
@@ -73,12 +76,18 @@ fun SystemScreen(
             }
 
             Section("Home screen", if (state.isHome) "MyTV is your home screen: it's what you see when the TV turns on and when you press Home." else
-                "Make MyTV what you see when the TV turns on and when you press Home. Google TV stays installed; one button brings it back.")
+                "Make MyTV what you see when the TV turns on and when you press Home. $homeName stays installed; one button brings it back.")
             if (state.helper.isNotBlank()) {
                 Text(state.helper, fontSize = 13.sp, color = if (state.helper.endsWith("running")) Color(0xFF7CD992) else Color(0xFFFF8A80))
                 Spacer(Modifier.height(8.dp))
             }
-            if (state.phoneSetup != null) WirelessPairing(state.busy, state.message, state.wirelessPaired, onPairWireless, onPairKeypad)
+            // Fire TV: no pairing needed, MyTV connects to its ADB debugging itself (the button below).
+            if (fireTv && state.phoneSetup != null) {
+                Text("One time: Settings → My Fire TV → Developer options → ADB debugging on. Then select Make MyTV my home screen and choose OK when the TV asks \"Allow USB debugging?\" (tick Always allow).",
+                    fontSize = 13.sp, color = Color(0xFFF5C518))
+                Spacer(Modifier.height(10.dp))
+            }
+            if (!fireTv && state.phoneSetup != null) WirelessPairing(state.busy, state.message, state.wirelessPaired, onPairWireless, onPairKeypad)
             state.phoneSetup?.let { cmd ->
                 Text("Or, from your phone (Bugjaeger → Shell), then select the button below:", fontSize = 13.sp, color = Color(0xFFF5C518))
                 Spacer(Modifier.height(4.dp))
@@ -93,13 +102,13 @@ fun SystemScreen(
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (!state.isHome) Pill("Make MyTV my home screen", true, Modifier.focusRequester(first)) { if (!state.busy) onMakeHome() }
-                Pill(if (state.isHome) "Undo everything (back to Google TV)" else "Undo everything", false,
+                Pill(if (state.isHome) "Undo everything (back to $homeName)" else "Undo everything", false,
                     if (state.isHome) Modifier.focusRequester(first) else Modifier) { if (!state.busy) onUndo() }
             }
 
-            Section("Screensaver", "Google's shows your Google Photos (Ambient mode). MyTV's shows your shows, the time, weather and Arsenal / Lakers scores.")
+            Section("Screensaver", (if (fireTv) "Fire TV's shows Amazon's pictures." else "Google's shows your Google Photos (Ambient mode).") + " MyTV's shows your shows, the time, weather and Arsenal / Lakers scores.")
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Pill("Google (Google Photos)", !state.myScreensaver) { if (!state.busy) onScreensaver(false) }
+                Pill(if (fireTv) "Fire TV's" else "Google (Google Photos)", !state.myScreensaver) { if (!state.busy) onScreensaver(false) }
                 Pill("MyTV", state.myScreensaver) { if (!state.busy) onScreensaver(true) }
             }
 

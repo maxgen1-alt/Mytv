@@ -85,7 +85,12 @@ class HomeSetup(private val context: Context) {
             .getOrNull()
     }
 
+    /** Fire TV: Amazon's home screen can't be switched off, so only the home helper is used. */
+    private val fireTv get() = Device.isFireTv(context)
+
     suspend fun takeOver(): Result = withContext(Dispatchers.IO) {
+        // Fire TV: with ADB debugging on, MyTV sends the one-time phone command to itself.
+        if (fireTv && !canWriteSecure) shell(PHONE_COMMAND)
         // Paired with Wireless debugging: MyTV sends the one-time phone command itself.
         if (!canWriteSecure && WirelessAdb.isPaired(context)) WirelessAdb.shell(context, PHONE_COMMAND)
         if (canWriteSecure) {
@@ -96,6 +101,8 @@ class HomeSetup(private val context: Context) {
             settings.homeOverride = true
             return@withContext Result.Done("MyTV is now your home screen. Press Home to try it.")
         }
+        // Never switch Amazon's home screen off: Fire OS can't run without it.
+        if (fireTv) return@withContext if (lastError == "timeout") noAccess() else Result.NoAccess(FIRE_TV_SETUP)
         val enabled = shell("pm list packages -e") ?: return@withContext noAccess()
         val enabledSet = enabled.lines().map { it.removePrefix("package:").trim() }.toSet()
         val off = disabled.toMutableSet()
@@ -113,6 +120,7 @@ class HomeSetup(private val context: Context) {
         settings.homeOverride = false
         if (canWriteSecure) setSecureList(ACCESSIBILITY, secureList(ACCESSIBILITY).filterNot { it.equals(HomeOverride.component, true) })
         restoreScreensaver()
+        if (fireTv) return@withContext Result.Done("Fire TV's home screen is back. Press Home to see it.")
         if (!googleHomeOff) return@withContext Result.Done("Google TV is back. Press Home to see it.")
         // Google TV's home screen was switched off over a debugging connection: turn it back on the same way.
         if (shell("echo ok") == null) {
@@ -187,6 +195,12 @@ class HomeSetup(private val context: Context) {
         private const val ACCESSIBILITY = "enabled_accessibility_services"
         private const val LISTENERS = "enabled_notification_listeners"
         private const val SCREENSAVER = "screensaver_components"
+
+        /** What to do when a Fire TV won't take MyTV's own debugging connection. */
+        const val FIRE_TV_SETUP =
+            "One-time step: Settings → My Fire TV → Developer options → turn ADB debugging on, then select this button again " +
+                "and choose OK when it asks \"Allow USB debugging?\" (tick Always allow). No Developer options? Settings → My Fire TV → About: " +
+                "click your Fire TV's name 7 times. Or run   adb shell \"" + "pm grant com.mytv.launcher android.permission.WRITE_SECURE_SETTINGS" + "\"   from a computer."
 
         /** Run once from a phone (Bugjaeger's Shell): MyTV can then do the rest itself, undo included. */
         const val PHONE_COMMAND =

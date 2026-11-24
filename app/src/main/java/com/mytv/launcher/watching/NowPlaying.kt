@@ -16,6 +16,7 @@ object NowPlaying {
     private val skip = listOf(
         "com.mytv.launcher", "youtube", "dazn", "spotify", "music", "pandora", "audible", "soundcloud", "tidal", "deezer",
         "podcast", "com.google.android.katniss", "com.google.android.tvlauncher", "com.google.android.apps.tv.launcherx",
+        "com.amazon.tv.launcher", "com.amazon.vizzini",
     )
 
     fun shouldTrack(packageName: String): Boolean = skip.none { packageName.lowercase().contains(it) }

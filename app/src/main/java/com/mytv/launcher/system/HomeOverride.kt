@@ -19,9 +19,26 @@ class HomeOverride : AccessibilityService() {
     private var homeClass: String? = null
     private var lastLaunch = 0L
 
+    /** The box's own home screen: Google TV's, or Amazon's on a Fire TV. */
+    private val homePackage by lazy { Device.homePackage(this) }
+    private val fireTv by lazy { Device.isFireTv(this) }
+
     override fun onServiceConnected() {
         homeClass = googleHomeClass()
         instance = this
+        // Fire TV: also listen to Amazon's home screen (the list in home_override.xml is Google TV's).
+        if (fireTv) watch(Device.FIRE_TV_HOME)
+    }
+
+    /** Adds [pkg] to the apps whose window changes the helper hears (e.g. a Fire TV app AutoPlay is pressing). */
+    fun watch(pkg: String) {
+        runCatching {
+            val info = serviceInfo ?: return
+            val now = info.packageNames?.toList().orEmpty()
+            if (now.isEmpty() || pkg in now) return // empty = every app already
+            info.packageNames = (now + pkg).toTypedArray()
+            serviceInfo = info
+        }
     }
 
     override fun onDestroy() {
@@ -33,7 +50,7 @@ class HomeOverride : AccessibilityService() {
         // A game MyTV just opened in Prime Video: press its buttons (see AutoPlay).
         AutoPlay.onEvent(this, event)
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
-        if (event.packageName?.toString() != HomeSetup.GOOGLE_TV_HOME) return
+        if (event.packageName?.toString() != homePackage) return
         if (!settings.homeOverride) return
         // MyTV just opened an app or a search itself: Google TV's own windows (its search results,
         // the screens it shows while an app starts) aren't you pressing Home.
@@ -41,6 +58,9 @@ class HomeOverride : AccessibilityService() {
         // Any Google TV home window except its search screens (voice search results stay put).
         val cls = event.className?.toString().orEmpty()
         if (cls.contains("search", ignoreCase = true) || cls.contains("voice", ignoreCase = true)) return
+        // Fire TV: its home screen app also shows the profile picker, the quick settings you get by
+        // holding Home, and notifications. Leave those up; only its home screen itself is swapped.
+        if (fireTv && FIRE_TV_KEEP.any { cls.contains(it, ignoreCase = true) }) return
         val now = SystemClock.uptimeMillis()
         if (now - lastLaunch < 800) return
         lastLaunch = now
@@ -99,6 +119,9 @@ class HomeOverride : AccessibilityService() {
         val component: String get() = "com.mytv.launcher/com.mytv.launcher.system.HomeOverride"
 
         @Volatile private var instance: HomeOverride? = null
+
+        /** Fire TV home-screen windows that aren't the home screen itself (matched in the class name). */
+        private val FIRE_TV_KEEP = listOf("profile", "quicksetting", "quick_setting", "notification", "setting", "alexa")
 
         @Volatile private var quietUntil = 0L
 

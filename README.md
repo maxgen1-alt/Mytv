@@ -19,6 +19,8 @@ A clock and a ⚙ settings button sit in the top-right.
 
 > Works on **Chromecast with Google TV** and **Google TV Streamer**. Older
 > cast-only Chromecasts (the puck that plugs in with no remote) can't run apps.
+> Also runs on **Fire TV** (Fire TV Stick, Cube, Fire TV smart TVs on Fire OS): see
+> [Fire TV](#fire-tv) for what's different.
 
 ---
 
@@ -61,6 +63,35 @@ adb shell pm enable com.google.android.apps.tv.launcherx
 adb shell pm enable com.google.android.tungsten.setupwraith
 ```
 With the stock launcher disabled, Google's profile and account screens and the Google TV "For you" content aren't available. Everything else, including the Google Assistant / mic search, keeps working.
+
+## Fire TV
+
+MyTV notices when it's on a Fire TV and adjusts itself; on a Chromecast nothing changes.
+
+**Will it run?** Any Fire TV on **Fire OS** (Fire TV Stick, Stick 4K / 4K Max, Lite, Cube, Fire TV smart TVs). Not the **Fire TV Stick 4K Select** and other models on Amazon's **Vega OS**: those can't install Android apps at all. To check: **Settings → My Fire TV → About → Fire TV OS** should say Fire OS.
+
+**Install:**
+1. **Settings → My Fire TV → About**: click your Fire TV's name 7 times to show **Developer options**.
+2. **Settings → My Fire TV → Developer options**: turn on **ADB debugging**, and allow **Install unknown apps** for **Downloader**.
+3. Install **Downloader** (by AFTVnews) from the Amazon Appstore, open the APK's direct link, and install it. (Or from a computer on the same Wi-Fi: `adb connect <Fire TV IP>:5555` then `adb install -r MyTV.apk`.)
+
+**Make it the home screen:** Amazon's home screen can't be replaced or switched off (and MyTV never tries), so MyTV uses its home helper, the same as on a Chromecast: whenever Amazon's home screen comes up (Home button, power-on, backing out of an app), MyTV opens over it.
+1. Leave **ADB debugging** on and open **⚙ MyTV settings → Make MyTV my home screen**.
+2. The TV asks **Allow USB debugging?**: tick **Always allow** and choose **OK**. MyTV gives itself the one permission it needs and turns the helper on. Press Home to try it.
+3. If it can't connect, run this once from a computer (or Bugjaeger on a phone) on the same Wi-Fi, then select the button again:
+   ```sh
+   adb shell pm grant com.mytv.launcher android.permission.WRITE_SECURE_SETTINGS
+   ```
+
+Amazon's profile picker, the quick settings you get by holding Home, Alexa, and Fire TV Settings stay as they are. **Undo everything** switches the helper off and Amazon's home screen is back.
+
+**What's different on Fire TV:**
+- **+ Apps → Get more apps** and **Get the NFL app** open the **Amazon Appstore** (Fire TV has no Google Play).
+- **Continue Watching** comes from **watch tracking** only: Fire OS doesn't keep Android TV's shared Watch Next list. Turn on watch tracking from the row.
+- Apps that only have a phone-style launcher entry on Fire TV (Prime Video, for one) show up in the apps row too.
+- Apps have other package names on Fire TV. MyTV finds Prime Video, Peacock, YouTube TV and the NFL app by name, and the home helper listens to whichever one it opened, so one-press games and RedZone work the same. This is untested on real Fire TV hardware, so expect to see it fall back to just opening the app now and then.
+- **Find it on Fire TV** (team page, no app has the game) depends on Fire OS taking Android's search request, which it may not.
+- The apps row's order and hidden apps sync separately for Fire TVs, so rearranging apps on a Fire Stick never reshuffles your Chromecast. Ratings made on your profile and Ang's still sync to every TV; **Guest** never syncs, so give it to whoever else uses the Fire TV.
 
 ## 4. Continue Watching
 

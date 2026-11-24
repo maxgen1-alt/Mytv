@@ -27,6 +27,13 @@ object CloudSync {
     private val household = BuildConfig.SYNC_HOUSEHOLD
     val isConfigured: Boolean get() = url.isNotBlank() && key.isNotBlank() && household.isNotBlank()
 
+    /**
+     * The apps row's row in the table. A Fire TV keeps its own (its apps have other package
+     * names), so reordering apps there never reshuffles the row on a Google TV, and back.
+     * Set at startup (MyTvApp).
+     */
+    @Volatile var layoutKey: String = "layout"
+
     /** For the apps screen: how the last sync went. */
     @Volatile var status: String = if (url.isBlank() || key.isBlank() || household.isBlank()) "Sync: not set up in this build" else "Sync: not run yet"
         private set
@@ -69,7 +76,7 @@ object CloudSync {
     suspend fun syncLayout(apps: InstalledApps): Boolean = withContext(Dispatchers.IO) {
         if (!isConfigured) return@withContext false
         var local = apps.layout()
-        val body = get("/rest/v1/mytv_ratings?select=data,updated_at&profile=eq.apps&key=eq.layout") ?: run { report(); return@withContext false }
+        val body = get("/rest/v1/mytv_ratings?select=data,updated_at&profile=eq.apps&key=eq.$layoutKey") ?: run { report(); return@withContext false }
         val row = runCatching { JSONArray(body).optJSONObject(0) }.getOrNull()
         val remoteAt = row?.let { runCatching { Instant.parse(it.getString("updated_at")).toEpochMilli() }.getOrNull() } ?: 0L
         val data = row?.optJSONObject("data")
@@ -98,7 +105,7 @@ object CloudSync {
         val row = JSONObject()
             .put("household", household)
             .put("profile", "apps")
-            .put("key", "layout")
+            .put("key", layoutKey)
             .put("data", JSONObject().put("hidden", JSONArray(l.hidden.toList())).put("order", JSONArray(l.order)))
             .put("updated_at", Instant.ofEpochMilli(l.changedAt).toString())
         upsert(JSONArray().put(row))

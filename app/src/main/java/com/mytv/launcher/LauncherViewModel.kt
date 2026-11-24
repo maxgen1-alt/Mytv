@@ -1077,7 +1077,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             _watching.update {
                 it.copy(
                     loading = it.items.isEmpty(),
-                    needsPermission = !watchNext.hasPermission(),
+                    needsPermission = watchNext.needsPermission(),
                     traktConfigured = trakt.isConfigured,
                     traktLinked = trakt.isLinked,
                 )
@@ -1093,6 +1093,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 .take(25)
             _watching.value = WatchState(
                 status = when {
+                    com.mytv.launcher.system.Device.isFireTv(context) && fromApps.isEmpty() ->
+                        "Continue Watching: Fire TV doesn't share apps' lists, so watch tracking fills this row."
                     !watchNext.hasPermission() -> "Continue Watching: no access yet. Select \"Allow access\"."
                     !watchNext.lastReadOk -> "Continue Watching: this TV refused access to its list."
                     fromApps.isEmpty() -> "Continue Watching: access OK, but no app has shared anything in progress with the TV."
@@ -1108,7 +1110,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 },
                 items = merged,
                 loading = false,
-                needsPermission = !watchNext.hasPermission(),
+                needsPermission = watchNext.needsPermission(),
                 traktConfigured = trakt.isConfigured,
                 traktLinked = trakt.isLinked,
             )
@@ -1404,7 +1406,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun makeHome() = runSetup("Setting up… if the TV asks \"Allow USB debugging?\", tick Always allow and choose OK.") { homeSetup.takeOver() }
-    fun undoHome() = runSetup("Turning Google TV back on…") { homeSetup.undo() }
+    fun undoHome() = runSetup("Turning ${com.mytv.launcher.system.Device.homeName(context)} back on…") { homeSetup.undo() }
     fun setMyScreensaver(on: Boolean) = runSetup("Changing the screensaver…") { homeSetup.setMyTvScreensaver(on) }
 
     fun setKickoffAlerts(on: Boolean) { settings.kickoffAlerts = on; refreshSystem() }

@@ -39,7 +39,7 @@ class MainActivity : ComponentActivity() {
 
         // Ask once on first launch so Continue Watching just works.
         val prefs = getSharedPreferences("launcher", MODE_PRIVATE)
-        if (!prefs.getBoolean("asked_watch_next", false) && !WatchNext(this).hasPermission()) {
+        if (!prefs.getBoolean("asked_watch_next", false) && WatchNext(this).needsPermission()) {
             prefs.edit().putBoolean("asked_watch_next", true).apply()
             requestWatchNext()
         }
